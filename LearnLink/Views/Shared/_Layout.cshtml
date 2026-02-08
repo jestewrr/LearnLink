@@ -1,0 +1,221 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - LearnLink</title>
+    <script type="importmap"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/learnlink.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/LearnLink.styles.css" asp-append-version="true" />
+</head>
+<body>
+    @if (ViewData["HideLayout"] != null && (bool)ViewData["HideLayout"])
+    {
+        @RenderBody()
+    }
+    else
+    {
+        <!-- Sidebar -->
+        <aside class="ll-sidebar" id="sidebar">
+            <div class="ll-sidebar-brand">
+                <div class="brand-icon">
+                    <i class="bi bi-book"></i>
+                </div>
+                <span class="brand-text">LearnLink</span>
+            </div>
+
+            <nav class="ll-sidebar-nav">
+                <!-- Main Navigation -->
+                <div class="ll-nav-section">
+                    <div class="ll-nav-section-title">Main Menu</div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("Dashboard", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Dashboard" ? "active" : "")">
+                            <i class="bi bi-grid-1x2"></i>
+                            <span class="nav-text">Dashboard</span>
+                        </a>
+                    </div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("Repository", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Repository" ? "active" : "")">
+                            <i class="bi bi-folder2-open"></i>
+                            <span class="nav-text">Knowledge Repository</span>
+                        </a>
+                    </div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("Search", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Search" ? "active" : "")">
+                            <i class="bi bi-search"></i>
+                            <span class="nav-text">Search Resources</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Content Management (Contributors & Admin) -->
+                <div class="ll-nav-section">
+                    <div class="ll-nav-section-title">Content Management</div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("Upload", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Upload" ? "active" : "")">
+                            <i class="bi bi-cloud-arrow-up"></i>
+                            <span class="nav-text">Upload Materials</span>
+                        </a>
+                    </div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("MyUploads", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "MyUploads" ? "active" : "")">
+                            <i class="bi bi-file-earmark-check"></i>
+                            <span class="nav-text">My Uploads</span>
+                            <span class="badge bg-primary rounded-pill">12</span>
+                        </a>
+                    </div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("Policies", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Policies" ? "active" : "")">
+                            <i class="bi bi-shield-check"></i>
+                            <span class="nav-text">Policies & Procedures</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Learning -->
+                <div class="ll-nav-section">
+                    <div class="ll-nav-section-title">Learning</div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("LessonsLearned", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "LessonsLearned" ? "active" : "")">
+                            <i class="bi bi-lightbulb"></i>
+                            <span class="nav-text">Lessons Learned</span>
+                        </a>
+                    </div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("BestPractices", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "BestPractices" ? "active" : "")">
+                            <i class="bi bi-star"></i>
+                            <span class="nav-text">Best Practices</span>
+                        </a>
+                    </div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("ReadingHistory", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "ReadingHistory" ? "active" : "")">
+                            <i class="bi bi-clock-history"></i>
+                            <span class="nav-text">Reading History</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Community -->
+                <div class="ll-nav-section">
+                    <div class="ll-nav-section-title">Community</div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("KnowledgePortal", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "KnowledgePortal" ? "active" : "")">
+                            <i class="bi bi-chat-square-text"></i>
+                            <span class="nav-text">Knowledge Sharing</span>
+                            <span class="badge bg-success rounded-pill">New</span>
+                        </a>
+                    </div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("Discussions", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Discussions" ? "active" : "")">
+                            <i class="bi bi-people"></i>
+                            <span class="nav-text">Discussions</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Administration (Admin & Moderator) -->
+                <div class="ll-nav-section">
+                    <div class="ll-nav-section-title">Administration</div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("Users", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Users" ? "active" : "")">
+                            <i class="bi bi-person-gear"></i>
+                            <span class="nav-text">User Management</span>
+                        </a>
+                    </div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("Settings", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Settings" ? "active" : "")">
+                            <i class="bi bi-gear"></i>
+                            <span class="nav-text">System Settings</span>
+                        </a>
+                    </div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("Reports", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Reports" ? "active" : "")">
+                            <i class="bi bi-bar-chart-line"></i>
+                            <span class="nav-text">Reports & Analytics</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Sidebar User -->
+            <div class="ll-sidebar-user">
+                <div class="user-avatar">JD</div>
+                <div class="user-info">
+                    <div class="user-name">John Doe</div>
+                    <div class="user-role">Contributor</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="ll-main">
+            <!-- Header -->
+            <header class="ll-header">
+                <div class="ll-header-left">
+                    <button class="ll-sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
+                        <i class="bi bi-list fs-5"></i>
+                    </button>
+                    <div class="ll-search-box">
+                        <i class="bi bi-search"></i>
+                        <input type="text" placeholder="Search resources, discussions, users..." class="form-control">
+                    </div>
+                </div>
+                <div class="ll-header-right">
+                    <button class="ll-header-btn" title="Notifications">
+                        <i class="bi bi-bell"></i>
+                        <span class="notification-badge">5</span>
+                    </button>
+                    <button class="ll-header-btn d-none-sm" title="Messages">
+                        <i class="bi bi-envelope"></i>
+                        <span class="notification-badge">3</span>
+                    </button>
+                    <button class="ll-header-btn d-none-sm" title="Help">
+                        <i class="bi bi-question-circle"></i>
+                    </button>
+                    <div class="dropdown">
+                        <div class="ll-user-dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="avatar">JD</div>
+                            <i class="bi bi-chevron-down small"></i>
+                        </div>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>My Profile</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Account Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="@Url.Action("Login", "Home")"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content -->
+            <div class="ll-content">
+                @RenderBody()
+            </div>
+        </main>
+    }
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        // Sidebar Toggle
+        document.getElementById('sidebarToggle')?.addEventListener('click', function () {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        });
+
+        // Mobile sidebar toggle
+        if (window.innerWidth < 992) {
+            document.getElementById('sidebarToggle')?.addEventListener('click', function () {
+                document.getElementById('sidebar').classList.toggle('show');
+            });
+        }
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

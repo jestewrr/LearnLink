@@ -1,0 +1,81 @@
+@{
+    ViewData["Title"] = "Login";
+    ViewData["HideLayout"] = true;
+}
+
+<div class="ll-auth-page">
+    <div class="container-fluid py-5">
+        <div class="row g-4 justify-content-center align-items-center min-vh-100">
+            <div class="col-lg-6 col-xl-5">
+                <div class="ll-login-card ll-login-hero">
+                    <div class="ll-login-hero-brand">
+                        <div class="ll-login-hero-icon">
+                            <i class="bi bi-book fs-2"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold fs-4">LearnLink</div>
+                            <div class="small opacity-75">Student Resource Management System</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 col-xl-4">
+                <div class="ll-login-card ll-login-form-card">
+                    <h2 class="fw-bold mb-2">Login</h2>
+                    <p class="text-muted mb-4">Please enter your credentials to access your account</p>
+
+                    <form asp-action="Dashboard" method="get">
+                        <div class="mb-3">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" class="form-control ll-login-input" placeholder="Please enter your email address" value="john.doe@learnlink.edu">
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Password</label>
+                            <div class="position-relative">
+                                <input type="password" class="form-control ll-login-input pe-5" placeholder="Please enter your password" id="passwordInput" value="password123">
+                                <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted" onclick="togglePassword()">
+                                    <i class="bi bi-eye" id="toggleIcon"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 py-2 ll-login-submit">Sign In</button>
+
+                        <div class="text-center mt-3">
+                            <span class="text-muted small">Don't have an account?</span>
+                            <a href="@Url.Action("Register", "Home")" class="text-decoration-none small fw-medium">Register</a>
+                        </div>
+                    </form>
+
+                    <div class="text-center my-4">
+                        <span class="text-muted small">Or continue with</span>
+                    </div>
+
+                    <button class="btn btn-outline-secondary w-100 ll-login-google">
+                        <i class="bi bi-google me-2"></i>
+                        Continue with Google
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('passwordInput');
+            const toggleIcon = document.getElementById('toggleIcon');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('bi-eye');
+                toggleIcon.classList.add('bi-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('bi-eye-slash');
+                toggleIcon.classList.add('bi-eye');
+            }
+        }
+    </script>
+}

@@ -1,0 +1,383 @@
+@{
+    ViewData["Title"] = "Lessons Learned";
+    ViewData["ActivePage"] = "LessonsLearned";
+}
+
+<!-- Page Header -->
+<div class="ll-page-header">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <h1 class="ll-page-title">Lessons Learned</h1>
+            <div class="ll-breadcrumb">
+                <a href="@Url.Action("Dashboard", "Home")">Home</a>
+                <i class="bi bi-chevron-right small"></i>
+                <span>Lessons Learned</span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="ll-btn ll-btn-primary" data-bs-toggle="modal" data-bs-target="#submitLessonModal">
+                <i class="bi bi-plus-circle"></i>
+                Submit Lesson Learned
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Main Content -->
+    <div class="col-lg-8">
+        <!-- Filter Tabs -->
+        <div class="ll-card mb-4">
+            <div class="ll-card-body py-2">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <button class="ll-btn ll-btn-primary ll-btn-sm">All Lessons</button>
+                    <button class="ll-btn ll-btn-outline ll-btn-sm">My Submissions</button>
+                    <button class="ll-btn ll-btn-outline ll-btn-sm">Top Rated</button>
+                    <button class="ll-btn ll-btn-outline ll-btn-sm">Recent</button>
+                    <div class="ms-auto">
+                        <select class="ll-form-control ll-form-select" style="width: auto;">
+                            <option>All Subjects</option>
+                            <option>Mathematics</option>
+                            <option>Science</option>
+                            <option>English</option>
+                            <option>Filipino</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lessons List -->
+        <div class="ll-card mb-3">
+            <div class="ll-card-body">
+                <div class="d-flex gap-3">
+                    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #fef3c7, #fbbf24); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <i class="bi bi-lightbulb text-warning fs-5"></i>
+                    </div>
+                    <div class="flex-fill">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="fw-bold mb-1">Using Visual Aids in Teaching Fractions</h6>
+                                <div class="small text-muted">
+                                    Based on: <a href="#" class="text-decoration-none">Mathematics Grade 7 Fractions Module</a>
+                                </div>
+                            </div>
+                            <div class="ll-rating">
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill empty"></i>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-3">
+                            I found that using pizza slices and chocolate bars as visual representations greatly helped students 
+                            understand fractions better. The concrete examples made abstract concepts more relatable and easier to grasp.
+                        </p>
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            <span class="ll-tag">Mathematics</span>
+                            <span class="ll-tag">Grade 7</span>
+                            <span class="ll-tag">Teaching Strategy</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="ll-discussion-avatar" style="width: 28px; height: 28px; font-size: 0.7rem;">MS</div>
+                                <span class="small text-muted">Maria Santos • 2 days ago</span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-hand-thumbs-up"></i> 45</button>
+                                <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-chat"></i> 12</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ll-card mb-3">
+            <div class="ll-card-body">
+                <div class="d-flex gap-3">
+                    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #d1fae5, #10b981); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <i class="bi bi-lightbulb text-success fs-5"></i>
+                    </div>
+                    <div class="flex-fill">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="fw-bold mb-1">Gamification in Science Quizzes</h6>
+                                <div class="small text-muted">
+                                    Based on: <a href="#" class="text-decoration-none">Science Grade 8 Assessment Pack</a>
+                                </div>
+                            </div>
+                            <div class="ll-rating">
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-3">
+                            Adding game elements like points, badges, and leaderboards to our science quizzes increased student 
+                            engagement by 70%. Students were more excited to take assessments and actively participated in review sessions.
+                        </p>
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            <span class="ll-tag">Science</span>
+                            <span class="ll-tag">Grade 8</span>
+                            <span class="ll-tag">Gamification</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="ll-discussion-avatar" style="width: 28px; height: 28px; font-size: 0.7rem; background: linear-gradient(135deg, #10b981, #059669);">JR</div>
+                                <span class="small text-muted">John Reyes • 3 days ago</span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-hand-thumbs-up"></i> 67</button>
+                                <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-chat"></i> 23</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ll-card mb-3">
+            <div class="ll-card-body">
+                <div class="d-flex gap-3">
+                    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #dbeafe, #3b82f6); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <i class="bi bi-lightbulb text-primary fs-5"></i>
+                    </div>
+                    <div class="flex-fill">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="fw-bold mb-1">Group Reading Activities for Literature</h6>
+                                <div class="small text-muted">
+                                    Based on: <a href="#" class="text-decoration-none">English Literature Short Stories Collection</a>
+                                </div>
+                            </div>
+                            <div class="ll-rating">
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill empty"></i>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-3">
+                            Implementing reader's theater and group discussions after reading short stories improved comprehension 
+                            and critical thinking skills. Students learned to appreciate different perspectives and interpretations.
+                        </p>
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            <span class="ll-tag">English</span>
+                            <span class="ll-tag">Grade 9</span>
+                            <span class="ll-tag">Literature</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="ll-discussion-avatar" style="width: 28px; height: 28px; font-size: 0.7rem; background: linear-gradient(135deg, #f59e0b, #d97706);">AC</div>
+                                <span class="small text-muted">Ana Cruz • 5 days ago</span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-hand-thumbs-up"></i> 38</button>
+                                <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-chat"></i> 15</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ll-card mb-3">
+            <div class="ll-card-body">
+                <div class="d-flex gap-3">
+                    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #fce7f3, #ec4899); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <i class="bi bi-lightbulb text-pink fs-5" style="color: #ec4899;"></i>
+                    </div>
+                    <div class="flex-fill">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="fw-bold mb-1">Connecting History to Current Events</h6>
+                                <div class="small text-muted">
+                                    Based on: <a href="#" class="text-decoration-none">Philippine History Timeline Presentation</a>
+                                </div>
+                            </div>
+                            <div class="ll-rating">
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-3">
+                            Drawing parallels between historical events and current news made history lessons more relevant and engaging. 
+                            Students started seeing the importance of understanding history to understand the present.
+                        </p>
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            <span class="ll-tag">History</span>
+                            <span class="ll-tag">Grade 8</span>
+                            <span class="ll-tag">Current Events</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="ll-discussion-avatar" style="width: 28px; height: 28px; font-size: 0.7rem; background: linear-gradient(135deg, #8b5cf6, #7c3aed);">PG</div>
+                                <span class="small text-muted">Pedro Garcia • 1 week ago</span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-hand-thumbs-up"></i> 52</button>
+                                <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-chat"></i> 18</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <nav aria-label="Lessons pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item disabled"><a class="page-link" href="#"><i class="bi bi-chevron-left"></i></a></li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item"><a class="page-link" href="#"><i class="bi bi-chevron-right"></i></a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- My Recent Insights -->
+        <div class="ll-card mb-4">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title">My Recent Insights</h5>
+            </div>
+            <div class="ll-card-body">
+                <div class="d-flex gap-3 mb-3 pb-3 border-bottom">
+                    <i class="bi bi-lightbulb text-warning"></i>
+                    <div>
+                        <div class="fw-medium small">Color-coded notes help retention</div>
+                        <div class="small text-muted">Science Module • 3 days ago</div>
+                    </div>
+                </div>
+                <div class="d-flex gap-3 mb-3 pb-3 border-bottom">
+                    <i class="bi bi-lightbulb text-warning"></i>
+                    <div>
+                        <div class="fw-medium small">Break long lessons into chunks</div>
+                        <div class="small text-muted">Math Reviewer • 1 week ago</div>
+                    </div>
+                </div>
+                <div class="d-flex gap-3">
+                    <i class="bi bi-lightbulb text-warning"></i>
+                    <div>
+                        <div class="fw-medium small">Use mnemonic devices for formulas</div>
+                        <div class="small text-muted">Chemistry Guide • 2 weeks ago</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="ll-card mb-4">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title">Your Contribution Stats</h5>
+            </div>
+            <div class="ll-card-body">
+                <div class="row g-3 text-center">
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded">
+                            <div class="fs-4 fw-bold text-primary">24</div>
+                            <div class="small text-muted">Lessons Submitted</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded">
+                            <div class="fs-4 fw-bold text-success">156</div>
+                            <div class="small text-muted">Total Likes</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded">
+                            <div class="fs-4 fw-bold text-warning">4.5</div>
+                            <div class="small text-muted">Avg. Rating</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded">
+                            <div class="fs-4 fw-bold text-info">89</div>
+                            <div class="small text-muted">Comments</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="ll-card">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title"><i class="bi bi-info-circle me-2"></i>Writing Tips</h5>
+            </div>
+            <div class="ll-card-body">
+                <ul class="list-unstyled mb-0 small">
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Be specific about what worked</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Include the context and setup</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Mention any challenges faced</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Share measurable outcomes</li>
+                    <li><i class="bi bi-check-circle text-success me-2"></i>Link to related resources</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Submit Lesson Modal -->
+<div class="modal fade" id="submitLessonModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Submit a Lesson Learned</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Related Resource</label>
+                    <select class="ll-form-control ll-form-select">
+                        <option value="">Select a resource this lesson is based on</option>
+                        <option>Mathematics Grade 7 Fractions Module</option>
+                        <option>Science Grade 8 Assessment Pack</option>
+                        <option>English Literature Short Stories Collection</option>
+                        <option>Philippine History Timeline Presentation</option>
+                    </select>
+                </div>
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Title</label>
+                    <input type="text" class="ll-form-control" placeholder="Give your lesson a clear title">
+                </div>
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Your Rating</label>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-warning"><i class="bi bi-star-fill"></i></button>
+                        <button type="button" class="btn btn-outline-warning"><i class="bi bi-star-fill"></i></button>
+                        <button type="button" class="btn btn-outline-warning"><i class="bi bi-star-fill"></i></button>
+                        <button type="button" class="btn btn-outline-warning"><i class="bi bi-star-fill"></i></button>
+                        <button type="button" class="btn btn-outline-secondary"><i class="bi bi-star"></i></button>
+                    </div>
+                </div>
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Your Insight</label>
+                    <textarea class="ll-form-control" rows="5" placeholder="Share what you learned, what worked well, any tips for others..."></textarea>
+                </div>
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Tags</label>
+                    <input type="text" class="ll-form-control" placeholder="Add tags separated by commas">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="ll-btn ll-btn-primary">
+                    <i class="bi bi-send"></i>
+                    Submit Lesson
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

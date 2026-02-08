@@ -1,0 +1,188 @@
+@{
+    ViewData["Title"] = "Search Resources";
+    ViewData["ActivePage"] = "Search";
+}
+
+<!-- Page Header -->
+<div class="ll-page-header">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <h1 class="ll-page-title">Search Resources</h1>
+            <div class="ll-breadcrumb">
+                <a href="@Url.Action("Dashboard", "Home")">Home</a>
+                <i class="bi bi-chevron-right small"></i>
+                <span>Search</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Box -->
+<div class="ll-card mb-4">
+    <div class="ll-card-body py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="text-center mb-4">
+                    <i class="bi bi-search display-4 text-muted mb-3 d-block"></i>
+                    <h4 class="fw-bold">Find Learning Resources</h4>
+                    <p class="text-muted">Search through thousands of educational materials</p>
+                </div>
+                <div class="position-relative mb-4">
+                    <i class="bi bi-search position-absolute top-50 translate-middle-y ms-4 fs-5 text-muted"></i>
+                    <input type="text" class="form-control form-control-lg ps-5 py-3" placeholder="Search by title, subject, keyword, or contributor..." style="border-radius: 50px; font-size: 1rem;">
+                    <button class="ll-btn ll-btn-primary position-absolute end-0 top-50 translate-middle-y me-2" style="border-radius: 50px;">
+                        Search
+                    </button>
+                </div>
+                <div class="d-flex flex-wrap gap-2 justify-content-center">
+                    <span class="text-muted small me-2">Popular:</span>
+                    <a href="#" class="ll-tag">Mathematics</a>
+                    <a href="#" class="ll-tag">Science Reviewer</a>
+                    <a href="#" class="ll-tag">Grade 8</a>
+                    <a href="#" class="ll-tag">Quarterly Exam</a>
+                    <a href="#" class="ll-tag">English Grammar</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Advanced Filters -->
+<div class="ll-card mb-4">
+    <div class="ll-card-header">
+        <h5 class="ll-card-title"><i class="bi bi-funnel me-2"></i>Advanced Filters</h5>
+        <button class="ll-btn ll-btn-outline ll-btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#advancedFilters">
+            <i class="bi bi-chevron-down"></i>
+        </button>
+    </div>
+    <div class="collapse show" id="advancedFilters">
+        <div class="ll-card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="ll-form-label">Subject</label>
+                    <select class="ll-form-control ll-form-select">
+                        <option value="">All Subjects</option>
+                        <option>Mathematics</option>
+                        <option>Science</option>
+                        <option>English</option>
+                        <option>Filipino</option>
+                        <option>Araling Panlipunan</option>
+                        <option>MAPEH</option>
+                        <option>TLE</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="ll-form-label">Grade Level</label>
+                    <select class="ll-form-control ll-form-select">
+                        <option value="">All Grades</option>
+                        <option>Grade 7</option>
+                        <option>Grade 8</option>
+                        <option>Grade 9</option>
+                        <option>Grade 10</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="ll-form-label">Resource Type</label>
+                    <select class="ll-form-control ll-form-select">
+                        <option value="">All Types</option>
+                        <option>Reviewer</option>
+                        <option>Activity Sheet</option>
+                        <option>Presentation</option>
+                        <option>Video</option>
+                        <option>Assessment</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="ll-form-label">File Format</label>
+                    <select class="ll-form-control ll-form-select">
+                        <option value="">All Formats</option>
+                        <option>PDF</option>
+                        <option>Word (DOC/DOCX)</option>
+                        <option>PowerPoint (PPT/PPTX)</option>
+                        <option>Excel (XLS/XLSX)</option>
+                        <option>Video (MP4)</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="ll-form-label">Date Range</label>
+                    <select class="ll-form-control ll-form-select">
+                        <option value="">Any Time</option>
+                        <option>Last 7 days</option>
+                        <option>Last 30 days</option>
+                        <option>Last 3 months</option>
+                        <option>Last year</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="ll-form-label">Minimum Rating</label>
+                    <select class="ll-form-control ll-form-select">
+                        <option value="">Any Rating</option>
+                        <option>4+ Stars</option>
+                        <option>3+ Stars</option>
+                        <option>2+ Stars</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="ll-form-label">Sort By</label>
+                    <select class="ll-form-control ll-form-select">
+                        <option>Relevance</option>
+                        <option>Most Recent</option>
+                        <option>Most Popular</option>
+                        <option>Highest Rated</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="ll-btn ll-btn-primary w-100">
+                        <i class="bi bi-search"></i>
+                        Apply Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Results (Empty State) -->
+<div class="ll-card">
+    <div class="ll-card-body">
+        <div class="ll-empty-state">
+            <div class="ll-empty-state-icon">
+                <i class="bi bi-search"></i>
+            </div>
+            <h5 class="ll-empty-state-title">Start Your Search</h5>
+            <p class="ll-empty-state-text">Enter keywords above to find learning resources.<br>You can also use the advanced filters to narrow down results.</p>
+            <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline">
+                <i class="bi bi-folder2-open"></i>
+                Browse All Resources
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Searches -->
+<div class="ll-card mt-4">
+    <div class="ll-card-header">
+        <h5 class="ll-card-title">Recent Searches</h5>
+        <button class="ll-btn ll-btn-outline ll-btn-sm">Clear All</button>
+    </div>
+    <div class="ll-card-body">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="#" class="ll-btn ll-btn-outline ll-btn-sm">
+                <i class="bi bi-clock-history me-1"></i>
+                math grade 8 reviewer
+            </a>
+            <a href="#" class="ll-btn ll-btn-outline ll-btn-sm">
+                <i class="bi bi-clock-history me-1"></i>
+                science lab activity
+            </a>
+            <a href="#" class="ll-btn ll-btn-outline ll-btn-sm">
+                <i class="bi bi-clock-history me-1"></i>
+                english grammar exercises
+            </a>
+            <a href="#" class="ll-btn ll-btn-outline ll-btn-sm">
+                <i class="bi bi-clock-history me-1"></i>
+                philippine history timeline
+            </a>
+        </div>
+    </div>
+</div>

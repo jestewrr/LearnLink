@@ -1,0 +1,399 @@
+@{
+    ViewData["Title"] = "User Management";
+    ViewData["ActivePage"] = "Users";
+}
+
+<!-- Page Header -->
+<div class="ll-page-header">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <h1 class="ll-page-title">User Management</h1>
+            <div class="ll-breadcrumb">
+                <a href="@Url.Action("Dashboard", "Home")">Home</a>
+                <i class="bi bi-chevron-right small"></i>
+                <span>User Management</span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="ll-btn ll-btn-outline">
+                <i class="bi bi-download"></i>
+                Export
+            </button>
+            <button class="ll-btn ll-btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                <i class="bi bi-person-plus"></i>
+                Add User
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon primary">
+                <i class="bi bi-people"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">1,245</div>
+                <div class="ll-stat-label">Total Users</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon success">
+                <i class="bi bi-person-check"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">1,089</div>
+                <div class="ll-stat-label">Active Users</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon warning">
+                <i class="bi bi-person-workspace"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">87</div>
+                <div class="ll-stat-label">Contributors</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon info">
+                <i class="bi bi-person-badge"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">12</div>
+                <div class="ll-stat-label">Moderators</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter and Search -->
+<div class="ll-card mb-4">
+    <div class="ll-card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-lg-4">
+                <div class="position-relative">
+                    <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
+                    <input type="text" class="ll-form-control ps-5" placeholder="Search users by name or email...">
+                </div>
+            </div>
+            <div class="col-lg-2">
+                <select class="ll-form-control ll-form-select">
+                    <option value="">All Roles</option>
+                    <option>Admin</option>
+                    <option>Moderator</option>
+                    <option>Contributor</option>
+                    <option>User</option>
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <select class="ll-form-control ll-form-select">
+                    <option value="">All Status</option>
+                    <option>Active</option>
+                    <option>Inactive</option>
+                    <option>Pending</option>
+                    <option>Suspended</option>
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <select class="ll-form-control ll-form-select">
+                    <option value="">All Grades</option>
+                    <option>Grade 7</option>
+                    <option>Grade 8</option>
+                    <option>Grade 9</option>
+                    <option>Grade 10</option>
+                    <option>Teacher</option>
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <button class="ll-btn ll-btn-primary w-100">
+                    <i class="bi bi-funnel"></i>
+                    Filter
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="ll-card">
+    <div class="ll-card-body p-0">
+        <div class="table-responsive">
+            <table class="ll-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="form-check-input"></th>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Grade/Position</th>
+                        <th>Status</th>
+                        <th>Joined</th>
+                        <th>Last Active</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input"></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="ll-discussion-avatar" style="width: 40px; height: 40px;">MS</div>
+                                <div>
+                                    <div class="fw-medium">Maria Santos</div>
+                                    <small class="text-muted">maria.santos@learnlink.edu</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="ll-badge ll-badge-warning">Contributor</span></td>
+                        <td>Mathematics Teacher</td>
+                        <td><span class="ll-badge ll-badge-success">Active</span></td>
+                        <td>Jan 15, 2024</td>
+                        <td>2 hours ago</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit User</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-shield me-2"></i>Change Role</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-person-slash me-2"></i>Suspend</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input"></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="ll-discussion-avatar" style="width: 40px; height: 40px; background: linear-gradient(135deg, #10b981, #059669);">JR</div>
+                                <div>
+                                    <div class="fw-medium">John Reyes</div>
+                                    <small class="text-muted">john.reyes@learnlink.edu</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="ll-badge ll-badge-warning">Contributor</span></td>
+                        <td>Science Teacher</td>
+                        <td><span class="ll-badge ll-badge-success">Active</span></td>
+                        <td>Feb 08, 2024</td>
+                        <td>5 hours ago</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit User</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-shield me-2"></i>Change Role</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-person-slash me-2"></i>Suspend</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input"></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="ll-discussion-avatar" style="width: 40px; height: 40px; background: linear-gradient(135deg, #f59e0b, #d97706);">AC</div>
+                                <div>
+                                    <div class="fw-medium">Ana Cruz</div>
+                                    <small class="text-muted">ana.cruz@student.learnlink.edu</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="ll-badge ll-badge-info">User</span></td>
+                        <td>Grade 8 - Section A</td>
+                        <td><span class="ll-badge ll-badge-success">Active</span></td>
+                        <td>Mar 12, 2024</td>
+                        <td>1 day ago</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit User</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-shield me-2"></i>Change Role</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-person-slash me-2"></i>Suspend</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input"></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="ll-discussion-avatar" style="width: 40px; height: 40px; background: linear-gradient(135deg, #8b5cf6, #7c3aed);">PG</div>
+                                <div>
+                                    <div class="fw-medium">Pedro Garcia</div>
+                                    <small class="text-muted">pedro.garcia@learnlink.edu</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="ll-badge ll-badge-danger">Moderator</span></td>
+                        <td>Content Moderator</td>
+                        <td><span class="ll-badge ll-badge-success">Active</span></td>
+                        <td>Jan 05, 2024</td>
+                        <td>3 hours ago</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit User</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-shield me-2"></i>Change Role</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-person-slash me-2"></i>Suspend</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input"></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="ll-discussion-avatar" style="width: 40px; height: 40px; background: linear-gradient(135deg, #ef4444, #dc2626);">RM</div>
+                                <div>
+                                    <div class="fw-medium">Rosa Mendoza</div>
+                                    <small class="text-muted">rosa.mendoza@student.learnlink.edu</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="ll-badge ll-badge-info">User</span></td>
+                        <td>Grade 9 - Section B</td>
+                        <td><span class="ll-badge ll-badge-warning">Pending</span></td>
+                        <td>Dec 18, 2024</td>
+                        <td>Never</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-check-circle me-2"></i>Approve</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-x-circle me-2"></i>Reject</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input"></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="ll-discussion-avatar" style="width: 40px; height: 40px; background: linear-gradient(135deg, #6b7280, #4b5563);">LT</div>
+                                <div>
+                                    <div class="fw-medium">Luis Torres</div>
+                                    <small class="text-muted">luis.torres@student.learnlink.edu</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="ll-badge ll-badge-info">User</span></td>
+                        <td>Grade 7 - Section C</td>
+                        <td><span class="ll-badge ll-badge-danger">Suspended</span></td>
+                        <td>Apr 20, 2024</td>
+                        <td>1 week ago</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-person-check me-2"></i>Reactivate</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="ll-card-body border-top">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="text-muted small">Showing 1-6 of 1,245 users</div>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item disabled"><a class="page-link" href="#"><i class="bi bi-chevron-left"></i></a></li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                    <li class="page-item"><a class="page-link" href="#">...</a></li>
+                    <li class="page-item"><a class="page-link" href="#">208</a></li>
+                    <li class="page-item"><a class="page-link" href="#"><i class="bi bi-chevron-right"></i></a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Full Name</label>
+                    <input type="text" class="ll-form-control" placeholder="Enter full name">
+                </div>
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Email Address</label>
+                    <input type="email" class="ll-form-control" placeholder="Enter email address">
+                </div>
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Role</label>
+                    <select class="ll-form-control ll-form-select">
+                        <option value="">Select role</option>
+                        <option>Admin</option>
+                        <option>Moderator</option>
+                        <option>Contributor</option>
+                        <option>User</option>
+                    </select>
+                </div>
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Grade/Position</label>
+                    <input type="text" class="ll-form-control" placeholder="e.g., Grade 8 - Section A or Math Teacher">
+                </div>
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Temporary Password</label>
+                    <input type="password" class="ll-form-control" placeholder="Enter temporary password">
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="sendInvite" checked>
+                    <label class="form-check-label" for="sendInvite">Send email invitation to user</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="ll-btn ll-btn-primary">
+                    <i class="bi bi-person-plus"></i>
+                    Add User
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

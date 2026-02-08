@@ -1,0 +1,43 @@
+@{
+    ViewData["Title"] = "Register";
+    ViewData["HideLayout"] = true;
+}
+
+<div class="ll-login-wrapper">
+    <div class="ll-login-left ll-login-left--35">
+        <div class="mb-5">
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="brand-icon" style="width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-book fs-2"></i>
+                </div>
+                <h1 class="h2 mb-0 fw-bold">LearnLink</h1>
+            </div>
+            <h2 class="display-6 fw-bold mb-3">Create your account</h2>
+            <p class="lead opacity-75">Register to contribute and access resources.</p>
+        </div>
+    </div>
+
+    <div class="ll-login-right ll-login-right--65">
+        <div class="ll-login-form">
+            <h1>Create account</h1>
+            <form asp-action="Register" method="post">
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Full Name</label>
+                    <input type="text" class="ll-form-control" placeholder="Enter your full name">
+                </div>
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Email</label>
+                    <input type="email" class="ll-form-control" placeholder="Enter your email">
+                </div>
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Password</label>
+                    <input type="password" class="ll-form-control" placeholder="Create a password">
+                </div>
+                <button type="submit" class="ll-btn ll-btn-primary w-100 py-2">Register</button>
+            </form>
+            <div class="text-center mt-3">
+                <a href="@Url.Action("Login","Home")">Back to Login</a>
+            </div>
+        </div>
+    </div>
+</div>

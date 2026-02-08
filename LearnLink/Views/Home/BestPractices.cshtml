@@ -1,0 +1,417 @@
+@{
+    ViewData["Title"] = "Best Practices & Recommendations";
+    ViewData["ActivePage"] = "BestPractices";
+}
+
+<!-- Page Header -->
+<div class="ll-page-header">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <h1 class="ll-page-title">Best Practices & Recommendations</h1>
+            <div class="ll-breadcrumb">
+                <a href="@Url.Action("Dashboard", "Home")">Home</a>
+                <i class="bi bi-chevron-right small"></i>
+                <span>Best Practices</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Personalized Recommendations Banner -->
+<div class="ll-card mb-4" style="background: linear-gradient(135deg, #fef3c7 0%, #fcd34d 100%); border: none;">
+    <div class="ll-card-body py-4">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h4 class="fw-bold mb-2"><i class="bi bi-stars me-2"></i>Personalized Recommendations</h4>
+                <p class="mb-0 text-dark opacity-75">Based on your reading history and interests, we've curated these resources just for you. 
+                   Keep exploring to get more accurate recommendations!</p>
+            </div>
+            <div class="col-lg-4 text-end d-none d-lg-block">
+                <i class="bi bi-magic" style="font-size: 4rem; opacity: 0.3;"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Main Content -->
+    <div class="col-lg-8">
+        <!-- For You Section -->
+        <div class="ll-card mb-4">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title"><i class="bi bi-person-heart me-2 text-danger"></i>Recommended for You</h5>
+                <span class="ll-badge ll-badge-info">Based on your history</span>
+            </div>
+            <div class="ll-card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="d-flex gap-3 p-3 border rounded hover-shadow" style="transition: all 0.3s;">
+                            <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
+                                <i class="bi bi-file-earmark-pdf fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-1">Advanced Algebra Grade 8</h6>
+                                <p class="small text-muted mb-2">You completed 80% of Grade 7 Algebra materials</p>
+                                <div class="d-flex gap-2">
+                                    <span class="ll-tag">Mathematics</span>
+                                    <span class="ll-badge ll-badge-success">98% match</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex gap-3 p-3 border rounded hover-shadow" style="transition: all 0.3s;">
+                            <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
+                                <i class="bi bi-file-earmark-excel fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-1">Biology Lab Exercises</h6>
+                                <p class="small text-muted mb-2">Related to your recent Science readings</p>
+                                <div class="d-flex gap-2">
+                                    <span class="ll-tag">Science</span>
+                                    <span class="ll-badge ll-badge-success">94% match</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex gap-3 p-3 border rounded hover-shadow" style="transition: all 0.3s;">
+                            <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
+                                <i class="bi bi-file-earmark-ppt fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-1">Geometry Fundamentals</h6>
+                                <p class="small text-muted mb-2">Next topic after Algebra mastery</p>
+                                <div class="d-flex gap-2">
+                                    <span class="ll-tag">Mathematics</span>
+                                    <span class="ll-badge ll-badge-success">91% match</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex gap-3 p-3 border rounded hover-shadow" style="transition: all 0.3s;">
+                            <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
+                                <i class="bi bi-file-earmark-word fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-1">Scientific Method Guide</h6>
+                                <p class="small text-muted mb-2">Complements your Biology readings</p>
+                                <div class="d-flex gap-2">
+                                    <span class="ll-tag">Science</span>
+                                    <span class="ll-badge ll-badge-success">88% match</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trending This Week -->
+        <div class="ll-card mb-4">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title"><i class="bi bi-fire me-2 text-danger"></i>Trending This Week</h5>
+                <a href="#" class="ll-btn ll-btn-outline ll-btn-sm">View All</a>
+            </div>
+            <div class="ll-card-body p-0">
+                <div class="table-responsive">
+                    <table class="ll-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Resource</th>
+                                <th>Views</th>
+                                <th>Downloads</th>
+                                <th>Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-warning text-dark">🥇 1</span></td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-file-earmark-pdf text-danger"></i>
+                                        <div>
+                                            <div class="fw-medium">Quarterly Exam Reviewer - All Subjects</div>
+                                            <small class="text-muted">Grade 8 • Comprehensive</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>12,456</td>
+                                <td>3,892</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <span>4.9</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-secondary">🥈 2</span></td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-file-earmark-ppt text-warning"></i>
+                                        <div>
+                                            <div class="fw-medium">Science Month Presentation</div>
+                                            <small class="text-muted">Grade 7-10 • Science</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>8,234</td>
+                                <td>2,156</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <span>4.8</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-danger">🥉 3</span></td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-file-earmark-word text-primary"></i>
+                                        <div>
+                                            <div class="fw-medium">Essay Writing Workshop Guide</div>
+                                            <small class="text-muted">Grade 9 • English</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>6,789</td>
+                                <td>1,834</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <span>4.7</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-light text-dark">4</span></td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-play-circle text-info"></i>
+                                        <div>
+                                            <div class="fw-medium">Math Problem Solving Video Series</div>
+                                            <small class="text-muted">Grade 8 • Mathematics</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>5,678</td>
+                                <td>1,234</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <span>4.9</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-light text-dark">5</span></td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-file-earmark-excel text-success"></i>
+                                        <div>
+                                            <div class="fw-medium">Filipino Vocabulary Builder</div>
+                                            <small class="text-muted">Grade 7 • Filipino</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>4,567</td>
+                                <td>987</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <span>4.6</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Continue Learning -->
+        <div class="ll-card">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title"><i class="bi bi-arrow-clockwise me-2 text-primary"></i>Continue Where You Left Off</h5>
+            </div>
+            <div class="ll-card-body">
+                <div class="d-flex gap-3 p-3 bg-light rounded mb-3">
+                    <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
+                        <i class="bi bi-file-earmark-pdf fs-3"></i>
+                    </div>
+                    <div class="flex-fill">
+                        <h6 class="fw-bold mb-1">Mathematics Grade 7 - Linear Equations</h6>
+                        <p class="small text-muted mb-2">Last read 2 days ago • Page 45 of 120</p>
+                        <div class="ll-progress mb-2" style="height: 6px;">
+                            <div class="ll-progress-bar primary" style="width: 37%;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small text-muted">37% complete</span>
+                            <a href="#" class="ll-btn ll-btn-primary ll-btn-sm">Continue Reading</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-3 p-3 bg-light rounded mb-3">
+                    <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
+                        <i class="bi bi-play-circle fs-3"></i>
+                    </div>
+                    <div class="flex-fill">
+                        <h6 class="fw-bold mb-1">Science Video: Cell Division</h6>
+                        <p class="small text-muted mb-2">Watched 3 days ago • 12:34 of 45:00</p>
+                        <div class="ll-progress mb-2" style="height: 6px;">
+                            <div class="ll-progress-bar success" style="width: 28%;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small text-muted">28% complete</span>
+                            <a href="#" class="ll-btn ll-btn-primary ll-btn-sm">Continue Watching</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Your Learning Progress -->
+        <div class="ll-card mb-4">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title">Your Learning Progress</h5>
+            </div>
+            <div class="ll-card-body">
+                <div class="text-center mb-4">
+                    <div style="width: 120px; height: 120px; margin: 0 auto; position: relative;">
+                        <svg viewBox="0 0 36 36" style="transform: rotate(-90deg);">
+                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#2563eb" stroke-width="3" stroke-dasharray="72, 100"/>
+                        </svg>
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                            <div class="fs-4 fw-bold">72%</div>
+                            <div class="small text-muted">Complete</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>Mathematics</span>
+                        <span class="fw-medium">85%</span>
+                    </div>
+                    <div class="ll-progress">
+                        <div class="ll-progress-bar primary" style="width: 85%;"></div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>Science</span>
+                        <span class="fw-medium">68%</span>
+                    </div>
+                    <div class="ll-progress">
+                        <div class="ll-progress-bar success" style="width: 68%;"></div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>English</span>
+                        <span class="fw-medium">45%</span>
+                    </div>
+                    <div class="ll-progress">
+                        <div class="ll-progress-bar" style="width: 45%; background: #f59e0b;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>Filipino</span>
+                        <span class="fw-medium">32%</span>
+                    </div>
+                    <div class="ll-progress">
+                        <div class="ll-progress-bar" style="width: 32%; background: #8b5cf6;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subject Recommendations -->
+        <div class="ll-card mb-4">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title">Focus Areas</h5>
+            </div>
+            <div class="ll-card-body">
+                <div class="alert alert-info small mb-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Based on your progress, we recommend focusing on these subjects.
+                </div>
+                <div class="d-flex align-items-center gap-3 p-2 border rounded mb-2">
+                    <div style="width: 36px; height: 36px; background: #fef3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        📖
+                    </div>
+                    <div class="flex-fill">
+                        <div class="fw-medium small">English</div>
+                        <div class="small text-muted">Needs attention</div>
+                    </div>
+                    <span class="ll-badge ll-badge-warning">45%</span>
+                </div>
+                <div class="d-flex align-items-center gap-3 p-2 border rounded mb-2">
+                    <div style="width: 36px; height: 36px; background: #fce7f3; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        🇵🇭
+                    </div>
+                    <div class="flex-fill">
+                        <div class="fw-medium small">Filipino</div>
+                        <div class="small text-muted">Just started</div>
+                    </div>
+                    <span class="ll-badge ll-badge-danger">32%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Achievement Badges -->
+        <div class="ll-card">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title"><i class="bi bi-trophy me-2 text-warning"></i>Your Badges</h5>
+            </div>
+            <div class="ll-card-body">
+                <div class="row g-2 text-center">
+                    <div class="col-4">
+                        <div class="p-2">
+                            <div style="font-size: 2rem;">📚</div>
+                            <div class="small fw-medium">Bookworm</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2">
+                            <div style="font-size: 2rem;">⭐</div>
+                            <div class="small fw-medium">Top Rater</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2">
+                            <div style="font-size: 2rem;">💡</div>
+                            <div class="small fw-medium">Insightful</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2" style="opacity: 0.3;">
+                            <div style="font-size: 2rem;">🏆</div>
+                            <div class="small fw-medium">Champion</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2" style="opacity: 0.3;">
+                            <div style="font-size: 2rem;">🎯</div>
+                            <div class="small fw-medium">Focused</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2" style="opacity: 0.3;">
+                            <div style="font-size: 2rem;">🌟</div>
+                            <div class="small fw-medium">All-Star</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

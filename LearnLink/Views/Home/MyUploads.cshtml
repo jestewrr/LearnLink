@@ -1,0 +1,278 @@
+@{
+    ViewData["Title"] = "My Uploads";
+    ViewData["ActivePage"] = "MyUploads";
+}
+
+<!-- Page Header -->
+<div class="ll-page-header">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <h1 class="ll-page-title">My Uploads</h1>
+            <div class="ll-breadcrumb">
+                <a href="@Url.Action("Dashboard", "Home")">Home</a>
+                <i class="bi bi-chevron-right small"></i>
+                <span>My Uploads</span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="@Url.Action("Upload", "Home")" class="ll-btn ll-btn-primary">
+                <i class="bi bi-cloud-arrow-up"></i>
+                Upload New
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon primary">
+                <i class="bi bi-file-earmark"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">24</div>
+                <div class="ll-stat-label">Total Uploads</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon success">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">18</div>
+                <div class="ll-stat-label">Published</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon warning">
+                <i class="bi bi-hourglass-split"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">4</div>
+                <div class="ll-stat-label">Pending Review</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon info">
+                <i class="bi bi-pencil-square"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">2</div>
+                <div class="ll-stat-label">Drafts</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Tabs -->
+<div class="ll-card mb-4">
+    <div class="ll-card-body py-2">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <button class="ll-btn ll-btn-primary ll-btn-sm">All (24)</button>
+            <button class="ll-btn ll-btn-outline ll-btn-sm">Published (18)</button>
+            <button class="ll-btn ll-btn-outline ll-btn-sm">Pending (4)</button>
+            <button class="ll-btn ll-btn-outline ll-btn-sm">Drafts (2)</button>
+            <div class="ms-auto d-flex gap-2">
+                <div class="position-relative">
+                    <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
+                    <input type="text" class="ll-form-control ps-5" placeholder="Search my uploads..." style="width: 200px;">
+                </div>
+                <select class="ll-form-control ll-form-select" style="width: auto;">
+                    <option>Most Recent</option>
+                    <option>Most Views</option>
+                    <option>Most Downloads</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Uploads Table -->
+<div class="ll-card">
+    <div class="ll-card-body p-0">
+        <div class="table-responsive">
+            <table class="ll-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="form-check-input"></th>
+                        <th>Resource</th>
+                        <th>Subject</th>
+                        <th>Status</th>
+                        <th>Views</th>
+                        <th>Downloads</th>
+                        <th>Rating</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input"></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div style="width: 40px; height: 40px; background: #fee2e2; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-file-earmark-pdf text-danger"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-medium">Mathematics Grade 8 Reviewer</div>
+                                    <small class="text-muted">PDF • 2.4 MB</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="ll-tag">Mathematics</span></td>
+                        <td><span class="ll-badge ll-badge-success">Published</span></td>
+                        <td>3,890</td>
+                        <td>1,245</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-1">
+                                <i class="bi bi-star-fill text-warning small"></i>
+                                <span>4.8</span>
+                            </div>
+                        </td>
+                        <td>Dec 15, 2024</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-bar-chart me-2"></i>Analytics</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input"></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div style="width: 40px; height: 40px; background: #dbeafe; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-file-earmark-word text-primary"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-medium">English Literature Study Guide</div>
+                                    <small class="text-muted">DOCX • 1.8 MB</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="ll-tag">English</span></td>
+                        <td><span class="ll-badge ll-badge-warning">Pending</span></td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>Dec 14, 2024</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>Preview</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-x-circle me-2"></i>Cancel Submission</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input"></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div style="width: 40px; height: 40px; background: #fef3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-file-earmark-ppt text-warning"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-medium">Philippine History Presentation</div>
+                                    <small class="text-muted">PPTX • 5.2 MB</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="ll-tag">History</span></td>
+                        <td><span class="ll-badge ll-badge-success">Published</span></td>
+                        <td>4,562</td>
+                        <td>1,023</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-1">
+                                <i class="bi bi-star-fill text-warning small"></i>
+                                <span>4.9</span>
+                            </div>
+                        </td>
+                        <td>Dec 12, 2024</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-bar-chart me-2"></i>Analytics</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="bg-light">
+                        <td><input type="checkbox" class="form-check-input"></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div style="width: 40px; height: 40px; background: #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-file-earmark text-muted"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-medium text-muted">Science Lab Activities (Draft)</div>
+                                    <small class="text-muted">Not saved yet</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="ll-tag">Science</span></td>
+                        <td><span class="ll-badge" style="background: #e2e8f0; color: #64748b;">Draft</span></td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>Dec 10, 2024</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Continue Editing</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-send me-2"></i>Submit</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-trash me-2"></i>Discard</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="ll-card-body border-top">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="text-muted small">Showing 1-4 of 24 uploads</div>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item disabled"><a class="page-link" href="#"><i class="bi bi-chevron-left"></i></a></li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                    <li class="page-item"><a class="page-link" href="#"><i class="bi bi-chevron-right"></i></a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>

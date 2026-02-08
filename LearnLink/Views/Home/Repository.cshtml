@@ -1,0 +1,375 @@
+@{
+    ViewData["Title"] = "Knowledge Repository";
+    ViewData["ActivePage"] = "Repository";
+}
+
+<!-- Page Header -->
+<div class="ll-page-header">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <h1 class="ll-page-title">Knowledge Repository</h1>
+            <div class="ll-breadcrumb">
+                <a href="@Url.Action("Dashboard", "Home")">Home</a>
+                <i class="bi bi-chevron-right small"></i>
+                <span>Knowledge Repository</span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="ll-btn ll-btn-outline" data-bs-toggle="modal" data-bs-target="#filterModal">
+                <i class="bi bi-funnel"></i>
+                Filters
+            </button>
+            <a href="@Url.Action("Upload", "Home")" class="ll-btn ll-btn-primary">
+                <i class="bi bi-cloud-arrow-up"></i>
+                Upload Resource
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter Bar -->
+<div class="ll-card mb-4">
+    <div class="ll-card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-lg-5">
+                <div class="position-relative">
+                    <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
+                    <input type="text" class="ll-form-control ps-5" placeholder="Search resources by title, subject, or keyword...">
+                </div>
+            </div>
+            <div class="col-lg-2">
+                <select class="ll-form-control ll-form-select">
+                    <option value="">All Subjects</option>
+                    <option>Mathematics</option>
+                    <option>Science</option>
+                    <option>English</option>
+                    <option>Filipino</option>
+                    <option>History</option>
+                    <option>MAPEH</option>
+                    <option>TLE</option>
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <select class="ll-form-control ll-form-select">
+                    <option value="">All Grades</option>
+                    <option>Grade 7</option>
+                    <option>Grade 8</option>
+                    <option>Grade 9</option>
+                    <option>Grade 10</option>
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <select class="ll-form-control ll-form-select">
+                    <option value="">All Types</option>
+                    <option>PDF</option>
+                    <option>Word Document</option>
+                    <option>PowerPoint</option>
+                    <option>Excel</option>
+                    <option>Video</option>
+                </select>
+            </div>
+            <div class="col-lg-1">
+                <button class="ll-btn ll-btn-primary w-100">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Category Filters -->
+<div class="d-flex flex-wrap gap-2 mb-4">
+    <button class="ll-btn ll-btn-primary ll-btn-sm">All Resources</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm">📐 Mathematics</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm">🔬 Science</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm">📖 English</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm">🇵🇭 Filipino</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm">🏛️ History</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm">🎨 MAPEH</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm">💻 TLE</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm">🌍 AP</button>
+</div>
+
+<!-- Results Info -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <p class="text-muted mb-0">Showing <strong>1-12</strong> of <strong>1,284</strong> resources</p>
+    <div class="d-flex align-items-center gap-2">
+        <span class="text-muted small">Sort by:</span>
+        <select class="ll-form-control ll-form-select" style="width: auto;">
+            <option>Most Recent</option>
+            <option>Most Popular</option>
+            <option>Most Downloaded</option>
+            <option>Highest Rated</option>
+            <option>Title A-Z</option>
+        </select>
+        <div class="btn-group">
+            <button class="ll-btn ll-btn-outline ll-btn-sm active" title="Grid View">
+                <i class="bi bi-grid-3x3-gap"></i>
+            </button>
+            <button class="ll-btn ll-btn-outline ll-btn-sm" title="List View">
+                <i class="bi bi-list-ul"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Resource Grid -->
+<div class="row g-4 mb-4">
+    <!-- Resource Card 1 -->
+    <div class="col-sm-6 col-lg-4 col-xl-3">
+        <div class="ll-resource-card">
+            <div class="ll-resource-thumbnail" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                <i class="bi bi-file-earmark-pdf"></i>
+                <span class="ll-resource-type">PDF</span>
+            </div>
+            <div class="ll-resource-content">
+                <h5 class="ll-resource-title">Mathematics Grade 8 Comprehensive Reviewer</h5>
+                <div class="ll-resource-meta">
+                    <span><i class="bi bi-download"></i> 1,245</span>
+                    <span><i class="bi bi-eye"></i> 3,890</span>
+                    <span><i class="bi bi-star-fill text-warning"></i> 4.8</span>
+                </div>
+                <div class="ll-resource-tags">
+                    <span class="ll-tag">Mathematics</span>
+                    <span class="ll-tag">Grade 8</span>
+                    <span class="ll-tag">Reviewer</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Card 2 -->
+    <div class="col-sm-6 col-lg-4 col-xl-3">
+        <div class="ll-resource-card">
+            <div class="ll-resource-thumbnail" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                <i class="bi bi-file-earmark-word"></i>
+                <span class="ll-resource-type">DOCX</span>
+            </div>
+            <div class="ll-resource-content">
+                <h5 class="ll-resource-title">English Literature Study Guide - Short Stories</h5>
+                <div class="ll-resource-meta">
+                    <span><i class="bi bi-download"></i> 892</span>
+                    <span><i class="bi bi-eye"></i> 2,156</span>
+                    <span><i class="bi bi-star-fill text-warning"></i> 4.6</span>
+                </div>
+                <div class="ll-resource-tags">
+                    <span class="ll-tag">English</span>
+                    <span class="ll-tag">Grade 9</span>
+                    <span class="ll-tag">Literature</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Card 3 -->
+    <div class="col-sm-6 col-lg-4 col-xl-3">
+        <div class="ll-resource-card">
+            <div class="ll-resource-thumbnail" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <i class="bi bi-file-earmark-excel"></i>
+                <span class="ll-resource-type">XLSX</span>
+            </div>
+            <div class="ll-resource-content">
+                <h5 class="ll-resource-title">Science Lab Activity Sheets - Biology</h5>
+                <div class="ll-resource-meta">
+                    <span><i class="bi bi-download"></i> 567</span>
+                    <span><i class="bi bi-eye"></i> 1,890</span>
+                    <span><i class="bi bi-star-fill text-warning"></i> 4.5</span>
+                </div>
+                <div class="ll-resource-tags">
+                    <span class="ll-tag">Science</span>
+                    <span class="ll-tag">Grade 7</span>
+                    <span class="ll-tag">Lab Activity</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Card 4 -->
+    <div class="col-sm-6 col-lg-4 col-xl-3">
+        <div class="ll-resource-card">
+            <div class="ll-resource-thumbnail" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <i class="bi bi-file-earmark-ppt"></i>
+                <span class="ll-resource-type">PPTX</span>
+            </div>
+            <div class="ll-resource-content">
+                <h5 class="ll-resource-title">Philippine History - Pre-Colonial Period</h5>
+                <div class="ll-resource-meta">
+                    <span><i class="bi bi-download"></i> 1,023</span>
+                    <span><i class="bi bi-eye"></i> 4,562</span>
+                    <span><i class="bi bi-star-fill text-warning"></i> 4.9</span>
+                </div>
+                <div class="ll-resource-tags">
+                    <span class="ll-tag">History</span>
+                    <span class="ll-tag">Grade 8</span>
+                    <span class="ll-tag">Presentation</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Card 5 -->
+    <div class="col-sm-6 col-lg-4 col-xl-3">
+        <div class="ll-resource-card">
+            <div class="ll-resource-thumbnail" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                <i class="bi bi-play-circle"></i>
+                <span class="ll-resource-type">VIDEO</span>
+            </div>
+            <div class="ll-resource-content">
+                <h5 class="ll-resource-title">Algebra Fundamentals Video Tutorial</h5>
+                <div class="ll-resource-meta">
+                    <span><i class="bi bi-download"></i> 456</span>
+                    <span><i class="bi bi-eye"></i> 8,912</span>
+                    <span><i class="bi bi-star-fill text-warning"></i> 4.7</span>
+                </div>
+                <div class="ll-resource-tags">
+                    <span class="ll-tag">Mathematics</span>
+                    <span class="ll-tag">Grade 7</span>
+                    <span class="ll-tag">Video</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Card 6 -->
+    <div class="col-sm-6 col-lg-4 col-xl-3">
+        <div class="ll-resource-card">
+            <div class="ll-resource-thumbnail" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                <i class="bi bi-file-earmark-pdf"></i>
+                <span class="ll-resource-type">PDF</span>
+            </div>
+            <div class="ll-resource-content">
+                <h5 class="ll-resource-title">Filipino Panitikan - Mga Kwento</h5>
+                <div class="ll-resource-meta">
+                    <span><i class="bi bi-download"></i> 789</span>
+                    <span><i class="bi bi-eye"></i> 2,345</span>
+                    <span><i class="bi bi-star-fill text-warning"></i> 4.4</span>
+                </div>
+                <div class="ll-resource-tags">
+                    <span class="ll-tag">Filipino</span>
+                    <span class="ll-tag">Grade 9</span>
+                    <span class="ll-tag">Panitikan</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Card 7 -->
+    <div class="col-sm-6 col-lg-4 col-xl-3">
+        <div class="ll-resource-card">
+            <div class="ll-resource-thumbnail" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                <i class="bi bi-file-earmark-word"></i>
+                <span class="ll-resource-type">DOCX</span>
+            </div>
+            <div class="ll-resource-content">
+                <h5 class="ll-resource-title">MAPEH Music Appreciation Guide</h5>
+                <div class="ll-resource-meta">
+                    <span><i class="bi bi-download"></i> 345</span>
+                    <span><i class="bi bi-eye"></i> 1,234</span>
+                    <span><i class="bi bi-star-fill text-warning"></i> 4.3</span>
+                </div>
+                <div class="ll-resource-tags">
+                    <span class="ll-tag">MAPEH</span>
+                    <span class="ll-tag">Grade 10</span>
+                    <span class="ll-tag">Music</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Card 8 -->
+    <div class="col-sm-6 col-lg-4 col-xl-3">
+        <div class="ll-resource-card">
+            <div class="ll-resource-thumbnail" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <i class="bi bi-file-earmark-excel"></i>
+                <span class="ll-resource-type">XLSX</span>
+            </div>
+            <div class="ll-resource-content">
+                <h5 class="ll-resource-title">TLE Cookery Module Assessment</h5>
+                <div class="ll-resource-meta">
+                    <span><i class="bi bi-download"></i> 234</span>
+                    <span><i class="bi bi-eye"></i> 890</span>
+                    <span><i class="bi bi-star-fill text-warning"></i> 4.2</span>
+                </div>
+                <div class="ll-resource-tags">
+                    <span class="ll-tag">TLE</span>
+                    <span class="ll-tag">Grade 8</span>
+                    <span class="ll-tag">Cookery</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+<nav aria-label="Resource pagination">
+    <ul class="pagination justify-content-center">
+        <li class="page-item disabled">
+            <a class="page-link" href="#" tabindex="-1"><i class="bi bi-chevron-left"></i></a>
+        </li>
+        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+        <li class="page-item"><a class="page-link" href="#">2</a></li>
+        <li class="page-item"><a class="page-link" href="#">3</a></li>
+        <li class="page-item"><a class="page-link" href="#">...</a></li>
+        <li class="page-item"><a class="page-link" href="#">107</a></li>
+        <li class="page-item">
+            <a class="page-link" href="#"><i class="bi bi-chevron-right"></i></a>
+        </li>
+    </ul>
+</nav>
+
+<!-- Filter Modal -->
+<div class="modal fade" id="filterModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Advanced Filters</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Date Range</label>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <input type="date" class="ll-form-control">
+                        </div>
+                        <div class="col-6">
+                            <input type="date" class="ll-form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Contributor</label>
+                    <select class="ll-form-control ll-form-select">
+                        <option value="">All Contributors</option>
+                        <option>Maria Santos</option>
+                        <option>John Reyes</option>
+                        <option>Ana Cruz</option>
+                    </select>
+                </div>
+                <div class="ll-form-group">
+                    <label class="ll-form-label">Minimum Rating</label>
+                    <select class="ll-form-control ll-form-select">
+                        <option value="">Any Rating</option>
+                        <option>4 stars & above</option>
+                        <option>3 stars & above</option>
+                        <option>2 stars & above</option>
+                    </select>
+                </div>
+                <div class="ll-form-group">
+                    <label class="ll-form-label">File Size</label>
+                    <select class="ll-form-control ll-form-select">
+                        <option value="">Any Size</option>
+                        <option>Less than 1 MB</option>
+                        <option>1 MB - 5 MB</option>
+                        <option>5 MB - 10 MB</option>
+                        <option>More than 10 MB</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Reset</button>
+                <button type="button" class="ll-btn ll-btn-primary" data-bs-dismiss="modal">Apply Filters</button>
+            </div>
+        </div>
+    </div>
+</div>
