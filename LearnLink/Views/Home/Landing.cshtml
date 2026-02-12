@@ -1,0 +1,240 @@
+@{
+    ViewData["Title"] = "LearnLink - Student Resource Management System";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="~/css/learnlink.css" asp-append-version="true" />
+</head>
+<body>
+    <!-- Landing Page Header -->
+    <nav class="ll-landing-header">
+        <div class="container">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="ll-landing-logo" style="display: flex; align-items: center; gap: 10px;">
+                    <img src="~/images/Learnlink.png" alt="LearnLink" style="height: 64px; width: auto;" />
+                    <span class="ll-landing-logo-text"><span class="fw-bold">Learn</span><span style="color: var(--ll-accent, #E8B84B);">Link</span></span>
+                </div>
+                <div class="d-flex align-items-center gap-4 ll-landing-nav">
+                    <div class="d-flex gap-2 ll-landing-auth">
+                        <a href="@Url.Action("Login", "Home")" class="btn btn-outline-primary">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+                        </a>
+                        <a href="@Url.Action("Register", "Home")" class="btn btn-warning text-dark fw-medium">
+                            <i class="bi bi-person-plus me-1"></i>Register
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="ll-hero-section" id="home">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-7">
+                    <h1 class="ll-hero-title">
+                        Your Centralized<br>
+                        <span class="ll-hero-highlight">Knowledge Hub</span><br>
+                        for Learning
+                    </h1>
+                    <p class="ll-hero-subtitle">
+                        LearnLink is a Student Resource Management System that empowers
+                        contributors to share educational materials and students to discover, learn,
+                        and collaborate — all in one place.
+                    </p>
+                    <form class="ll-hero-search" action='@Url.Action("Search", "Home")' method="get" role="search">
+                        <i class="bi bi-search" aria-hidden="true"></i>
+                        <input type="text" name="q" class="form-control" placeholder="Search for learning materials, reviewers, sheets..." aria-label="Search resources">
+                        <button type="submit" class="btn btn-warning text-dark fw-medium">Search</button>
+                    </form>
+                    <div class="d-flex gap-3 mt-4">
+                        <a href="@Url.Action("Register", "Home")" class="btn btn-warning btn-lg text-dark fw-medium">
+                            <i class="bi bi-person-plus me-2"></i>Get Started Free
+                        </a>
+                        <button class="btn btn-outline-light btn-lg" onclick="document.getElementById('modules').scrollIntoView({behavior: 'smooth'})">
+                            <i class="bi bi-grid-3x3-gap me-2"></i>Explore Modules
+                        </button>
+                    </div>
+                </div>
+                <div class="col-lg-5 text-center d-none d-lg-block">
+                    <div class="ll-hero-icon">
+                        <img src="~/images/Learnlink.png" alt="LearnLink" style="max-width: 320px; height: auto; opacity: 0.15;" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- System Modules Section -->
+    <section class="ll-modules-section" id="modules">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="ll-section-title">System Modules</h2>
+                <p class="ll-section-subtitle">
+                    LearnLink provides five integrated modules to manage the complete lifecycle of<br>
+                    educational knowledge resources.
+                </p>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4">
+                    <div class="ll-module-card">
+                        <div class="ll-module-icon" style="background: #dbeafe; color: #2563eb;">
+                            <i class="bi bi-archive"></i>
+                        </div>
+                        <h5 class="ll-module-title">Knowledge Repository</h5>
+                        <p class="ll-module-description">
+                            Upload, organize, and maintain educational resources including learning materials, sheets, and reviewers. Role-based access ensures the right content reaches the right users.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="ll-module-card">
+                        <div class="ll-module-icon" style="background: #d1fae5; color: #059669;">
+                            <i class="bi bi-file-earmark-text"></i>
+                        </div>
+                        <h5 class="ll-module-title">Policy & Procedure Management</h5>
+                        <p class="ll-module-description">
+                            Contributors set access policies, manage version control, track change history, and control the longevity of each educational material for compliance and quality.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="ll-module-card">
+                        <div class="ll-module-icon" style="background: #fef3c7; color: #d97706;">
+                            <i class="bi bi-lightbulb"></i>
+                        </div>
+                        <h5 class="ll-module-title">Lesson Learned Management</h5>
+                        <p class="ll-module-description">
+                            Students rate, comment, and share insights on educational files they read. Reading history tracking lets users pick up right where they left off.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="ll-module-card">
+                        <div class="ll-module-icon" style="background: #fce7f3; color: #be185d;">
+                            <i class="bi bi-star"></i>
+                        </div>
+                        <h5 class="ll-module-title">Best Practices</h5>
+                        <p class="ll-module-description">
+                            Smart recommendations for both contributors and students — suggesting what to upload next or what to study based on learning history and trending materials.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="ll-module-card">
+                        <div class="ll-module-icon" style="background: #fee2e2; color: #dc2626;">
+                            <i class="bi bi-chat-square-text"></i>
+                        </div>
+                        <h5 class="ll-module-title">Knowledge Sharing Portal</h5>
+                        <p class="ll-module-description">
+                            An interactive platform for collaboration, discussions, and knowledge exchange. Transform stored information into shared learning experiences.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="ll-module-card ll-module-card-cta">
+                        <div class="ll-module-icon" style="background: #dbeafe; color: #2563eb;">
+                            <i class="bi bi-arrow-right-circle"></i>
+                        </div>
+                        <h5 class="ll-module-title">Get Started</h5>
+                        <p class="ll-module-description">
+                            Ready to explore? Create an account and start your learning journey today.
+                        </p>
+                        <a href="@Url.Action("Register", "Home")" class="btn btn-primary">
+                            Create Account <i class="bi bi-arrow-right ms-2"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="ll-how-section">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="ll-section-title">How It Works</h2>
+                <p class="ll-section-subtitle">
+                    Whether you're a contributor sharing knowledge or a student seeking resources,<br>
+                    LearnLink makes it simple.
+                </p>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-3">
+                    <div class="ll-how-card">
+                        <div class="ll-how-number">1</div>
+                        <h5 class="ll-how-title">Create Account</h5>
+                        <p class="ll-how-description">
+                            Register as a Contributor or Student to get role-based access to the platform.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="ll-how-card">
+                        <div class="ll-how-number">2</div>
+                        <h5 class="ll-how-title">Browse or Upload</h5>
+                        <p class="ll-how-description">
+                            Contributors upload materials. Students browse, search, and discover resources.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="ll-how-card">
+                        <div class="ll-how-number">3</div>
+                        <h5 class="ll-how-title">Learn & Review</h5>
+                        <p class="ll-how-description">
+                            Read resources, leave ratings and comments, and track your learning progress.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="ll-how-card">
+                        <div class="ll-how-number">4</div>
+                        <h5 class="ll-how-title">Collaborate</h5>
+                        <p class="ll-how-description">
+                            Join discussions, share insights, and get smart recommendations for what to read next.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="ll-cta-section">
+        <div class="container">
+            <div class="text-center">
+                <h2 class="ll-cta-title">
+                    <i class="bi bi-rocket-takeoff me-3"></i>Ready to Start Learning?
+                </h2>
+                <p class="ll-cta-subtitle">
+                    Join LearnLink today and gain access to a growing library of educational<br>
+                    resources, collaborative tools, and personalized recommendations.
+                </p>
+                <div class="d-flex gap-3 justify-content-center mt-4">
+                    <a href="@Url.Action("Register", "Home")" class="btn btn-warning btn-lg text-dark fw-medium px-5">
+                        <i class="bi bi-person-plus me-2"></i>Create Free Account
+                    </a>
+                    <a href="@Url.Action("Login", "Home")" class="btn btn-outline-light btn-lg px-5">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

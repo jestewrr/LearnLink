@@ -1,18 +1,19 @@
 @{
     ViewData["Title"] = "Search Resources";
     ViewData["ActivePage"] = "Search";
+
+    var allResources = ViewBag.Resources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
+    var initialQuery = ViewBag.SearchQuery as string ?? string.Empty;
 }
 
 <!-- Page Header -->
 <div class="ll-page-header">
-    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
-        <div>
-            <h1 class="ll-page-title">Search Resources</h1>
-            <div class="ll-breadcrumb">
-                <a href="@Url.Action("Dashboard", "Home")">Home</a>
-                <i class="bi bi-chevron-right small"></i>
-                <span>Search</span>
-            </div>
+    <div>
+        <h1 class="ll-page-title">Search Resources</h1>
+        <div class="ll-breadcrumb">
+            <a href="@Url.Action("Dashboard", "Home")">Home</a>
+            <i class="bi bi-chevron-right small"></i>
+            <span>Search</span>
         </div>
     </div>
 </div>
@@ -20,169 +21,193 @@
 <!-- Search Box -->
 <div class="ll-card mb-4">
     <div class="ll-card-body py-4">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="text-center mb-4">
-                    <i class="bi bi-search display-4 text-muted mb-3 d-block"></i>
-                    <h4 class="fw-bold">Find Learning Resources</h4>
-                    <p class="text-muted">Search through thousands of educational materials</p>
-                </div>
-                <div class="position-relative mb-4">
-                    <i class="bi bi-search position-absolute top-50 translate-middle-y ms-4 fs-5 text-muted"></i>
-                    <input type="text" class="form-control form-control-lg ps-5 py-3" placeholder="Search by title, subject, keyword, or contributor..." style="border-radius: 50px; font-size: 1rem;">
-                    <button class="ll-btn ll-btn-primary position-absolute end-0 top-50 translate-middle-y me-2" style="border-radius: 50px;">
-                        Search
-                    </button>
-                </div>
-                <div class="d-flex flex-wrap gap-2 justify-content-center">
-                    <span class="text-muted small me-2">Popular:</span>
-                    <a href="#" class="ll-tag">Mathematics</a>
-                    <a href="#" class="ll-tag">Science Reviewer</a>
-                    <a href="#" class="ll-tag">Grade 8</a>
-                    <a href="#" class="ll-tag">Quarterly Exam</a>
-                    <a href="#" class="ll-tag">English Grammar</a>
-                </div>
+        <div class="position-relative mb-4">
+            <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted fs-5"></i>
+            <input type="text" class="ll-form-control ps-5 py-3" id="mainSearchInput" placeholder="Search for resources, topics, subjects..." style="font-size: 1.1rem;" autofocus>
+        </div>
+
+        <!-- Advanced Filters -->
+        <div class="row g-3">
+            <div class="col-md-3">
+                <select class="ll-form-control ll-form-select" id="searchSubject">
+                    <option value="">All Subjects</option>
+                    <option>Mathematics</option>
+                    <option>Science</option>
+                    <option>English</option>
+                    <option>Filipino</option>
+                    <option>History</option>
+                    <option>MAPEH</option>
+                    <option>TLE</option>
+                    <option>Values Education</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="ll-form-control ll-form-select" id="searchGrade">
+                    <option value="">All Grades</option>
+                    <option>Grade 7</option>
+                    <option>Grade 8</option>
+                    <option>Grade 9</option>
+                    <option>Grade 10</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="ll-form-control ll-form-select" id="searchType">
+                    <option value="">All Types</option>
+                    <option>PDF</option>
+                    <option>DOCX</option>
+                    <option>PPTX</option>
+                    <option>XLSX</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="ll-form-control ll-form-select" id="searchSort">
+                    <option value="relevance">Most Relevant</option>
+                    <option value="recent">Most Recent</option>
+                    <option value="popular">Most Popular</option>
+                    <option value="rating">Highest Rated</option>
+                </select>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Advanced Filters -->
-<div class="ll-card mb-4">
-    <div class="ll-card-header">
-        <h5 class="ll-card-title"><i class="bi bi-funnel me-2"></i>Advanced Filters</h5>
-        <button class="ll-btn ll-btn-outline ll-btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#advancedFilters">
-            <i class="bi bi-chevron-down"></i>
-        </button>
+<!-- Search Results -->
+<div id="searchResults" class="d-none">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <p class="text-muted mb-0" id="searchResultsCount"></p>
     </div>
-    <div class="collapse show" id="advancedFilters">
-        <div class="ll-card-body">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="ll-form-label">Subject</label>
-                    <select class="ll-form-control ll-form-select">
-                        <option value="">All Subjects</option>
-                        <option>Mathematics</option>
-                        <option>Science</option>
-                        <option>English</option>
-                        <option>Filipino</option>
-                        <option>Araling Panlipunan</option>
-                        <option>MAPEH</option>
-                        <option>TLE</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="ll-form-label">Grade Level</label>
-                    <select class="ll-form-control ll-form-select">
-                        <option value="">All Grades</option>
-                        <option>Grade 7</option>
-                        <option>Grade 8</option>
-                        <option>Grade 9</option>
-                        <option>Grade 10</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="ll-form-label">Resource Type</label>
-                    <select class="ll-form-control ll-form-select">
-                        <option value="">All Types</option>
-                        <option>Reviewer</option>
-                        <option>Activity Sheet</option>
-                        <option>Presentation</option>
-                        <option>Video</option>
-                        <option>Assessment</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="ll-form-label">File Format</label>
-                    <select class="ll-form-control ll-form-select">
-                        <option value="">All Formats</option>
-                        <option>PDF</option>
-                        <option>Word (DOC/DOCX)</option>
-                        <option>PowerPoint (PPT/PPTX)</option>
-                        <option>Excel (XLS/XLSX)</option>
-                        <option>Video (MP4)</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="ll-form-label">Date Range</label>
-                    <select class="ll-form-control ll-form-select">
-                        <option value="">Any Time</option>
-                        <option>Last 7 days</option>
-                        <option>Last 30 days</option>
-                        <option>Last 3 months</option>
-                        <option>Last year</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="ll-form-label">Minimum Rating</label>
-                    <select class="ll-form-control ll-form-select">
-                        <option value="">Any Rating</option>
-                        <option>4+ Stars</option>
-                        <option>3+ Stars</option>
-                        <option>2+ Stars</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="ll-form-label">Sort By</label>
-                    <select class="ll-form-control ll-form-select">
-                        <option>Relevance</option>
-                        <option>Most Recent</option>
-                        <option>Most Popular</option>
-                        <option>Highest Rated</option>
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button class="ll-btn ll-btn-primary w-100">
-                        <i class="bi bi-search"></i>
-                        Apply Filters
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div id="searchResultsList"></div>
 </div>
 
-<!-- Search Results (Empty State) -->
-<div class="ll-card">
-    <div class="ll-card-body">
-        <div class="ll-empty-state">
-            <div class="ll-empty-state-icon">
-                <i class="bi bi-search"></i>
-            </div>
-            <h5 class="ll-empty-state-title">Start Your Search</h5>
-            <p class="ll-empty-state-text">Enter keywords above to find learning resources.<br>You can also use the advanced filters to narrow down results.</p>
-            <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline">
-                <i class="bi bi-folder2-open"></i>
-                Browse All Resources
-            </a>
-        </div>
-    </div>
+<!-- Empty State -->
+<div class="text-center py-5" id="searchEmptyState">
+    <i class="bi bi-search fs-1 text-muted mb-3 d-block"></i>
+    <h4>Search for Learning Resources</h4>
+    <p class="text-muted">Type a keyword, subject, or topic to find resources from the repository.</p>
 </div>
 
 <!-- Recent Searches -->
-<div class="ll-card mt-4">
+<div class="ll-card mt-4" id="recentSearchesCard">
     <div class="ll-card-header">
-        <h5 class="ll-card-title">Recent Searches</h5>
-        <button class="ll-btn ll-btn-outline ll-btn-sm">Clear All</button>
+        <h5 class="ll-card-title">Suggested Searches</h5>
     </div>
     <div class="ll-card-body">
         <div class="d-flex flex-wrap gap-2">
-            <a href="#" class="ll-btn ll-btn-outline ll-btn-sm">
-                <i class="bi bi-clock-history me-1"></i>
-                math grade 8 reviewer
-            </a>
-            <a href="#" class="ll-btn ll-btn-outline ll-btn-sm">
-                <i class="bi bi-clock-history me-1"></i>
-                science lab activity
-            </a>
-            <a href="#" class="ll-btn ll-btn-outline ll-btn-sm">
-                <i class="bi bi-clock-history me-1"></i>
-                english grammar exercises
-            </a>
-            <a href="#" class="ll-btn ll-btn-outline ll-btn-sm">
-                <i class="bi bi-clock-history me-1"></i>
-                philippine history timeline
-            </a>
+            <button class="ll-btn ll-btn-outline ll-btn-sm suggested-search">Mathematics Grade 8</button>
+            <button class="ll-btn ll-btn-outline ll-btn-sm suggested-search">Science Lab Activities</button>
+            <button class="ll-btn ll-btn-outline ll-btn-sm suggested-search">Philippine History</button>
+            <button class="ll-btn ll-btn-outline ll-btn-sm suggested-search">Filipino Grammar</button>
+            <button class="ll-btn ll-btn-outline ll-btn-sm suggested-search">TLE Cookery</button>
+            <button class="ll-btn ll-btn-outline ll-btn-sm suggested-search">MAPEH Arts</button>
+            <button class="ll-btn ll-btn-outline ll-btn-sm suggested-search">Values Education</button>
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    (function() {
+        // Embed resources as JSON for client-side search
+        const resources = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(allResources));
+            const landingQuery = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(initialQuery));
+            const urlParams = new URLSearchParams(window.location.search);
+            const initialHeroQuery = (urlParams.get('q') || landingQuery || '').trim();
+
+        const searchInput = document.getElementById('mainSearchInput');
+        const subjectFilter = document.getElementById('searchSubject');
+        const gradeFilter = document.getElementById('searchGrade');
+        const typeFilter = document.getElementById('searchType');
+        const sortFilter = document.getElementById('searchSort');
+        const resultsArea = document.getElementById('searchResults');
+        const resultsList = document.getElementById('searchResultsList');
+        const resultsCount = document.getElementById('searchResultsCount');
+        const emptyState = document.getElementById('searchEmptyState');
+        const recentSearches = document.getElementById('recentSearchesCard');
+
+        function performSearch() {
+            const query = searchInput.value.toLowerCase().trim();
+            const subject = subjectFilter.value;
+            const grade = gradeFilter.value;
+            const type = typeFilter.value;
+
+            if (!query && !subject && !grade && !type) {
+                resultsArea.classList.add('d-none');
+                emptyState.classList.remove('d-none');
+                recentSearches.classList.remove('d-none');
+                return;
+            }
+
+            let results = resources.filter(r => {
+                const matchQuery = !query || r.title.toLowerCase().includes(query) || r.subject.toLowerCase().includes(query) || r.description.toLowerCase().includes(query) || r.resourceType.toLowerCase().includes(query);
+                const matchSubject = !subject || r.subject === subject;
+                const matchGrade = !grade || r.gradeLevel === grade;
+                const matchType = !type || r.fileFormat === type;
+                return matchQuery && matchSubject && matchGrade && matchType;
+            });
+
+            // Sort
+            switch (sortFilter.value) {
+                case 'recent': results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); break;
+                case 'popular': results.sort((a, b) => b.viewCount - a.viewCount); break;
+                case 'rating': results.sort((a, b) => b.rating - a.rating); break;
+            }
+
+            resultsCount.innerHTML = 'Found <strong>' + results.length + '</strong> result' + (results.length !== 1 ? 's' : '');
+            emptyState.classList.add('d-none');
+            recentSearches.classList.add('d-none');
+            resultsArea.classList.remove('d-none');
+
+            if (results.length === 0) {
+                resultsList.innerHTML = '<div class="text-center py-5"><i class="bi bi-search fs-1 text-muted"></i><h5 class="mt-3">No results found</h5><p class="text-muted">Try different keywords or adjust your filters.</p></div>';
+                return;
+            }
+
+            resultsList.innerHTML = results.map(r => `
+                <div class="ll-card mb-3">
+                    <div class="ll-card-body">
+                        <div class="d-flex gap-3">
+                            <div style="width: 50px; height: 50px; background: ${r.iconBg}; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="bi ${r.iconClass} ${r.iconColor} fs-5"></i>
+                            </div>
+                            <div class="flex-fill">
+                                <h5 class="mb-1 fw-bold">${r.title}</h5>
+                                <p class="text-muted small mb-2">${r.description}</p>
+                                <div class="d-flex flex-wrap gap-2 mb-2">
+                                    <span class="ll-tag">${r.subject}</span>
+                                    <span class="ll-tag">${r.gradeLevel}</span>
+                                    <span class="ll-tag">${r.fileFormat} • ${r.fileSize}</span>
+                                </div>
+                                <div class="d-flex gap-3 text-muted small">
+                                    <span><i class="bi bi-eye"></i> ${r.viewCount.toLocaleString()}</span>
+                                    <span><i class="bi bi-download"></i> ${r.downloadCount.toLocaleString()}</span>
+                                    ${r.rating > 0 ? `<span><i class="bi bi-star-fill text-warning"></i> ${r.rating.toFixed(1)}</span>` : ''}
+                                    <span><i class="bi bi-person"></i> ${r.uploader}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        searchInput.addEventListener('input', performSearch);
+        subjectFilter.addEventListener('change', performSearch);
+        gradeFilter.addEventListener('change', performSearch);
+        typeFilter.addEventListener('change', performSearch);
+        sortFilter.addEventListener('change', performSearch);
+
+        // Suggested search clicks
+        document.querySelectorAll('.suggested-search').forEach(btn => {
+            btn.addEventListener('click', function() {
+                searchInput.value = this.textContent;
+                performSearch();
+            });
+        });
+
+        if (initialHeroQuery) {
+            searchInput.value = initialHeroQuery;
+            performSearch();
+        }
+    })();
+</script>
+}

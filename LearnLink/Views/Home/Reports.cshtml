@@ -1,0 +1,317 @@
+@{
+    ViewData["Title"] = "Reports & Analytics";
+    ViewData["ActivePage"] = "Reports";
+
+    var totalEngagements = ViewBag.TotalEngagements ?? 0;
+    var totalDownloads = ViewBag.TotalDownloads ?? 0;
+    var avgRating = ViewBag.AvgRating ?? 0.0;
+    var newContributions = ViewBag.NewContributions ?? 0;
+    var topResources = ViewBag.TopResources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
+    var topContributors = ViewBag.TopContributors as List<LearnLink.Models.UserViewModel> ?? new List<LearnLink.Models.UserViewModel>();
+
+    // Subject distribution data (static for the chart)
+    var subjectDistribution = new[] {
+        new { Name = "Mathematics", Percent = 35, ColorClass = "primary" },
+        new { Name = "Science", Percent = 28, ColorClass = "success" },
+        new { Name = "English", Percent = 20, ColorClass = "" },
+        new { Name = "Filipino", Percent = 12, ColorClass = "info" },
+        new { Name = "Others", Percent = 5, ColorClass = "secondary" }
+    };
+}
+
+<!-- Page Header -->
+<div class="ll-page-header">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <h1 class="ll-page-title">Reports & Analytics</h1>
+            <div class="ll-breadcrumb">
+                <a href="@Url.Action("Dashboard", "Home")">Home</a>
+                <i class="bi bi-chevron-right small"></i>
+                <span>Reports & Analytics</span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+        </div>
+    </div>
+</div>
+
+<!-- Stats Overview -->
+<div class="row g-4 mb-4">
+    <div class="col-6 col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon primary">
+                <i class="bi bi-graph-up-arrow"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">@totalEngagements.ToString("N0")</div>
+                <div class="ll-stat-label">Total Engagements</div>
+                <div class="ll-stat-change positive">
+                    <i class="bi bi-arrow-up"></i>
+                    18.2% vs last month
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon success">
+                <i class="bi bi-cloud-download"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">@totalDownloads.ToString("N0")</div>
+                <div class="ll-stat-label">Resource Downloads</div>
+                <div class="ll-stat-change positive">
+                    <i class="bi bi-arrow-up"></i>
+                    12.5% vs last month
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon warning">
+                <i class="bi bi-star"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">@(((double)avgRating).ToString("0.0"))</div>
+                <div class="ll-stat-label">Avg. Resource Rating</div>
+                <div class="ll-stat-change positive">
+                    <i class="bi bi-arrow-up"></i>
+                    0.3 increase
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon info">
+                <i class="bi bi-people"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">@newContributions</div>
+                <div class="ll-stat-label">Published Resources</div>
+                <div class="ll-stat-change negative">
+                    <i class="bi bi-arrow-down"></i>
+                    2.1% vs last month
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Usage Trends -->
+    <div class="col-lg-8">
+        <div class="ll-card mb-4">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title">Engagement Trends</h5>
+                <div class="dropdown">
+                    <button class="btn btn-sm ll-btn-outline dropdown-toggle" type="button" data-bs-toggle="dropdown" id="dateRangeBtn">
+                        Last 30 Days
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item date-range-item" href="#" data-range="7">Last 7 Days</a></li>
+                        <li><a class="dropdown-item date-range-item active" href="#" data-range="30">Last 30 Days</a></li>
+                        <li><a class="dropdown-item date-range-item" href="#" data-range="90">Last 90 Days</a></li>
+                        <li><a class="dropdown-item date-range-item" href="#" data-range="365">Year to Date</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="ll-card-body">
+                <!-- Visual Chart (CSS-based bar chart) -->
+                <div style="height: 300px; position: relative;" class="d-flex align-items-end gap-2 pt-4" id="chartContainer">
+                    @{
+                        var heights = new[] { 40, 60, 55, 80, 70, 90, 100, 65, 45, 30 };
+                        var opacities = new[] { "0.25", "0.5", "0.75", "0.5", "1", "0.75", "0.5", "0.25", "0.5", "0.75" };
+                    }
+                    @for (int i = 0; i < heights.Length; i++)
+                    {
+                    <div class="flex-fill bg-primary rounded-top chart-bar" style="height: @(heights[i])%; opacity: @(opacities[i]); transition: all 0.3s ease;" title="Day @(i + 1): @(heights[i] * 12) engagements" data-bs-toggle="tooltip"></div>
+                    }
+                </div>
+                <div class="d-flex justify-content-between mt-3 text-muted small">
+                    <span>Dec 01</span>
+                    <span>Dec 10</span>
+                    <span>Dec 20</span>
+                    <span>Dec 30</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Performing Resources -->
+        <div class="ll-card">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title">Top Performing Resources</h5>
+                <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline ll-btn-sm">View Full List</a>
+            </div>
+            <div class="ll-card-body p-0">
+                <div class="table-responsive">
+                    <table class="ll-table">
+                        <thead>
+                            <tr>
+                                <th>Resource Name</th>
+                                <th>Downloads</th>
+                                <th>Views</th>
+                                <th>Rating</th>
+                                <th>Trend</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var resource in topResources)
+                            {
+                            <tr>
+                                <td>
+                                    <div class="fw-medium">@resource.Title</div>
+                                    <small class="text-muted">By @resource.Uploader</small>
+                                </td>
+                                <td>@resource.DownloadCount.ToString("N0")</td>
+                                <td>@resource.ViewCount.ToString("N0")</td>
+                                <td><span class="text-warning">⭐ @resource.Rating.ToString("0.0")</span></td>
+                                <td>
+                                    @if (resource.Rating >= 4.7)
+                                    {
+                                    <span class="text-success"><i class="bi bi-graph-up"></i></span>
+                                    }
+                                    else
+                                    {
+                                    <span class="text-muted"><i class="bi bi-dash"></i></span>
+                                    }
+                                </td>
+                            </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Mobile: Card list view -->
+                <div class="ll-mobile-card-list">
+                    @foreach (var resource in topResources)
+                    {
+                    <div class="ll-mobile-card-item"
+                         data-res-title="@resource.Title"
+                         data-res-uploader="@resource.Uploader"
+                         data-res-downloads="@resource.DownloadCount.ToString("N0")"
+                         data-res-views="@resource.ViewCount.ToString("N0")"
+                         data-res-rating="⭐ @resource.Rating.ToString("0.0")">
+                        <div class="ll-mobile-card-icon" style="background: @resource.IconBg;">
+                            <i class="bi @resource.IconClass @resource.IconColor"></i>
+                        </div>
+                        <div class="ll-mobile-card-info">
+                            <div class="ll-mobile-card-title">@resource.Title</div>
+                            <div class="ll-mobile-card-sub">⭐ @resource.Rating.ToString("0.0") • @resource.DownloadCount.ToString("N0") downloads</div>
+                        </div>
+                        <div class="ll-mobile-card-chevron">
+                            <i class="bi bi-chevron-right"></i>
+                        </div>
+                    </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="col-lg-4">
+        <!-- Subject Distribution -->
+        <div class="ll-card mb-4">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title">Subject Distribution</h5>
+            </div>
+            <div class="ll-card-body">
+                @foreach (var subject in subjectDistribution)
+                {
+                    var barStyle = subject.ColorClass == "" ? "width: " + subject.Percent + "%; background: #f59e0b;" : "width: " + subject.Percent + "%;";
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>@subject.Name</span>
+                        <span class="fw-bold">@(subject.Percent)%</span>
+                    </div>
+                    <div class="ll-progress @subject.ColorClass" style="height: 10px;">
+                        <div class="ll-progress-bar @subject.ColorClass" style="@barStyle"></div>
+                    </div>
+                </div>
+                }
+            </div>
+        </div>
+
+        <!-- Top Contributors -->
+        <div class="ll-card">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title">Most Active Contributors</h5>
+            </div>
+            <div class="ll-card-body">
+                @for (int i = 0; i < topContributors.Count; i++)
+                {
+                    var contributor = topContributors[i];
+                <div class="d-flex align-items-center gap-3 @(i < topContributors.Count - 1 ? "mb-4" : "")">
+                    <div class="ll-discussion-avatar" style="width: 48px; height: 48px; @(contributor.AvatarColor)">@contributor.Initials</div>
+                    <div class="flex-fill">
+                        <div class="fw-bold">@contributor.Name</div>
+                        <div class="small text-muted">@contributor.ResourceCount Resources</div>
+                    </div>
+                    <div class="text-primary fw-bold">#@(i + 1)</div>
+                </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+    <div id="reportToast" class="toast" role="alert">
+        <div class="toast-header bg-success text-white">
+            <i class="bi bi-check-circle me-2"></i>
+            <strong class="me-auto">Success</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="reportToastBody">Report exported successfully!</div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    (function() {
+        // Date range selector
+        document.querySelectorAll('.date-range-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('.date-range-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById('dateRangeBtn').textContent = this.textContent;
+
+                // Animate chart bars with new random heights
+                document.querySelectorAll('.chart-bar').forEach(bar => {
+                    const newHeight = Math.floor(Math.random() * 80) + 20;
+                    bar.style.height = newHeight + '%';
+                    bar.title = 'Engagements: ' + (newHeight * 12);
+                });
+            });
+        });
+
+        // Hover effect on bars
+        document.querySelectorAll('.chart-bar').forEach(bar => {
+            bar.style.cursor = 'pointer';
+            bar.addEventListener('mouseenter', function() {
+                this.style.opacity = '1';
+                this.style.filter = 'brightness(1.2)';
+            });
+            bar.addEventListener('mouseleave', function() {
+                this.style.filter = '';
+            });
+        });
+
+        // Export buttons
+        document.getElementById('exportPdfBtn').addEventListener('click', function() {
+            document.getElementById('reportToastBody').textContent = 'PDF report exported successfully!';
+            var toast = new bootstrap.Toast(document.getElementById('reportToast'));
+            toast.show();
+        });
+
+        document.getElementById('exportExcelBtn').addEventListener('click', function() {
+            document.getElementById('reportToastBody').textContent = 'Excel spreadsheet exported successfully!';
+            var toast = new bootstrap.Toast(document.getElementById('reportToast'));
+            toast.show();
+        });
+    })();
+</script>
+}

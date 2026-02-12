@@ -1,81 +1,109 @@
 @{
-    ViewData["Title"] = "Login";
-    ViewData["HideLayout"] = true;
+    ViewData["Title"] = "Login - LearnLink";
+    Layout = null;
 }
 
-<div class="ll-auth-page">
-    <div class="container-fluid py-5">
-        <div class="row g-4 justify-content-center align-items-center min-vh-100">
-            <div class="col-lg-6 col-xl-5">
-                <div class="ll-login-card ll-login-hero">
-                    <div class="ll-login-hero-brand">
-                        <div class="ll-login-hero-icon">
-                            <i class="bi bi-book fs-2"></i>
-                        </div>
-                        <div>
-                            <div class="fw-bold fs-4">LearnLink</div>
-                            <div class="small opacity-75">Student Resource Management System</div>
-                        </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="~/css/learnlink.css" asp-append-version="true" />
+</head>
+<body class="ll-auth-body">
+    <!-- Auth Header -->
+    <nav class="ll-auth-header">
+        <div class="container-fluid px-4">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="ll-auth-logo">
+                    <img src="/images/Learnlink.png" alt="LearnLink" style="height: 64px; width: auto;" />
+                    <span class="ll-auth-logo-text"><span class="fw-bold">Learn</span><span style="color: var(--ll-accent, #E8B84B);">Link</span></span>
+                </div>
+                <div class="d-flex align-items-center gap-4">
+                    <a href="@Url.Action("Index", "Home")" class="ll-auth-nav-link"><i class="bi bi-house-door me-1"></i>Home</a>
+                    <div class="d-flex gap-2">
+                        <a href="@Url.Action("Login", "Home")" class="btn btn-outline-primary">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+                        </a>
+                        <a href="@Url.Action("Register", "Home")" class="btn fw-medium" style="background: var(--ll-accent, #E8B84B); color: #1e293b;">
+                            <i class="bi bi-person-plus me-1"></i>Register
+                        </a>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6 col-xl-4">
-                <div class="ll-login-card ll-login-form-card">
-                    <h2 class="fw-bold mb-2">Login</h2>
-                    <p class="text-muted mb-4">Please enter your credentials to access your account</p>
+        </div>
+    </nav>
 
-                    <form asp-action="Dashboard" method="get">
-                        <div class="mb-3">
-                            <label class="form-label">Email Address</label>
-                            <input type="email" class="form-control ll-login-input" placeholder="Please enter your email address" value="john.doe@learnlink.edu">
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label">Password</label>
-                            <div class="position-relative">
-                                <input type="password" class="form-control ll-login-input pe-5" placeholder="Please enter your password" id="passwordInput" value="password123">
-                                <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted" onclick="togglePassword()">
-                                    <i class="bi bi-eye" id="toggleIcon"></i>
-                                </button>
+    <!-- Auth Content -->
+    <div class="ll-auth-wrapper">
+        <div class="container-fluid p-0">
+                <div class="row g-0 justify-content-center">
+                    <!-- Right Panel - Login Form -->
+                    <div class="col-lg-6 ll-auth-right">
+                    <div class="ll-auth-form-container">
+                        <div class="ll-auth-form-card">
+                            <div class="text-center mb-4">
+                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width: 56px; height: 56px; background: var(--ll-primary-light);">
+                                    <i class="bi bi-shield-lock fs-4" style="color: var(--ll-primary);"></i>
+                                </div>
+                                <h2 class="ll-auth-form-title">Welcome back</h2>
+                                <p class="ll-auth-form-subtitle mb-0">Enter your credentials to access your account.</p>
                             </div>
+
+                            @if (ViewBag.Error != null)
+                            {
+                                <div class="alert alert-danger d-flex align-items-center small py-2" role="alert">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    @ViewBag.Error
+                                </div>
+                            }
+
+                            <form asp-action="Login" asp-controller="Home" method="post">
+                                <div class="mb-3">
+                                    <label class="form-label">Email Address</label>
+                                    <div class="ll-auth-input-group">
+                                        <i class="bi bi-envelope ll-auth-input-icon"></i>
+                                        <input type="email" name="email" class="form-control" placeholder="Enter your email" required>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <label class="form-label mb-0">Password</label>
+                                        <a href="#" class="text-decoration-none small fw-medium" style="color: var(--ll-primary); text-transform: none; letter-spacing: 0;">Forgot password?</a>
+                                    </div>
+                                    <div class="ll-auth-input-group mt-2">
+                                        <i class="bi bi-lock ll-auth-input-icon"></i>
+                                        <input type="password" name="password" class="form-control" placeholder="Enter your password" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-check mb-4">
+                                    <input class="form-check-input" type="checkbox" name="rememberMe" value="true" id="rememberMe">
+                                    <label class="form-check-label small" for="rememberMe">Remember me for 30 days</label>
+                                </div>
+
+                                <button type="submit" class="btn ll-auth-btn-primary w-100 py-2 mb-3">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+                                </button>
+
+                                <div class="text-center">
+                                    <span class="text-muted small">Don't have an account?</span>
+                                    <a href="@Url.Action("Register", "Home")" class="text-decoration-none small fw-semibold" style="color: var(--ll-primary);">Request Access</a>
+                                </div>
+                            </form>
+
                         </div>
-
-                        <button type="submit" class="btn btn-primary w-100 py-2 ll-login-submit">Sign In</button>
-
-                        <div class="text-center mt-3">
-                            <span class="text-muted small">Don't have an account?</span>
-                            <a href="@Url.Action("Register", "Home")" class="text-decoration-none small fw-medium">Register</a>
-                        </div>
-                    </form>
-
-                    <div class="text-center my-4">
-                        <span class="text-muted small">Or continue with</span>
                     </div>
-
-                    <button class="btn btn-outline-secondary w-100 ll-login-google">
-                        <i class="bi bi-google me-2"></i>
-                        Continue with Google
-                    </button>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-@section Scripts {
-    <script>
-        function togglePassword() {
-            const passwordInput = document.getElementById('passwordInput');
-            const toggleIcon = document.getElementById('toggleIcon');
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleIcon.classList.remove('bi-eye');
-                toggleIcon.classList.add('bi-eye-slash');
-            } else {
-                passwordInput.type = 'password';
-                toggleIcon.classList.remove('bi-eye-slash');
-                toggleIcon.classList.add('bi-eye');
-            }
-        }
-    </script>
-}
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

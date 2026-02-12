@@ -1,0 +1,414 @@
+@{
+    ViewData["Title"] = "Search Resources";
+    Layout = null;
+
+    var allResources = ViewBag.Resources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
+    var initialQuery = ViewBag.SearchQuery as string ?? string.Empty;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - LearnLink</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/learnlink.css" asp-append-version="true" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        .ps-header {
+            background: #fff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.75rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .ps-header .brand-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: inherit;
+        }
+        .ps-header .brand-link img { height: 40px; width: auto; }
+        .ps-header .brand-text { font-size: 1.25rem; font-weight: 700; }
+        .ps-header .brand-accent { color: var(--ll-accent, #E8B84B); }
+
+        /* ── Hero Banner ── */
+        .ps-hero {
+            background: linear-gradient(135deg, var(--ll-primary, #2563eb) 0%, var(--ll-primary-dark, #1e40af) 100%);
+            color: #fff;
+            padding: 2.5rem 0 2rem;
+            text-align: center;
+        }
+        .ps-hero h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+        .ps-hero p { opacity: 0.85; margin-bottom: 1.5rem; }
+
+        /* ── Search Box ── */
+        .ps-search-wrap {
+            max-width: 720px;
+            margin: 0 auto;
+            position: relative;
+        }
+        .ps-search-wrap .search-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 1.15rem;
+        }
+        .ps-search-wrap input {
+            width: 100%;
+            border: none;
+            border-radius: 14px;
+            padding: 1rem 1rem 1rem 3rem;
+            font-size: 1.05rem;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+            outline: none;
+        }
+        .ps-search-wrap input:focus {
+            box-shadow: 0 4px 24px rgba(37,99,235,0.22);
+        }
+
+        /* ── Filters ── */
+        .ps-filters {
+            max-width: 720px;
+            margin: 1rem auto 0;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .ps-filters select {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.35);
+            border-radius: 8px;
+            padding: 0.4rem 2rem 0.4rem 0.75rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            appearance: auto;
+        }
+        .ps-filters select option { color: #1e293b; background: #fff; }
+
+        /* ── Results Area ── */
+        .ps-results-area {
+            max-width: 860px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .ps-result-count {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 1rem;
+        }
+
+        /* Result Card */
+        .ps-result-card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 0.85rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            transition: box-shadow 0.2s, transform 0.15s;
+            cursor: pointer;
+        }
+        .ps-result-card:hover {
+            box-shadow: 0 6px 24px rgba(37,99,235,0.10);
+            transform: translateY(-2px);
+        }
+        .ps-result-icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            font-size: 1.25rem;
+        }
+        .ps-result-card h5 { font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; color: #1e293b; }
+        .ps-result-card .desc { font-size: 0.85rem; color: #64748b; margin-bottom: 0.5rem; }
+        .ps-tag {
+            display: inline-block;
+            font-size: 0.75rem;
+            padding: 0.15rem 0.6rem;
+            border-radius: 6px;
+            background: #f1f5f9;
+            color: #475569;
+            margin-right: 0.35rem;
+            margin-bottom: 0.25rem;
+        }
+        .ps-meta { font-size: 0.8rem; color: #94a3b8; }
+        .ps-meta i { margin-right: 2px; }
+        .ps-meta span + span { margin-left: 0.75rem; }
+
+        /* Empty / initial state */
+        .ps-empty {
+            text-align: center;
+            padding: 3rem 0;
+            color: #94a3b8;
+        }
+        .ps-empty i { font-size: 3rem; margin-bottom: 1rem; display: block; }
+        .ps-empty h4 { color: #334155; font-weight: 700; }
+        .ps-empty p { max-width: 380px; margin: 0 auto; }
+
+        /* Suggested tags */
+        .ps-suggestions {
+            max-width: 720px;
+            margin: 1.25rem auto 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+        .ps-suggestions .pill {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #fff;
+            border-radius: 20px;
+            padding: 0.3rem 0.9rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .ps-suggestions .pill:hover { background: rgba(255,255,255,0.35); }
+
+        /* CTA banner */
+        .ps-cta {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            color: #fff;
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            max-width: 860px;
+            margin: 2rem auto 3rem;
+        }
+        .ps-cta h5 { font-weight: 700; margin-bottom: 0.5rem; }
+        .ps-cta p { opacity: 0.75; margin-bottom: 1.25rem; }
+
+        @@media (max-width: 576px) {
+            .ps-hero h1 { font-size: 1.3rem; }
+            .ps-filters select { font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="ps-header">
+        <div class="container d-flex align-items-center justify-content-between">
+            <a href="@Url.Action("Index", "Home")" class="brand-link">
+                <img src="~/images/Learnlink.png" alt="LearnLink" />
+                <span class="brand-text"><span>Learn</span><span class="brand-accent">Link</span></span>
+            </a>
+            <div class="d-flex gap-2">
+                <a href="@Url.Action("Login", "Home")" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+                </a>
+                <a href="@Url.Action("Register", "Home")" class="btn btn-warning btn-sm text-dark fw-medium">
+                    <i class="bi bi-person-plus me-1"></i>Register
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero / Search -->
+    <section class="ps-hero">
+        <div class="container">
+            <h1><i class="bi bi-search me-2"></i>Search Learning Resources</h1>
+            <p>Browse thousands of educational materials shared by contributors</p>
+
+            <div class="ps-search-wrap">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" id="mainSearchInput" placeholder="Search for resources, topics, subjects..." autofocus />
+            </div>
+
+            <!-- Filters -->
+            <div class="ps-filters">
+                <select id="searchSubject">
+                    <option value="">All Subjects</option>
+                    <option>Mathematics</option>
+                    <option>Science</option>
+                    <option>English</option>
+                    <option>Filipino</option>
+                    <option>History</option>
+                    <option>MAPEH</option>
+                    <option>TLE</option>
+                    <option>Values Education</option>
+                </select>
+                <select id="searchGrade">
+                    <option value="">All Grades</option>
+                    <option>Grade 7</option>
+                    <option>Grade 8</option>
+                    <option>Grade 9</option>
+                    <option>Grade 10</option>
+                </select>
+                <select id="searchType">
+                    <option value="">All Types</option>
+                    <option>PDF</option>
+                    <option>DOCX</option>
+                    <option>PPTX</option>
+                    <option>XLSX</option>
+                </select>
+                <select id="searchSort">
+                    <option value="relevance">Most Relevant</option>
+                    <option value="recent">Most Recent</option>
+                    <option value="popular">Most Popular</option>
+                    <option value="rating">Highest Rated</option>
+                </select>
+            </div>
+
+            <!-- Suggested Pills -->
+            <div class="ps-suggestions" id="suggestedPills">
+                <span class="pill suggested-search">Math</span>
+                <span class="pill suggested-search">Science Lab</span>
+                <span class="pill suggested-search">Philippine History</span>
+                <span class="pill suggested-search">Filipino Grammar</span>
+                <span class="pill suggested-search">TLE Cookery</span>
+                <span class="pill suggested-search">MAPEH Arts</span>
+                <span class="pill suggested-search">Values Education</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Results -->
+    <div class="ps-results-area">
+        <div id="searchResults" class="d-none">
+            <p class="ps-result-count" id="searchResultsCount"></p>
+            <div id="searchResultsList"></div>
+        </div>
+
+        <div class="ps-empty" id="searchEmptyState">
+            <i class="bi bi-search"></i>
+            <h4>Find Learning Resources</h4>
+            <p>Type a keyword, subject, or topic above to discover resources from the repository.</p>
+        </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="container">
+        <div class="ps-cta">
+            <h5><i class="bi bi-rocket-takeoff me-2"></i>Want full access?</h5>
+            <p>Create a free account to download resources, track your reading history, and join discussions.</p>
+            <a href="@Url.Action("Register", "Home")" class="btn btn-warning text-dark fw-medium px-4">
+                <i class="bi bi-person-plus me-1"></i>Create Free Account
+            </a>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    (function () {
+        const resources = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(allResources));
+        const landingQuery = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(initialQuery));
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialHeroQuery = (urlParams.get('q') || landingQuery || '').trim();
+
+        const searchInput = document.getElementById('mainSearchInput');
+        const subjectFilter = document.getElementById('searchSubject');
+        const gradeFilter = document.getElementById('searchGrade');
+        const typeFilter = document.getElementById('searchType');
+        const sortFilter = document.getElementById('searchSort');
+        const resultsArea = document.getElementById('searchResults');
+        const resultsList = document.getElementById('searchResultsList');
+        const resultsCount = document.getElementById('searchResultsCount');
+        const emptyState = document.getElementById('searchEmptyState');
+        const suggestedPills = document.getElementById('suggestedPills');
+
+        function performSearch() {
+            const query = searchInput.value.toLowerCase().trim();
+            const subject = subjectFilter.value;
+            const grade = gradeFilter.value;
+            const type = typeFilter.value;
+
+            if (!query && !subject && !grade && !type) {
+                resultsArea.classList.add('d-none');
+                emptyState.classList.remove('d-none');
+                return;
+            }
+
+            let results = resources.filter(r => {
+                const matchQuery = !query ||
+                    r.title.toLowerCase().includes(query) ||
+                    r.subject.toLowerCase().includes(query) ||
+                    r.description.toLowerCase().includes(query) ||
+                    r.resourceType.toLowerCase().includes(query);
+                const matchSubject = !subject || r.subject === subject;
+                const matchGrade = !grade || r.gradeLevel === grade;
+                const matchType = !type || r.fileFormat === type;
+                return matchQuery && matchSubject && matchGrade && matchType;
+            });
+
+            switch (sortFilter.value) {
+                case 'recent': results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); break;
+                case 'popular': results.sort((a, b) => b.viewCount - a.viewCount); break;
+                case 'rating': results.sort((a, b) => b.rating - a.rating); break;
+            }
+
+            resultsCount.innerHTML = 'Found <strong>' + results.length + '</strong> result' + (results.length !== 1 ? 's' : '') + ' for "<em>' + searchInput.value.trim() + '</em>"';
+            emptyState.classList.add('d-none');
+            resultsArea.classList.remove('d-none');
+
+            if (results.length === 0) {
+                resultsList.innerHTML = '<div class="ps-empty"><i class="bi bi-emoji-frown"></i><h4>No results found</h4><p>Try different keywords or adjust your filters.</p></div>';
+                return;
+            }
+
+            resultsList.innerHTML = results.map(r => `
+                <div class="ps-result-card">
+                    <div class="d-flex gap-3">
+                        <div class="ps-result-icon" style="background: ${r.iconBg};">
+                            <i class="bi ${r.iconClass} ${r.iconColor}"></i>
+                        </div>
+                        <div class="flex-fill">
+                            <h5>${r.title}</h5>
+                            <p class="desc">${r.description}</p>
+                            <div class="mb-2">
+                                <span class="ps-tag">${r.subject}</span>
+                                <span class="ps-tag">${r.gradeLevel}</span>
+                                <span class="ps-tag">${r.fileFormat} • ${r.fileSize}</span>
+                            </div>
+                            <div class="ps-meta">
+                                <span><i class="bi bi-eye"></i> ${r.viewCount.toLocaleString()}</span>
+                                <span><i class="bi bi-download"></i> ${r.downloadCount.toLocaleString()}</span>
+                                ${r.rating > 0 ? `<span><i class="bi bi-star-fill text-warning"></i> ${r.rating.toFixed(1)}</span>` : ''}
+                                <span><i class="bi bi-person"></i> ${r.uploader}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        searchInput.addEventListener('input', performSearch);
+        subjectFilter.addEventListener('change', performSearch);
+        gradeFilter.addEventListener('change', performSearch);
+        typeFilter.addEventListener('change', performSearch);
+        sortFilter.addEventListener('change', performSearch);
+
+        document.querySelectorAll('.suggested-search').forEach(btn => {
+            btn.addEventListener('click', function () {
+                searchInput.value = this.textContent;
+                performSearch();
+            });
+        });
+
+        if (initialHeroQuery) {
+            searchInput.value = initialHeroQuery;
+            performSearch();
+        }
+    })();
+    </script>
+</body>
+</html>

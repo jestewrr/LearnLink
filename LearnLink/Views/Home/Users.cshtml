@@ -1,6 +1,12 @@
 @{
     ViewData["Title"] = "User Management";
     ViewData["ActivePage"] = "Users";
+
+    var users = ViewBag.UserList as List<LearnLink.Models.UserViewModel> ?? new List<LearnLink.Models.UserViewModel>();
+    var totalUsers = ViewBag.TotalUsers ?? users.Count;
+    var activeCount = ViewBag.ActiveCount ?? 0;
+    var contributorCount = ViewBag.ContributorCount ?? 0;
+    var managerCount = ViewBag.ManagerCount ?? 0;
 }
 
 <!-- Page Header -->
@@ -15,10 +21,6 @@
             </div>
         </div>
         <div class="d-flex gap-2">
-            <button class="ll-btn ll-btn-outline">
-                <i class="bi bi-download"></i>
-                Export
-            </button>
             <button class="ll-btn ll-btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
                 <i class="bi bi-person-plus"></i>
                 Add User
@@ -29,47 +31,47 @@
 
 <!-- Stats Cards -->
 <div class="row g-4 mb-4">
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-6 col-sm-6 col-xl-3">
         <div class="ll-stat-card">
             <div class="ll-stat-icon primary">
                 <i class="bi bi-people"></i>
             </div>
             <div class="ll-stat-content">
-                <div class="ll-stat-value">1,245</div>
+                <div class="ll-stat-value">@totalUsers</div>
                 <div class="ll-stat-label">Total Users</div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-6 col-sm-6 col-xl-3">
         <div class="ll-stat-card">
             <div class="ll-stat-icon success">
                 <i class="bi bi-person-check"></i>
             </div>
             <div class="ll-stat-content">
-                <div class="ll-stat-value">1,089</div>
+                <div class="ll-stat-value">@activeCount</div>
                 <div class="ll-stat-label">Active Users</div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-6 col-sm-6 col-xl-3">
         <div class="ll-stat-card">
             <div class="ll-stat-icon warning">
                 <i class="bi bi-person-workspace"></i>
             </div>
             <div class="ll-stat-content">
-                <div class="ll-stat-value">87</div>
+                <div class="ll-stat-value">@contributorCount</div>
                 <div class="ll-stat-label">Contributors</div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-6 col-sm-6 col-xl-3">
         <div class="ll-stat-card">
             <div class="ll-stat-icon info">
                 <i class="bi bi-person-badge"></i>
             </div>
             <div class="ll-stat-content">
-                <div class="ll-stat-value">12</div>
-                <div class="ll-stat-label">Moderators</div>
+                <div class="ll-stat-value">@managerCount</div>
+                <div class="ll-stat-label">Managers</div>
             </div>
         </div>
     </div>
@@ -82,39 +84,37 @@
             <div class="col-lg-4">
                 <div class="position-relative">
                     <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
-                    <input type="text" class="ll-form-control ps-5" placeholder="Search users by name or email...">
+                    <input type="text" class="ll-form-control ps-5" placeholder="Search users by name or email..." id="userSearchInput">
                 </div>
             </div>
             <div class="col-lg-2">
-                <select class="ll-form-control ll-form-select">
+                <select class="ll-form-control ll-form-select" id="roleFilter">
                     <option value="">All Roles</option>
-                    <option>Admin</option>
-                    <option>Moderator</option>
-                    <option>Contributor</option>
-                    <option>User</option>
+                    <option value="Contributor">Contributor</option>
+                    <option value="Manager">Manager</option>
+                    <option value="Student">Student</option>
                 </select>
             </div>
             <div class="col-lg-2">
-                <select class="ll-form-control ll-form-select">
+                <select class="ll-form-control ll-form-select" id="statusFilter">
                     <option value="">All Status</option>
-                    <option>Active</option>
-                    <option>Inactive</option>
-                    <option>Pending</option>
-                    <option>Suspended</option>
+                    <option value="Active">Active</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Suspended">Suspended</option>
                 </select>
             </div>
             <div class="col-lg-2">
-                <select class="ll-form-control ll-form-select">
+                <select class="ll-form-control ll-form-select" id="gradeFilter">
                     <option value="">All Grades</option>
-                    <option>Grade 7</option>
-                    <option>Grade 8</option>
-                    <option>Grade 9</option>
-                    <option>Grade 10</option>
-                    <option>Teacher</option>
+                    <option value="Grade 7">Grade 7</option>
+                    <option value="Grade 8">Grade 8</option>
+                    <option value="Grade 9">Grade 9</option>
+                    <option value="Grade 10">Grade 10</option>
+                    <option value="Teacher">Teacher</option>
                 </select>
             </div>
             <div class="col-lg-2">
-                <button class="ll-btn ll-btn-primary w-100">
+                <button class="ll-btn ll-btn-primary w-100" id="filterBtn">
                     <i class="bi bi-funnel"></i>
                     Filter
                 </button>
@@ -127,10 +127,10 @@
 <div class="ll-card">
     <div class="ll-card-body p-0">
         <div class="table-responsive">
-            <table class="ll-table">
+            <table class="ll-table" id="usersTable">
                 <thead>
                     <tr>
-                        <th><input type="checkbox" class="form-check-input"></th>
+                        <th><input type="checkbox" class="form-check-input" id="selectAllUsers"></th>
                         <th>User</th>
                         <th>Role</th>
                         <th>Grade/Position</th>
@@ -141,205 +141,108 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td><input type="checkbox" class="form-check-input"></td>
+                    @foreach (var user in users)
+                    {
+                    <tr class="user-row"
+                        data-name="@user.Name.ToLower()"
+                        data-email="@user.Email.ToLower()"
+                        data-role="@user.Role"
+                        data-status="@user.Status"
+                        data-grade="@user.GradeOrPosition.ToLower()">
+                        <td><input type="checkbox" class="form-check-input user-checkbox"></td>
                         <td>
                             <div class="d-flex align-items-center gap-3">
-                                <div class="ll-discussion-avatar" style="width: 40px; height: 40px;">MS</div>
+                                <div class="ll-discussion-avatar" style="width: 40px; height: 40px; @(user.AvatarColor)">@user.Initials</div>
                                 <div>
-                                    <div class="fw-medium">Maria Santos</div>
-                                    <small class="text-muted">maria.santos@learnlink.edu</small>
+                                    <div class="fw-medium">@user.Name</div>
+                                    <small class="text-muted">@user.Email</small>
                                 </div>
                             </div>
                         </td>
-                        <td><span class="ll-badge ll-badge-warning">Contributor</span></td>
-                        <td>Mathematics Teacher</td>
-                        <td><span class="ll-badge ll-badge-success">Active</span></td>
-                        <td>Jan 15, 2024</td>
-                        <td>2 hours ago</td>
+                        <td><span class="ll-badge @user.RoleBadgeClass">@user.Role</span></td>
+                        <td>@user.GradeOrPosition</td>
+                        <td><span class="ll-badge @user.StatusBadgeClass">@user.Status</span></td>
+                        <td>@user.JoinedAt.ToString("MMM dd, yyyy")</td>
+                        <td>@user.LastActive</td>
                         <td>
                             <div class="dropdown">
                                 <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
                                     <i class="bi bi-three-dots-vertical"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit User</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-shield me-2"></i>Change Role</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-person-slash me-2"></i>Suspend</a></li>
-                                </ul>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><input type="checkbox" class="form-check-input"></td>
-                        <td>
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="ll-discussion-avatar" style="width: 40px; height: 40px; background: linear-gradient(135deg, #10b981, #059669);">JR</div>
-                                <div>
-                                    <div class="fw-medium">John Reyes</div>
-                                    <small class="text-muted">john.reyes@learnlink.edu</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td><span class="ll-badge ll-badge-warning">Contributor</span></td>
-                        <td>Science Teacher</td>
-                        <td><span class="ll-badge ll-badge-success">Active</span></td>
-                        <td>Feb 08, 2024</td>
-                        <td>5 hours ago</td>
-                        <td>
-                            <div class="dropdown">
-                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
-                                    <i class="bi bi-three-dots-vertical"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit User</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-shield me-2"></i>Change Role</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-person-slash me-2"></i>Suspend</a></li>
-                                </ul>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><input type="checkbox" class="form-check-input"></td>
-                        <td>
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="ll-discussion-avatar" style="width: 40px; height: 40px; background: linear-gradient(135deg, #f59e0b, #d97706);">AC</div>
-                                <div>
-                                    <div class="fw-medium">Ana Cruz</div>
-                                    <small class="text-muted">ana.cruz@student.learnlink.edu</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td><span class="ll-badge ll-badge-info">User</span></td>
-                        <td>Grade 8 - Section A</td>
-                        <td><span class="ll-badge ll-badge-success">Active</span></td>
-                        <td>Mar 12, 2024</td>
-                        <td>1 day ago</td>
-                        <td>
-                            <div class="dropdown">
-                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
-                                    <i class="bi bi-three-dots-vertical"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit User</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-shield me-2"></i>Change Role</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-person-slash me-2"></i>Suspend</a></li>
-                                </ul>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><input type="checkbox" class="form-check-input"></td>
-                        <td>
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="ll-discussion-avatar" style="width: 40px; height: 40px; background: linear-gradient(135deg, #8b5cf6, #7c3aed);">PG</div>
-                                <div>
-                                    <div class="fw-medium">Pedro Garcia</div>
-                                    <small class="text-muted">pedro.garcia@learnlink.edu</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td><span class="ll-badge ll-badge-danger">Moderator</span></td>
-                        <td>Content Moderator</td>
-                        <td><span class="ll-badge ll-badge-success">Active</span></td>
-                        <td>Jan 05, 2024</td>
-                        <td>3 hours ago</td>
-                        <td>
-                            <div class="dropdown">
-                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
-                                    <i class="bi bi-three-dots-vertical"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit User</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-shield me-2"></i>Change Role</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-person-slash me-2"></i>Suspend</a></li>
-                                </ul>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><input type="checkbox" class="form-check-input"></td>
-                        <td>
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="ll-discussion-avatar" style="width: 40px; height: 40px; background: linear-gradient(135deg, #ef4444, #dc2626);">RM</div>
-                                <div>
-                                    <div class="fw-medium">Rosa Mendoza</div>
-                                    <small class="text-muted">rosa.mendoza@student.learnlink.edu</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td><span class="ll-badge ll-badge-info">User</span></td>
-                        <td>Grade 9 - Section B</td>
-                        <td><span class="ll-badge ll-badge-warning">Pending</span></td>
-                        <td>Dec 18, 2024</td>
-                        <td>Never</td>
-                        <td>
-                            <div class="dropdown">
-                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
-                                    <i class="bi bi-three-dots-vertical"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
+                                    @if (user.Status == "Pending")
+                                    {
                                     <li><a class="dropdown-item" href="#"><i class="bi bi-check-circle me-2"></i>Approve</a></li>
                                     <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-x-circle me-2"></i>Reject</a></li>
-                                </ul>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><input type="checkbox" class="form-check-input"></td>
-                        <td>
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="ll-discussion-avatar" style="width: 40px; height: 40px; background: linear-gradient(135deg, #6b7280, #4b5563);">LT</div>
-                                <div>
-                                    <div class="fw-medium">Luis Torres</div>
-                                    <small class="text-muted">luis.torres@student.learnlink.edu</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td><span class="ll-badge ll-badge-info">User</span></td>
-                        <td>Grade 7 - Section C</td>
-                        <td><span class="ll-badge ll-badge-danger">Suspended</span></td>
-                        <td>Apr 20, 2024</td>
-                        <td>1 week ago</td>
-                        <td>
-                            <div class="dropdown">
-                                <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" data-bs-toggle="dropdown">
-                                    <i class="bi bi-three-dots-vertical"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
+                                    }
+                                    else if (user.Status == "Suspended")
+                                    {
                                     <li><a class="dropdown-item" href="#"><i class="bi bi-person-check me-2"></i>Reactivate</a></li>
                                     <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                                    }
+                                    else
+                                    {
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit User</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-shield me-2"></i>Change Role</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-person-slash me-2"></i>Suspend</a></li>
+                                    }
                                 </ul>
                             </div>
                         </td>
                     </tr>
+                    }
                 </tbody>
             </table>
         </div>
+        <!-- Mobile: Card list view -->
+        <div class="ll-mobile-card-list">
+            @foreach (var user in users)
+            {
+                var mobileActions = user.Status switch
+                {
+                    "Pending" => "Approve|View Profile|Reject",
+                    "Suspended" => "Reactivate|View Profile|Delete",
+                    _ => "View Profile|Edit User|Change Role|Suspend"
+                };
+            <div class="ll-mobile-card-item user-row-mobile"
+                 data-name="@user.Name.ToLower()"
+                 data-email="@user.Email.ToLower()"
+                 data-role="@user.Role"
+                 data-status="@user.Status"
+                 data-grade="@user.GradeOrPosition.ToLower()"
+                 data-res-title="@user.Name"
+                 data-res-uploader="@user.Email"
+                 data-res-subject="@user.Role"
+                 data-res-grade="@user.GradeOrPosition"
+                 data-res-status="@user.Status"
+                 data-res-date="@user.JoinedAt.ToString("MMM dd, yyyy")"
+                 data-res-type="@user.LastActive"
+                 data-actions="@mobileActions">
+                <div class="ll-discussion-avatar" style="width: 40px; height: 40px; @(user.AvatarColor)">@user.Initials</div>
+                <div class="ll-mobile-card-info">
+                    <div class="ll-mobile-card-title">@user.Name</div>
+                    <div class="ll-mobile-card-sub">@user.Role • <span class="@user.StatusBadgeClass">@user.Status</span></div>
+                </div>
+                <div class="ll-mobile-card-chevron">
+                    <i class="bi bi-chevron-right"></i>
+                </div>
+            </div>
+            }
+        </div>
     </div>
     <div class="ll-card-body border-top">
-        <div class="d-flex justify-content-between align-items-center">
-            <div class="text-muted small">Showing 1-6 of 1,245 users</div>
-            <nav>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="text-muted small">Showing <span id="visibleCount">@users.Count</span> of @totalUsers users</div>
+            <nav aria-label="Users pagination">
                 <ul class="pagination pagination-sm mb-0">
                     <li class="page-item disabled"><a class="page-link" href="#"><i class="bi bi-chevron-left"></i></a></li>
                     <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                    <li class="page-item"><a class="page-link" href="#">2</a></li>
-                    <li class="page-item"><a class="page-link" href="#">3</a></li>
-                    <li class="page-item"><a class="page-link" href="#">...</a></li>
-                    <li class="page-item"><a class="page-link" href="#">208</a></li>
                     <li class="page-item"><a class="page-link" href="#"><i class="bi bi-chevron-right"></i></a></li>
                 </ul>
             </nav>
@@ -358,29 +261,29 @@
             <div class="modal-body">
                 <div class="ll-form-group">
                     <label class="ll-form-label">Full Name</label>
-                    <input type="text" class="ll-form-control" placeholder="Enter full name">
+                    <input type="text" class="ll-form-control" id="newUserName" placeholder="Enter full name">
                 </div>
                 <div class="ll-form-group">
                     <label class="ll-form-label">Email Address</label>
-                    <input type="email" class="ll-form-control" placeholder="Enter email address">
+                    <input type="email" class="ll-form-control" id="newUserEmail" placeholder="Enter email address">
                 </div>
                 <div class="ll-form-group">
                     <label class="ll-form-label">Role</label>
-                    <select class="ll-form-control ll-form-select">
+                    <select class="ll-form-control ll-form-select" id="newUserRole">
                         <option value="">Select role</option>
                         <option>Admin</option>
-                        <option>Moderator</option>
+                        <option>Manager</option>
                         <option>Contributor</option>
-                        <option>User</option>
+                        <option>Student</option>
                     </select>
                 </div>
                 <div class="ll-form-group">
                     <label class="ll-form-label">Grade/Position</label>
-                    <input type="text" class="ll-form-control" placeholder="e.g., Grade 8 - Section A or Math Teacher">
+                    <input type="text" class="ll-form-control" id="newUserGrade" placeholder="e.g., Grade 8 - Section A or Math Teacher">
                 </div>
                 <div class="ll-form-group">
                     <label class="ll-form-label">Temporary Password</label>
-                    <input type="password" class="ll-form-control" placeholder="Enter temporary password">
+                    <input type="password" class="ll-form-control" id="newUserPassword" placeholder="Enter temporary password">
                 </div>
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="sendInvite" checked>
@@ -389,7 +292,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="ll-btn ll-btn-primary">
+                <button type="button" class="ll-btn ll-btn-primary" id="addUserBtn">
                     <i class="bi bi-person-plus"></i>
                     Add User
                 </button>
@@ -397,3 +300,110 @@
         </div>
     </div>
 </div>
+
+<!-- Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+    <div id="userToast" class="toast" role="alert">
+        <div class="toast-header bg-success text-white">
+            <i class="bi bi-check-circle me-2"></i>
+            <strong class="me-auto">Success</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="userToastBody">User added successfully!</div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    (function() {
+        var rows = document.querySelectorAll('.user-row');
+
+        function filterUsers() {
+            var search = document.getElementById('userSearchInput').value.toLowerCase();
+            var role = document.getElementById('roleFilter').value;
+            var status = document.getElementById('statusFilter').value;
+            var grade = document.getElementById('gradeFilter').value.toLowerCase();
+            var visible = 0;
+
+            rows.forEach(function(row) {
+                var name = row.dataset.name;
+                var email = row.dataset.email;
+                var r = row.dataset.role;
+                var s = row.dataset.status;
+                var g = row.dataset.grade;
+
+                var matchSearch = !search || name.includes(search) || email.includes(search);
+                var matchRole = !role || r === role;
+                var matchStatus = !status || s === status;
+                var matchGrade = !grade || g.includes(grade);
+
+                if (matchSearch && matchRole && matchStatus && matchGrade) {
+                    row.style.display = '';
+                    visible++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            document.getElementById('visibleCount').textContent = visible;
+        }
+
+        // Real-time search
+        document.getElementById('userSearchInput').addEventListener('input', filterUsers);
+
+        // Filter button
+        document.getElementById('filterBtn').addEventListener('click', filterUsers);
+
+        // Filter on dropdown change
+        document.getElementById('roleFilter').addEventListener('change', filterUsers);
+        document.getElementById('statusFilter').addEventListener('change', filterUsers);
+        document.getElementById('gradeFilter').addEventListener('change', filterUsers);
+
+        // Select all checkbox
+        document.getElementById('selectAllUsers').addEventListener('change', function() {
+            var checked = this.checked;
+            rows.forEach(function(row) {
+                if (row.style.display !== 'none') {
+                    row.querySelector('.user-checkbox').checked = checked;
+                }
+            });
+        });
+
+        // Add user modal
+        document.getElementById('addUserBtn').addEventListener('click', function() {
+            var name = document.getElementById('newUserName').value;
+            var email = document.getElementById('newUserEmail').value;
+            var role = document.getElementById('newUserRole').value;
+            var password = document.getElementById('newUserPassword').value;
+
+            if (!name || !email || !role || !password) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+
+            // Close modal
+            var modal = bootstrap.Modal.getInstance(document.getElementById('addUserModal'));
+            modal.hide();
+
+            // Show toast
+            document.getElementById('userToastBody').textContent = name + ' has been added successfully!';
+            var toast = new bootstrap.Toast(document.getElementById('userToast'));
+            toast.show();
+
+            // Clear form
+            document.getElementById('newUserName').value = '';
+            document.getElementById('newUserEmail').value = '';
+            document.getElementById('newUserRole').value = '';
+            document.getElementById('newUserGrade').value = '';
+            document.getElementById('newUserPassword').value = '';
+        });
+
+        // Export button
+        document.getElementById('exportUsersBtn').addEventListener('click', function() {
+            document.getElementById('userToastBody').textContent = 'User list exported successfully!';
+            var toast = new bootstrap.Toast(document.getElementById('userToast'));
+            toast.show();
+        });
+    })();
+</script>
+}

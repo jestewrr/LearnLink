@@ -1,6 +1,10 @@
 @{
     ViewData["Title"] = "Discussions";
     ViewData["ActivePage"] = "Discussions";
+
+    var discussion = ViewBag.Discussion as LearnLink.Models.DiscussionViewModel;
+    var replies = ViewBag.Replies as List<LearnLink.Models.ReplyViewModel> ?? new List<LearnLink.Models.ReplyViewModel>();
+    var similarDiscussions = ViewBag.SimilarDiscussions as List<LearnLink.Models.DiscussionViewModel> ?? new List<LearnLink.Models.DiscussionViewModel>();
 }
 
 <!-- Page Header -->
@@ -22,169 +26,124 @@
 <!-- Discussion Thread -->
 <div class="row g-4">
     <div class="col-lg-8">
+        @if (discussion != null)
+        {
         <!-- Main Discussion -->
         <div class="ll-card mb-4">
             <div class="ll-card-body">
                 <div class="d-flex justify-content-between align-items-start mb-3">
-                    <span class="ll-badge ll-badge-info">Question</span>
+                    @{
+                        var typeClass = discussion.Type switch
+                        {
+                            "Question" => "ll-badge-info",
+                            "Idea" => "ll-badge-info",
+                            "Resource" => "ll-badge-success",
+                            "Study Group" => "ll-badge-warning",
+                            _ => "ll-badge-info"
+                        };
+                    }
+                    <span class="ll-badge @typeClass">@discussion.Type</span>
                     <div class="d-flex gap-2">
-                        <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-bookmark"></i></button>
+                        <button class="ll-btn ll-btn-outline ll-btn-sm" id="bookmarkDiscBtn"><i class="bi bi-bookmark"></i></button>
                         <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-share"></i></button>
                     </div>
                 </div>
-                
-                <h4 class="fw-bold mb-3">Tips for Solving Quadratic Equations Faster</h4>
-                
+
+                <h4 class="fw-bold mb-3">@discussion.Title</h4>
+
                 <div class="d-flex gap-3 mb-4">
-                    <div class="ll-discussion-avatar" style="width: 48px; height: 48px;">MS</div>
+                    <div class="ll-discussion-avatar" style="width: 48px; height: 48px; @(discussion.AuthorColor ?? "")">@discussion.AuthorInitials</div>
                     <div>
-                        <div class="fw-bold">Maria Santos</div>
-                        <div class="small text-muted">Mathematics Teacher • Posted 2 hours ago</div>
+                        <div class="fw-bold">@discussion.Author</div>
+                        <div class="small text-muted">@discussion.AuthorRole • Posted @((DateTime.Now - discussion.CreatedAt).TotalHours switch { < 1 => "just now", < 24 => (int)((DateTime.Now - discussion.CreatedAt).TotalHours) + " hours ago", _ => (int)((DateTime.Now - discussion.CreatedAt).TotalDays) + " days ago" })</div>
                     </div>
                 </div>
 
                 <div class="mb-4">
-                    <p>I've been teaching quadratic equations for years and noticed many students struggle with the formula method. Does anyone have tips or alternative approaches that work better for visual learners?</p>
-                    <p>Some specific challenges I've observed:</p>
-                    <ul>
-                        <li>Students often forget the quadratic formula</li>
-                        <li>Difficulty in identifying coefficients a, b, and c</li>
-                        <li>Errors in calculating the discriminant</li>
-                        <li>Problems with simplifying square roots</li>
-                    </ul>
-                    <p>I'd love to hear your experiences and any teaching strategies that have worked well in your classes!</p>
+                    @Html.Raw(discussion.Content)
                 </div>
 
                 <div class="d-flex flex-wrap gap-2 mb-4">
-                    <span class="ll-tag">Mathematics</span>
-                    <span class="ll-tag">Grade 8</span>
-                    <span class="ll-tag">Algebra</span>
-                    <span class="ll-tag">Teaching Tips</span>
+                    @foreach (var tag in discussion.Tags)
+                    {
+                    <span class="ll-tag">@tag</span>
+                    }
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center border-top pt-3">
                     <div class="d-flex gap-3">
-                        <button class="ll-btn ll-btn-outline ll-btn-sm">
-                            <i class="bi bi-heart"></i> 24
+                        <button class="ll-btn ll-btn-outline ll-btn-sm disc-like-btn">
+                            <i class="bi bi-heart"></i> @discussion.LikeCount
                         </button>
                         <span class="small text-muted d-flex align-items-center gap-1">
-                            <i class="bi bi-eye"></i> 156 views
+                            <i class="bi bi-eye"></i> @discussion.ViewCount views
                         </span>
                     </div>
-                    <button class="ll-btn ll-btn-primary ll-btn-sm">
+                    <button class="ll-btn ll-btn-primary ll-btn-sm" onclick="document.getElementById('replyTextarea').focus();">
                         <i class="bi bi-reply"></i> Reply
                     </button>
                 </div>
             </div>
         </div>
+        }
 
         <!-- Replies -->
-        <h6 class="fw-bold text-muted mb-3">12 Replies</h6>
+        <h6 class="fw-bold text-muted mb-3">@replies.Count Replies</h6>
 
-        <!-- Reply 1 -->
-        <div class="ll-card mb-3">
-            <div class="ll-card-body">
-                <div class="d-flex gap-3 mb-3">
-                    <div class="ll-discussion-avatar" style="width: 40px; height: 40px; background: linear-gradient(135deg, #10b981, #059669);">JR</div>
-                    <div class="flex-fill">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <span class="fw-bold">John Reyes</span>
-                                <span class="ll-badge ll-badge-warning ms-2" style="font-size: 0.65rem;">Contributor</span>
-                            </div>
-                            <span class="small text-muted">1 hour ago</span>
-                        </div>
-                        <div class="small text-muted">Science Teacher</div>
-                    </div>
-                </div>
-                <p class="mb-3">Great question, Maria! I've found that teaching the "ac method" (also known as factoring by grouping) works really well for visual learners. Here's a quick overview:</p>
-                <ol class="mb-3">
-                    <li>Multiply a × c to get the "magic number"</li>
-                    <li>Find two numbers that multiply to give the magic number and add to give b</li>
-                    <li>Rewrite the middle term using these numbers</li>
-                    <li>Factor by grouping</li>
-                </ol>
-                <p class="mb-3">I also recommend using colored markers to highlight different parts of the equation. Visual cues really help students track the coefficients!</p>
-                <div class="d-flex gap-2">
-                    <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-heart"></i> 15</button>
-                    <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-reply"></i> Reply</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Reply 2 -->
-        <div class="ll-card mb-3">
-            <div class="ll-card-body">
-                <div class="d-flex gap-3 mb-3">
-                    <div class="ll-discussion-avatar" style="width: 40px; height: 40px; background: linear-gradient(135deg, #f59e0b, #d97706);">AC</div>
-                    <div class="flex-fill">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <span class="fw-bold">Ana Cruz</span>
-                                <span class="ll-badge ll-badge-info ms-2" style="font-size: 0.65rem;">User</span>
-                            </div>
-                            <span class="small text-muted">45 minutes ago</span>
-                        </div>
-                        <div class="small text-muted">Grade 8 Student</div>
-                    </div>
-                </div>
-                <p class="mb-3">As a student, I can share that what helped me the most was practicing with the "box method" or area model. It made factoring trinomials so much easier to visualize! Also, using the quadratic formula song (to the tune of "Pop Goes the Weasel") really helped me remember it! 🎵</p>
-                <div class="d-flex gap-2">
-                    <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-heart-fill text-danger"></i> 8</button>
-                    <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-reply"></i> Reply</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Reply 3 (Best Answer) -->
-        <div class="ll-card mb-3" style="border: 2px solid #22c55e;">
+        @foreach (var reply in replies)
+        {
+        <div class="ll-card mb-3" @(reply.IsBestAnswer ? "style=\"border: 2px solid #22c55e;\"" : "")>
+            @if (reply.IsBestAnswer)
+            {
             <div class="ll-card-header bg-success bg-opacity-10">
                 <span class="fw-bold text-success"><i class="bi bi-check-circle-fill me-2"></i>Best Answer</span>
             </div>
+            }
             <div class="ll-card-body">
                 <div class="d-flex gap-3 mb-3">
-                    <div class="ll-discussion-avatar" style="width: 40px; height: 40px; background: linear-gradient(135deg, #8b5cf6, #7c3aed);">PG</div>
+                    <div class="ll-discussion-avatar" style="width: 40px; height: 40px; @(reply.AuthorColor ?? "")">@reply.AuthorInitials</div>
                     <div class="flex-fill">
                         <div class="d-flex justify-content-between">
                             <div>
-                                <span class="fw-bold">Pedro Garcia</span>
-                                <span class="ll-badge ll-badge-danger ms-2" style="font-size: 0.65rem;">Moderator</span>
+                                <span class="fw-bold">@reply.Author</span>
+                                @{
+                                    var roleClass = reply.AuthorRole switch
+                                    {
+                                        "Moderator" => "ll-badge-danger",
+                                        "Contributor" => "ll-badge-warning",
+                                        _ => "ll-badge-info"
+                                    };
+                                }
+                                <span class="ll-badge @roleClass ms-2" style="font-size: 0.65rem;">@reply.AuthorRole</span>
                             </div>
-                            <span class="small text-muted">30 minutes ago</span>
+                            <span class="small text-muted">@((DateTime.Now - reply.CreatedAt).TotalMinutes switch { < 60 => (int)((DateTime.Now - reply.CreatedAt).TotalMinutes) + " minutes ago", < 1440 => (int)((DateTime.Now - reply.CreatedAt).TotalHours) + " hours ago", _ => (int)((DateTime.Now - reply.CreatedAt).TotalDays) + " days ago" })</span>
                         </div>
-                        <div class="small text-muted">Math Department Head</div>
+                        <div class="small text-muted">@reply.AuthorTitle</div>
                     </div>
                 </div>
-                <p class="mb-3">I've compiled a comprehensive approach that has shown great results in our department:</p>
-                <div class="bg-light rounded p-3 mb-3">
-                    <h6 class="fw-bold">Multi-Sensory Approach to Quadratics:</h6>
-                    <ol class="mb-0">
-                        <li><strong>Visual:</strong> Use graphing calculators to show how changing a, b, c affects the parabola</li>
-                        <li><strong>Kinesthetic:</strong> Have students physically sort coefficient cards</li>
-                        <li><strong>Auditory:</strong> Create mnemonics for the formula (negative boy, etc.)</li>
-                        <li><strong>Practice:</strong> Start with "nice" numbers before moving to complex ones</li>
-                    </ol>
-                </div>
-                <p class="mb-3">I've actually uploaded a comprehensive resource on this topic. You can find it here: <a href="#">Quadratic Equations Visual Guide</a></p>
-                <div class="d-flex gap-2">
-                    <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-heart-fill text-danger"></i> 32</button>
+                @Html.Raw(reply.Content)
+                <div class="d-flex gap-2 mt-3">
+                    <button class="ll-btn ll-btn-outline ll-btn-sm reply-like-btn">
+                        <i class="bi @(reply.IsLiked ? "bi-heart-fill text-danger" : "bi-heart")"></i> @reply.LikeCount
+                    </button>
                     <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-reply"></i> Reply</button>
                 </div>
             </div>
         </div>
+        }
 
         <!-- Add Reply Box -->
         <div class="ll-card">
             <div class="ll-card-body">
                 <h6 class="fw-bold mb-3">Add Your Reply</h6>
-                <textarea class="ll-form-control mb-3" rows="4" placeholder="Share your thoughts, experiences, or tips..."></textarea>
+                <textarea class="ll-form-control mb-3" rows="4" id="replyTextarea" placeholder="Share your thoughts, experiences, or tips..."></textarea>
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="d-flex gap-2">
                         <button class="ll-btn ll-btn-outline ll-btn-sm" title="Add link"><i class="bi bi-link-45deg"></i></button>
                         <button class="ll-btn ll-btn-outline ll-btn-sm" title="Add image"><i class="bi bi-image"></i></button>
                         <button class="ll-btn ll-btn-outline ll-btn-sm" title="Add code"><i class="bi bi-code"></i></button>
                     </div>
-                    <button class="ll-btn ll-btn-primary">
+                    <button class="ll-btn ll-btn-primary" id="postReplyBtn">
                         <i class="bi bi-send"></i> Post Reply
                     </button>
                 </div>
@@ -194,107 +153,78 @@
 
     <!-- Sidebar -->
     <div class="col-lg-4">
-        <!-- Discussion Info -->
-        <div class="ll-card mb-4">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title">Discussion Info</h5>
-            </div>
-            <div class="ll-card-body">
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Status</span>
-                    <span class="ll-badge ll-badge-success">Open</span>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Replies</span>
-                    <span class="fw-medium">12</span>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Views</span>
-                    <span class="fw-medium">156</span>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Likes</span>
-                    <span class="fw-medium">24</span>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <span class="text-muted">Last Activity</span>
-                    <span class="fw-medium">30 min ago</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Participants -->
-        <div class="ll-card mb-4">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title">Participants (8)</h5>
-            </div>
-            <div class="ll-card-body">
-                <div class="d-flex flex-wrap gap-2">
-                    <div class="ll-discussion-avatar" style="width: 36px; height: 36px; font-size: 0.75rem;" title="Maria Santos">MS</div>
-                    <div class="ll-discussion-avatar" style="width: 36px; height: 36px; font-size: 0.75rem; background: linear-gradient(135deg, #10b981, #059669);" title="John Reyes">JR</div>
-                    <div class="ll-discussion-avatar" style="width: 36px; height: 36px; font-size: 0.75rem; background: linear-gradient(135deg, #f59e0b, #d97706);" title="Ana Cruz">AC</div>
-                    <div class="ll-discussion-avatar" style="width: 36px; height: 36px; font-size: 0.75rem; background: linear-gradient(135deg, #8b5cf6, #7c3aed);" title="Pedro Garcia">PG</div>
-                    <div class="ll-discussion-avatar" style="width: 36px; height: 36px; font-size: 0.75rem; background: linear-gradient(135deg, #ef4444, #dc2626);" title="Rosa Mendoza">RM</div>
-                    <div class="ll-discussion-avatar" style="width: 36px; height: 36px; font-size: 0.75rem; background: #64748b;" title="3 more">+3</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Related Resources -->
-        <div class="ll-card mb-4">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title">Related Resources</h5>
-            </div>
-            <div class="ll-card-body">
-                <a href="#" class="d-flex gap-3 mb-3 text-decoration-none text-dark">
-                    <div style="width: 40px; height: 40px; background: #fee2e2; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <i class="bi bi-file-earmark-pdf text-danger small"></i>
-                    </div>
-                    <div>
-                        <div class="fw-medium small">Quadratic Equations Guide</div>
-                        <div class="small text-muted">Grade 8 • Mathematics</div>
-                    </div>
-                </a>
-                <a href="#" class="d-flex gap-3 mb-3 text-decoration-none text-dark">
-                    <div style="width: 40px; height: 40px; background: #dbeafe; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <i class="bi bi-play-circle text-primary small"></i>
-                    </div>
-                    <div>
-                        <div class="fw-medium small">Solving Quadratics Video</div>
-                        <div class="small text-muted">Tutorial • 15 min</div>
-                    </div>
-                </a>
-                <a href="#" class="d-flex gap-3 text-decoration-none text-dark">
-                    <div style="width: 40px; height: 40px; background: #d1fae5; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <i class="bi bi-file-earmark-excel text-success small"></i>
-                    </div>
-                    <div>
-                        <div class="fw-medium small">Practice Worksheets</div>
-                        <div class="small text-muted">50+ problems</div>
-                    </div>
-                </a>
-            </div>
-        </div>
-
         <!-- Similar Discussions -->
         <div class="ll-card">
             <div class="ll-card-header">
                 <h5 class="ll-card-title">Similar Discussions</h5>
             </div>
             <div class="ll-card-body">
-                <a href="#" class="d-block text-decoration-none text-dark mb-3 pb-3 border-bottom">
-                    <div class="fw-medium small">How to teach factoring effectively?</div>
-                    <div class="small text-muted">8 replies • 2 days ago</div>
+                @for (int i = 0; i < similarDiscussions.Count; i++)
+                {
+                    var sim = similarDiscussions[i];
+                <a href="#" class="d-block text-decoration-none text-dark mb-3 pb-3 @(i < similarDiscussions.Count - 1 ? "border-bottom" : "")">
+                    <div class="fw-medium small">@sim.Title</div>
+                    <div class="small text-muted">@sim.ReplyCount replies • @((DateTime.Now - sim.CreatedAt).Days switch { 0 => "Today", 1 => "Yesterday", var d when d < 7 => d + " days ago", var d when d < 30 => (d / 7) + " weeks ago", _ => sim.CreatedAt.ToString("MMM dd") })</div>
                 </a>
-                <a href="#" class="d-block text-decoration-none text-dark mb-3 pb-3 border-bottom">
-                    <div class="fw-medium small">Best resources for algebra review</div>
-                    <div class="small text-muted">15 replies • 1 week ago</div>
-                </a>
-                <a href="#" class="d-block text-decoration-none text-dark">
-                    <div class="fw-medium small">Visual aids for mathematics concepts</div>
-                    <div class="small text-muted">23 replies • 2 weeks ago</div>
-                </a>
+                }
             </div>
         </div>
     </div>
 </div>
+
+<!-- Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+    <div id="discToast" class="toast" role="alert">
+        <div class="toast-header bg-success text-white">
+            <i class="bi bi-check-circle me-2"></i>
+            <strong class="me-auto">Success</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">Your reply has been posted successfully!</div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    (function() {
+        // Like buttons
+        document.querySelectorAll('.disc-like-btn, .reply-like-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const icon = this.querySelector('i');
+                const isLiked = icon.classList.contains('bi-heart-fill');
+                const countText = this.textContent.trim();
+                const count = parseInt(countText.match(/\d+/)?.[0] || '0');
+                if (isLiked) {
+                    icon.classList.remove('bi-heart-fill', 'text-danger');
+                    icon.classList.add('bi-heart');
+                    this.innerHTML = `<i class="${icon.className}"></i> ${count - 1}`;
+                } else {
+                    icon.classList.remove('bi-heart');
+                    icon.classList.add('bi-heart-fill', 'text-danger');
+                    this.innerHTML = `<i class="bi bi-heart-fill text-danger"></i> ${count + 1}`;
+                }
+            });
+        });
+
+        // Bookmark toggle
+        var bookmarkBtn = document.getElementById('bookmarkDiscBtn');
+        if (bookmarkBtn) {
+            bookmarkBtn.addEventListener('click', function() {
+                var icon = this.querySelector('i');
+                icon.classList.toggle('bi-bookmark');
+                icon.classList.toggle('bi-bookmark-fill');
+                icon.classList.toggle('text-warning');
+            });
+        }
+
+        // Post reply
+        document.getElementById('postReplyBtn').addEventListener('click', function() {
+            const textarea = document.getElementById('replyTextarea');
+            if (!textarea.value.trim()) { alert('Please enter your reply.'); return; }
+            textarea.value = '';
+            var toast = new bootstrap.Toast(document.getElementById('discToast'));
+            toast.show();
+        });
+    })();
+</script>
+}

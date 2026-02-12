@@ -1,43 +1,132 @@
 @{
-    ViewData["Title"] = "Register";
-    ViewData["HideLayout"] = true;
+    ViewData["Title"] = "Register - LearnLink";
+    Layout = null;
 }
 
-<div class="ll-login-wrapper">
-    <div class="ll-login-left ll-login-left--35">
-        <div class="mb-5">
-            <div class="d-flex align-items-center gap-3 mb-4">
-                <div class="brand-icon" style="width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-book fs-2"></i>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="~/css/learnlink.css" asp-append-version="true" />
+</head>
+<body class="ll-auth-body">
+    <!-- Auth Header -->
+    <nav class="ll-auth-header">
+        <div class="container-fluid px-4">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="ll-auth-logo">
+                    <img src="/images/Learnlink.png" alt="LearnLink" style="height: 64px; width: auto;" />
+                    <span class="ll-auth-logo-text"><span class="fw-bold">Learn</span><span style="color: var(--ll-accent, #E8B84B);">Link</span></span>
                 </div>
-                <h1 class="h2 mb-0 fw-bold">LearnLink</h1>
+                <div class="d-flex align-items-center gap-4">
+                    <a href="@Url.Action("Index", "Home")" class="ll-auth-nav-link"><i class="bi bi-house-door me-1"></i>Home</a>
+                    <div class="d-flex gap-2">
+                        <a href="@Url.Action("Login", "Home")" class="btn btn-outline-primary">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+                        </a>
+                        <a href="@Url.Action("Register", "Home")" class="btn fw-medium" style="background: var(--ll-accent, #E8B84B); color: #1e293b;">
+                            <i class="bi bi-person-plus me-1"></i>Register
+                        </a>
+                    </div>
+                </div>
             </div>
-            <h2 class="display-6 fw-bold mb-3">Create your account</h2>
-            <p class="lead opacity-75">Register to contribute and access resources.</p>
+        </div>
+    </nav>
+
+    <!-- Auth Content -->
+    <div class="ll-auth-wrapper">
+        <div class="container-fluid p-0">
+            <div class="row g-0 justify-content-center">
+                <!-- Right Panel - Register Form -->
+                <div class="col-lg-6 ll-auth-right">
+                    <div class="ll-auth-form-container">
+                        <div class="ll-auth-form-card">
+                            <div class="text-center mb-4">
+                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width: 56px; height: 56px; background: #fef3c7;">
+                                    <i class="bi bi-person-plus fs-4" style="color: var(--ll-accent-dark);"></i>
+                                </div>
+                                <h2 class="ll-auth-form-title">Create your account</h2>
+                                <p class="ll-auth-form-subtitle mb-0">Join LearnLink and start your learning journey today.</p>
+                            </div>
+
+                            <form asp-action="Register" method="post">
+                                <div class="mb-3">
+                                    <label class="form-label">Full Name</label>
+                                    <div class="ll-auth-input-group">
+                                        <i class="bi bi-person ll-auth-input-icon"></i>
+                                        <input type="text" class="form-control" placeholder="Enter your full name" required>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Email Address</label>
+                                    <div class="ll-auth-input-group">
+                                        <i class="bi bi-envelope ll-auth-input-icon"></i>
+                                        <input type="email" class="form-control" placeholder="name@example.com" required>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Password</label>
+                                        <div class="ll-auth-input-group">
+                                            <i class="bi bi-lock ll-auth-input-icon"></i>
+                                            <input type="password" class="form-control" placeholder="Create password" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Confirm Password</label>
+                                        <div class="ll-auth-input-group">
+                                            <i class="bi bi-lock-fill ll-auth-input-icon"></i>
+                                            <input type="password" class="form-control" placeholder="Re-enter password" required>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Register as</label>
+                                    <div class="ll-auth-input-group">
+                                        <i class="bi bi-mortarboard ll-auth-input-icon"></i>
+                                        <select class="form-select" required>
+                                            <option value="">Select your role</option>
+                                            <option value="student">Student</option>
+                                            <option value="contributor">Contributor (Teacher)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-check mb-4">
+                                    <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                                    <label class="form-check-label small" for="agreeTerms" style="text-transform: none; letter-spacing: 0; font-weight: 400;">
+                                        I agree to the <a href="#" class="fw-semibold text-decoration-none" style="color: var(--ll-primary);">Terms of Service</a> and <a href="#" class="fw-semibold text-decoration-none" style="color: var(--ll-primary);">Privacy Policy</a>
+                                    </label>
+                                </div>
+
+                                <button type="submit" class="btn ll-auth-btn-accent w-100 py-2 mb-3">
+                                    <i class="bi bi-person-plus me-2"></i>Create Account
+                                </button>
+
+                                <div class="text-center">
+                                    <span class="text-muted small">Already have an account?</span>
+                                    <a href="@Url.Action("Login", "Home")" class="text-decoration-none small fw-semibold" style="color: var(--ll-primary);">Sign In</a>
+                                </div>
+                            </form>
+
+                            <div class="ll-auth-footer">
+                                <p class="mb-0">&copy; 2026 LearnLink — Student Resource Management System</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="ll-login-right ll-login-right--65">
-        <div class="ll-login-form">
-            <h1>Create account</h1>
-            <form asp-action="Register" method="post">
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Full Name</label>
-                    <input type="text" class="ll-form-control" placeholder="Enter your full name">
-                </div>
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Email</label>
-                    <input type="email" class="ll-form-control" placeholder="Enter your email">
-                </div>
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Password</label>
-                    <input type="password" class="ll-form-control" placeholder="Create a password">
-                </div>
-                <button type="submit" class="ll-btn ll-btn-primary w-100 py-2">Register</button>
-            </form>
-            <div class="text-center mt-3">
-                <a href="@Url.Action("Login","Home")">Back to Login</a>
-            </div>
-        </div>
-    </div>
-</div>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

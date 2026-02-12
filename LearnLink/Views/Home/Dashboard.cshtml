@@ -1,6 +1,15 @@
 @{
     ViewData["Title"] = "Dashboard";
     ViewData["ActivePage"] = "Dashboard";
+
+    var isAdmin = User.IsInRole("SuperAdmin");
+    var isContributor = User.IsInRole("Contributor");
+    var isManager = User.IsInRole("Manager");
+    var canUpload = isAdmin || isContributor || isManager;
+
+    var stats = ViewBag.Stats as LearnLink.Models.DashboardStatsViewModel;
+    var recentResources = ViewBag.RecentResources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
+    var recentActivity = ViewBag.RecentActivity as List<LearnLink.Models.ActivityViewModel> ?? new List<LearnLink.Models.ActivityViewModel>();
 }
 
 <!-- Page Header -->
@@ -14,49 +23,27 @@
                 <span>Dashboard</span>
             </div>
         </div>
+        @if (canUpload)
+        {
         <div class="d-flex gap-2">
             <a href="@Url.Action("Upload", "Home")" class="ll-btn ll-btn-primary">
                 <i class="bi bi-cloud-arrow-up"></i>
                 Upload Resource
             </a>
         </div>
-    </div>
-</div>
-
-<!-- Welcome Banner -->
-<div class="ll-card mb-4" style="background: linear-gradient(135deg, var(--ll-primary) 0%, var(--ll-primary-dark) 100%); color: white; border: none;">
-    <div class="ll-card-body py-4">
-        <div class="row align-items-center">
-            <div class="col-lg-8">
-                <h3 class="fw-bold mb-2">Welcome back, John! 👋</h3>
-                <p class="mb-3 opacity-90">You have 3 new notifications and 5 resources pending review. Keep up the great work contributing to our knowledge base!</p>
-                <div class="d-flex gap-2 flex-wrap">
-                    <a href="@Url.Action("Repository", "Home")" class="ll-btn" style="background: rgba(255,255,255,0.2); color: white;">
-                        <i class="bi bi-folder2-open"></i>
-                        Browse Resources
-                    </a>
-                    <a href="@Url.Action("KnowledgePortal", "Home")" class="ll-btn" style="background: rgba(255,255,255,0.2); color: white;">
-                        <i class="bi bi-chat-square-text"></i>
-                        Join Discussion
-                    </a>
-                </div>
-            </div>
-            <div class="col-lg-4 text-end d-none d-lg-block">
-                <i class="bi bi-book" style="font-size: 8rem; opacity: 0.2;"></i>
-            </div>
-        </div>
+        }
     </div>
 </div>
 
 <!-- Stats Cards -->
 <div class="row g-4 mb-4">
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-6 col-sm-6 col-xl-3">
         <div class="ll-stat-card">
             <div class="ll-stat-icon primary">
                 <i class="bi bi-folder2-open"></i>
             </div>
             <div class="ll-stat-content">
-                <div class="ll-stat-value">1,284</div>
+                <div class="ll-stat-value">@(stats?.TotalResources.ToString("N0") ?? "0")</div>
                 <div class="ll-stat-label">Total Resources</div>
                 <div class="ll-stat-change positive">
                     <i class="bi bi-arrow-up"></i>
@@ -65,13 +52,13 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-6 col-sm-6 col-xl-3">
         <div class="ll-stat-card">
             <div class="ll-stat-icon success">
                 <i class="bi bi-download"></i>
             </div>
             <div class="ll-stat-content">
-                <div class="ll-stat-value">8,542</div>
+                <div class="ll-stat-value">@(stats?.TotalDownloads.ToString("N0") ?? "0")</div>
                 <div class="ll-stat-label">Total Downloads</div>
                 <div class="ll-stat-change positive">
                     <i class="bi bi-arrow-up"></i>
@@ -80,13 +67,13 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-6 col-sm-6 col-xl-3">
         <div class="ll-stat-card">
             <div class="ll-stat-icon warning">
                 <i class="bi bi-people"></i>
             </div>
             <div class="ll-stat-content">
-                <div class="ll-stat-value">456</div>
+                <div class="ll-stat-value">@(stats?.ActiveUsers.ToString("N0") ?? "0")</div>
                 <div class="ll-stat-label">Active Users</div>
                 <div class="ll-stat-change positive">
                     <i class="bi bi-arrow-up"></i>
@@ -95,77 +82,18 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-6 col-sm-6 col-xl-3">
         <div class="ll-stat-card">
             <div class="ll-stat-icon info">
                 <i class="bi bi-chat-square-text"></i>
             </div>
             <div class="ll-stat-content">
-                <div class="ll-stat-value">89</div>
+                <div class="ll-stat-value">@(stats?.ActiveDiscussions.ToString("N0") ?? "0")</div>
                 <div class="ll-stat-label">Active Discussions</div>
                 <div class="ll-stat-change negative">
                     <i class="bi bi-arrow-down"></i>
                     3% from last month
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Quick Actions -->
-<div class="ll-card mb-4">
-    <div class="ll-card-header">
-        <h5 class="ll-card-title">Quick Actions</h5>
-    </div>
-    <div class="ll-card-body">
-        <div class="row g-3">
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="@Url.Action("Upload", "Home")" class="ll-quick-action">
-                    <div class="ll-quick-action-icon primary">
-                        <i class="bi bi-cloud-arrow-up"></i>
-                    </div>
-                    <span class="ll-quick-action-label">Upload</span>
-                </a>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="@Url.Action("Repository", "Home")" class="ll-quick-action">
-                    <div class="ll-quick-action-icon success">
-                        <i class="bi bi-folder2-open"></i>
-                    </div>
-                    <span class="ll-quick-action-label">Browse</span>
-                </a>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="@Url.Action("LessonsLearned", "Home")" class="ll-quick-action">
-                    <div class="ll-quick-action-icon warning">
-                        <i class="bi bi-lightbulb"></i>
-                    </div>
-                    <span class="ll-quick-action-label">Lessons</span>
-                </a>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="@Url.Action("KnowledgePortal", "Home")" class="ll-quick-action">
-                    <div class="ll-quick-action-icon info">
-                        <i class="bi bi-chat-square-text"></i>
-                    </div>
-                    <span class="ll-quick-action-label">Discuss</span>
-                </a>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="@Url.Action("BestPractices", "Home")" class="ll-quick-action">
-                    <div class="ll-quick-action-icon primary">
-                        <i class="bi bi-star"></i>
-                    </div>
-                    <span class="ll-quick-action-label">Best Practices</span>
-                </a>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="@Url.Action("ReadingHistory", "Home")" class="ll-quick-action">
-                    <div class="ll-quick-action-icon success">
-                        <i class="bi bi-clock-history"></i>
-                    </div>
-                    <span class="ll-quick-action-label">History</span>
-                </a>
             </div>
         </div>
     </div>
@@ -180,6 +108,7 @@
                 <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline ll-btn-sm">View All</a>
             </div>
             <div class="ll-card-body p-0">
+                <!-- Desktop: Table view -->
                 <div class="table-responsive">
                     <table class="ll-table">
                         <thead>
@@ -192,93 +121,55 @@
                             </tr>
                         </thead>
                         <tbody>
+                            @foreach (var resource in recentResources)
+                            {
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center gap-3">
-                                        <div style="width: 40px; height: 40px; background: #fee2e2; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                            <i class="bi bi-file-earmark-pdf text-danger"></i>
+                                        <div style="width: 40px; height: 40px; background: @resource.IconBg; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                            <i class="bi @resource.IconClass @resource.IconColor"></i>
                                         </div>
                                         <div>
-                                            <div class="fw-medium">Mathematics Grade 8 Reviewer</div>
-                                            <div class="small text-muted">PDF • 2.4 MB</div>
+                                            <div class="fw-medium">@resource.Title</div>
+                                            <div class="small text-muted">@resource.FileFormat • @resource.FileSize</div>
                                         </div>
                                     </div>
                                 </td>
-                                <td><span class="ll-tag">Mathematics</span></td>
-                                <td>Maria Santos</td>
-                                <td>Dec 15, 2024</td>
-                                <td><span class="ll-badge ll-badge-success">Published</span></td>
+                                <td><span class="ll-tag">@resource.Subject</span></td>
+                                <td>@resource.Uploader</td>
+                                <td>@resource.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>@resource.Status</td>
                             </tr>
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center gap-3">
-                                        <div style="width: 40px; height: 40px; background: #dbeafe; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                            <i class="bi bi-file-earmark-word text-primary"></i>
-                                        </div>
-                                        <div>
-                                            <div class="fw-medium">English Literature Study Guide</div>
-                                            <div class="small text-muted">DOCX • 1.8 MB</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td><span class="ll-tag">English</span></td>
-                                <td>John Reyes</td>
-                                <td>Dec 14, 2024</td>
-                                <td><span class="ll-badge ll-badge-warning">Pending</span></td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center gap-3">
-                                        <div style="width: 40px; height: 40px; background: #d1fae5; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                            <i class="bi bi-file-earmark-excel text-success"></i>
-                                        </div>
-                                        <div>
-                                            <div class="fw-medium">Science Lab Activity Sheets</div>
-                                            <div class="small text-muted">XLSX • 856 KB</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td><span class="ll-tag">Science</span></td>
-                                <td>Ana Cruz</td>
-                                <td>Dec 13, 2024</td>
-                                <td><span class="ll-badge ll-badge-success">Published</span></td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center gap-3">
-                                        <div style="width: 40px; height: 40px; background: #fef3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                            <i class="bi bi-file-earmark-ppt text-warning"></i>
-                                        </div>
-                                        <div>
-                                            <div class="fw-medium">Philippine History Presentation</div>
-                                            <div class="small text-muted">PPTX • 5.2 MB</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td><span class="ll-tag">History</span></td>
-                                <td>Pedro Garcia</td>
-                                <td>Dec 12, 2024</td>
-                                <td><span class="ll-badge ll-badge-success">Published</span></td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center gap-3">
-                                        <div style="width: 40px; height: 40px; background: #fee2e2; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                            <i class="bi bi-file-earmark-pdf text-danger"></i>
-                                        </div>
-                                        <div>
-                                            <div class="fw-medium">Filipino Reading Comprehension</div>
-                                            <div class="small text-muted">PDF • 1.2 MB</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td><span class="ll-tag">Filipino</span></td>
-                                <td>Rosa Mendoza</td>
-                                <td>Dec 11, 2024</td>
-                                <td><span class="ll-badge ll-badge-danger">Rejected</span></td>
-                            </tr>
+                            }
                         </tbody>
                     </table>
+                </div>
+                <!-- Mobile: Card list view -->
+                <div class="ll-mobile-card-list">
+                    @foreach (var resource in recentResources)
+                    {
+                    <div class="ll-mobile-card-item"
+                         data-res-title="@resource.Title"
+                         data-res-format="@resource.FileFormat"
+                         data-res-size="@resource.FileSize"
+                         data-res-subject="@resource.Subject"
+                         data-res-uploader="@resource.Uploader"
+                         data-res-date="@resource.CreatedAt.ToString("MMM dd, yyyy")"
+                         data-res-status="@resource.Status"
+                         data-res-grade="@resource.GradeLevel"
+                         data-res-type="@resource.ResourceType">
+                        <div class="ll-mobile-card-icon" style="background: @resource.IconBg;">
+                            <i class="bi @resource.IconClass @resource.IconColor"></i>
+                        </div>
+                        <div class="ll-mobile-card-info">
+                            <div class="ll-mobile-card-title">@resource.Title</div>
+                            <div class="ll-mobile-card-sub">@resource.FileFormat • @resource.FileSize</div>
+                        </div>
+                        <div class="ll-mobile-card-chevron">
+                            <i class="bi bi-chevron-right"></i>
+                        </div>
+                    </div>
+                    }
                 </div>
             </div>
         </div>
@@ -286,78 +177,24 @@
 
     <!-- Right Sidebar -->
     <div class="col-lg-4">
-        <!-- Recommendations -->
-        <div class="ll-card mb-4">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title">Recommended for You</h5>
-            </div>
-            <div class="ll-card-body">
-                <div class="ll-recommendation-card">
-                    <div class="ll-recommendation-icon">📐</div>
-                    <div class="ll-recommendation-content">
-                        <h6>Algebra Basics Grade 7</h6>
-                        <p>Based on your reading history</p>
-                    </div>
-                </div>
-                <div class="ll-recommendation-card">
-                    <div class="ll-recommendation-icon">🔬</div>
-                    <div class="ll-recommendation-content">
-                        <h6>Biology Cell Structure</h6>
-                        <p>Popular among students</p>
-                    </div>
-                </div>
-                <div class="ll-recommendation-card">
-                    <div class="ll-recommendation-icon">📚</div>
-                    <div class="ll-recommendation-content">
-                        <h6>World History Timeline</h6>
-                        <p>Trending this week</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Recent Activity -->
         <div class="ll-card">
             <div class="ll-card-header">
                 <h5 class="ll-card-title">Recent Activity</h5>
             </div>
             <div class="ll-card-body">
+                @foreach (var activity in recentActivity)
+                {
                 <div class="ll-activity-item">
-                    <div class="ll-activity-avatar">MS</div>
+                    <div class="ll-activity-avatar" @(string.IsNullOrEmpty(activity.UserColor) ? "" : $"style=\"{activity.UserColor}\"")>@activity.UserInitials</div>
                     <div class="ll-activity-content">
                         <div class="ll-activity-text">
-                            <strong>Maria Santos</strong> uploaded a new resource "Math Grade 8 Reviewer"
+                            <strong>@activity.User</strong> @activity.Action "@activity.Target"
                         </div>
-                        <div class="ll-activity-time">2 hours ago</div>
+                        <div class="ll-activity-time">@activity.TimeAgo</div>
                     </div>
                 </div>
-                <div class="ll-activity-item">
-                    <div class="ll-activity-avatar" style="background: #d1fae5; color: #065f46;">JR</div>
-                    <div class="ll-activity-content">
-                        <div class="ll-activity-text">
-                            <strong>John Reyes</strong> commented on "English Study Guide"
-                        </div>
-                        <div class="ll-activity-time">4 hours ago</div>
-                    </div>
-                </div>
-                <div class="ll-activity-item">
-                    <div class="ll-activity-avatar" style="background: #fef3c7; color: #92400e;">AC</div>
-                    <div class="ll-activity-content">
-                        <div class="ll-activity-text">
-                            <strong>Ana Cruz</strong> started a new discussion "Tips for Science Labs"
-                        </div>
-                        <div class="ll-activity-time">Yesterday</div>
-                    </div>
-                </div>
-                <div class="ll-activity-item">
-                    <div class="ll-activity-avatar" style="background: #fee2e2; color: #991b1b;">PG</div>
-                    <div class="ll-activity-content">
-                        <div class="ll-activity-text">
-                            <strong>Pedro Garcia</strong> rated "History Presentation" ⭐⭐⭐⭐⭐
-                        </div>
-                        <div class="ll-activity-time">Yesterday</div>
-                    </div>
-                </div>
+                }
             </div>
         </div>
     </div>

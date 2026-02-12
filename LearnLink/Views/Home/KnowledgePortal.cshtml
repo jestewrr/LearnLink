@@ -1,6 +1,8 @@
 @{
     ViewData["Title"] = "Knowledge Sharing Portal";
     ViewData["ActivePage"] = "KnowledgePortal";
+
+    var discussions = ViewBag.Discussions as List<LearnLink.Models.DiscussionViewModel> ?? new List<LearnLink.Models.DiscussionViewModel>();
 }
 
 <!-- Page Header -->
@@ -25,22 +27,31 @@
 
 <div class="row g-4">
     <!-- Main Content -->
-    <div class="col-lg-8">
+    <div class="col-lg-12">
+        <!-- Search -->
+        <div class="ll-card mb-4">
+            <div class="ll-card-body">
+                <div class="position-relative">
+                    <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
+                    <input type="text" class="ll-form-control ps-5" id="portalSearchInput" placeholder="Search discussions...">
+                </div>
+            </div>
+        </div>
+
         <!-- Filter Tabs -->
         <div class="ll-card mb-4">
             <div class="ll-card-body py-2">
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <button class="ll-btn ll-btn-primary ll-btn-sm">All Discussions</button>
-                    <button class="ll-btn ll-btn-outline ll-btn-sm">Trending</button>
-                    <button class="ll-btn ll-btn-outline ll-btn-sm">Questions</button>
-                    <button class="ll-btn ll-btn-outline ll-btn-sm">Ideas</button>
-                    <button class="ll-btn ll-btn-outline ll-btn-sm">Resources</button>
-                    <button class="ll-btn ll-btn-outline ll-btn-sm">Study Groups</button>
+                    <button class="ll-btn ll-btn-primary ll-btn-sm portal-filter-btn active" data-type="">All Discussions</button>
+                    <button class="ll-btn ll-btn-outline ll-btn-sm portal-filter-btn" data-type="Question">Questions</button>
+                    <button class="ll-btn ll-btn-outline ll-btn-sm portal-filter-btn" data-type="Idea">Ideas</button>
+                    <button class="ll-btn ll-btn-outline ll-btn-sm portal-filter-btn" data-type="Resource">Resources</button>
+                    <button class="ll-btn ll-btn-outline ll-btn-sm portal-filter-btn" data-type="Study Group">Study Groups</button>
                     <div class="ms-auto">
-                        <select class="ll-form-control ll-form-select" style="width: auto;">
-                            <option>Most Recent</option>
-                            <option>Most Liked</option>
-                            <option>Most Commented</option>
+                        <select class="ll-form-control ll-form-select" style="width: auto;" id="portalSortSelect">
+                            <option value="recent">Most Recent</option>
+                            <option value="likes">Most Liked</option>
+                            <option value="comments">Most Commented</option>
                         </select>
                     </div>
                 </div>
@@ -48,144 +59,49 @@
         </div>
 
         <!-- Discussions List -->
-        <div class="ll-discussion-card">
+        <div id="portalDiscussionsList">
+        @foreach (var discussion in discussions)
+        {
+            var typeClass = discussion.Type switch
+            {
+                "Question" => "ll-badge-info",
+                "Idea" => "ll-badge-info",
+                "Resource" => "ll-badge-success",
+                "Study Group" => "ll-badge-warning",
+                _ => "ll-badge-info"
+            };
+        <div class="ll-discussion-card portal-discussion-item" data-type="@discussion.Type" data-likes="@discussion.LikeCount" data-comments="@discussion.ReplyCount" data-date="@discussion.CreatedAt.ToString("yyyy-MM-dd")" data-title="@discussion.Title.ToLower()">
             <div class="ll-discussion-header">
-                <div class="ll-discussion-avatar">MS</div>
+                <div class="ll-discussion-avatar" @(string.IsNullOrEmpty(discussion.AuthorColor) ? "" : $"style=\"{discussion.AuthorColor}\"")>@discussion.AuthorInitials</div>
                 <div class="ll-discussion-info">
-                    <a href="#" class="ll-discussion-title text-decoration-none">Tips for Solving Quadratic Equations Faster</a>
+                    <a href="#" class="ll-discussion-title text-decoration-none">@discussion.Title</a>
                     <div class="ll-discussion-meta">
-                        <span class="fw-medium">Maria Santos</span> • Contributor • 2 hours ago
+                        <span class="fw-medium">@discussion.Author</span> • @discussion.AuthorRole • @((DateTime.Now - discussion.CreatedAt).Days switch { 0 => "Today", 1 => "Yesterday", var d => d + " days ago" })
                     </div>
                 </div>
-                <span class="ll-badge ll-badge-info">Question</span>
+                <span class="ll-badge @typeClass">@discussion.Type</span>
             </div>
-            <p class="ll-discussion-excerpt">
-                I've been teaching quadratic equations for years and noticed many students struggle with the formula method. 
-                Does anyone have tips or alternative approaches that work better for visual learners?
-            </p>
+            <p class="ll-discussion-excerpt">@discussion.Content</p>
             <div class="d-flex flex-wrap gap-2 mb-3">
-                <span class="ll-tag">Mathematics</span>
-                <span class="ll-tag">Grade 8</span>
-                <span class="ll-tag">Algebra</span>
+                @foreach (var tag in discussion.Tags)
+                {
+                <span class="ll-tag">@tag</span>
+                }
             </div>
             <div class="ll-discussion-stats">
-                <span><i class="bi bi-heart"></i> 24 likes</span>
-                <span><i class="bi bi-chat"></i> 12 comments</span>
-                <span><i class="bi bi-eye"></i> 156 views</span>
-                <span><i class="bi bi-bookmark"></i> 8 saves</span>
+                <span><i class="bi bi-heart"></i> @discussion.LikeCount likes</span>
+                <span><i class="bi bi-chat"></i> @discussion.ReplyCount comments</span>
+                <span><i class="bi bi-eye"></i> @discussion.ViewCount views</span>
             </div>
         </div>
-
-        <div class="ll-discussion-card">
-            <div class="ll-discussion-header">
-                <div class="ll-discussion-avatar" style="background: linear-gradient(135deg, #10b981, #059669);">JR</div>
-                <div class="ll-discussion-info">
-                    <a href="#" class="ll-discussion-title text-decoration-none">Sharing my Science Lab Safety Guidelines Poster</a>
-                    <div class="ll-discussion-meta">
-                        <span class="fw-medium">John Reyes</span> • Contributor • 5 hours ago
-                    </div>
-                </div>
-                <span class="ll-badge ll-badge-success">Resource</span>
-            </div>
-            <p class="ll-discussion-excerpt">
-                Created a colorful and engaging lab safety poster for our science classroom. Feel free to download and use it! 
-                It covers all the essential safety protocols in a way that students find easy to remember.
-            </p>
-            <div class="d-flex flex-wrap gap-2 mb-3">
-                <span class="ll-tag">Science</span>
-                <span class="ll-tag">Lab Safety</span>
-                <span class="ll-tag">Poster</span>
-            </div>
-            <div class="ll-discussion-stats">
-                <span><i class="bi bi-heart"></i> 45 likes</span>
-                <span><i class="bi bi-chat"></i> 8 comments</span>
-                <span><i class="bi bi-eye"></i> 234 views</span>
-                <span><i class="bi bi-bookmark"></i> 32 saves</span>
-            </div>
+        }
         </div>
 
-        <div class="ll-discussion-card">
-            <div class="ll-discussion-header">
-                <div class="ll-discussion-avatar" style="background: linear-gradient(135deg, #f59e0b, #d97706);">AC</div>
-                <div class="ll-discussion-info">
-                    <a href="#" class="ll-discussion-title text-decoration-none">Study Group: Grade 9 English Literature - Short Stories</a>
-                    <div class="ll-discussion-meta">
-                        <span class="fw-medium">Ana Cruz</span> • User • Yesterday
-                    </div>
-                </div>
-                <span class="ll-badge ll-badge-warning">Study Group</span>
-            </div>
-            <p class="ll-discussion-excerpt">
-                Starting a study group for Grade 9 students preparing for the upcoming English quarterly exam. 
-                We'll be focusing on short stories analysis and interpretation. Join us this Saturday!
-            </p>
-            <div class="d-flex flex-wrap gap-2 mb-3">
-                <span class="ll-tag">English</span>
-                <span class="ll-tag">Grade 9</span>
-                <span class="ll-tag">Study Group</span>
-            </div>
-            <div class="ll-discussion-stats">
-                <span><i class="bi bi-heart"></i> 18 likes</span>
-                <span><i class="bi bi-chat"></i> 25 comments</span>
-                <span><i class="bi bi-eye"></i> 189 views</span>
-                <span><i class="bi bi-people"></i> 12 members</span>
-            </div>
-        </div>
-
-        <div class="ll-discussion-card">
-            <div class="ll-discussion-header">
-                <div class="ll-discussion-avatar" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">PG</div>
-                <div class="ll-discussion-info">
-                    <a href="#" class="ll-discussion-title text-decoration-none">💡 Idea: Interactive Timeline for Philippine History</a>
-                    <div class="ll-discussion-meta">
-                        <span class="fw-medium">Pedro Garcia</span> • Contributor • 2 days ago
-                    </div>
-                </div>
-                <span class="ll-badge ll-badge-info">Idea</span>
-            </div>
-            <p class="ll-discussion-excerpt">
-                What if we created an interactive digital timeline showing key events in Philippine History? 
-                Students could click on events to see detailed information, images, and related resources. Who's interested in collaborating?
-            </p>
-            <div class="d-flex flex-wrap gap-2 mb-3">
-                <span class="ll-tag">History</span>
-                <span class="ll-tag">Interactive</span>
-                <span class="ll-tag">Collaboration</span>
-            </div>
-            <div class="ll-discussion-stats">
-                <span><i class="bi bi-heart"></i> 67 likes</span>
-                <span><i class="bi bi-chat"></i> 34 comments</span>
-                <span><i class="bi bi-eye"></i> 412 views</span>
-                <span><i class="bi bi-bookmark"></i> 28 saves</span>
-            </div>
-        </div>
-
-        <div class="ll-discussion-card">
-            <div class="ll-discussion-header">
-                <div class="ll-discussion-avatar" style="background: linear-gradient(135deg, #ef4444, #dc2626);">RM</div>
-                <div class="ll-discussion-info">
-                    <a href="#" class="ll-discussion-title text-decoration-none">Best practices for creating engaging worksheets?</a>
-                    <div class="ll-discussion-meta">
-                        <span class="fw-medium">Rosa Mendoza</span> • Contributor • 3 days ago
-                    </div>
-                </div>
-                <span class="ll-badge ll-badge-info">Question</span>
-            </div>
-            <p class="ll-discussion-excerpt">
-                I want to create more engaging worksheets for my Filipino class. Any tips on layout, formatting, or activities 
-                that keep students interested? Looking for practical advice from experienced contributors.
-            </p>
-            <div class="d-flex flex-wrap gap-2 mb-3">
-                <span class="ll-tag">Filipino</span>
-                <span class="ll-tag">Worksheet Design</span>
-                <span class="ll-tag">Best Practices</span>
-            </div>
-            <div class="ll-discussion-stats">
-                <span><i class="bi bi-heart"></i> 31 likes</span>
-                <span><i class="bi bi-chat"></i> 19 comments</span>
-                <span><i class="bi bi-eye"></i> 278 views</span>
-                <span><i class="bi bi-bookmark"></i> 15 saves</span>
-            </div>
+        <!-- No Results -->
+        <div class="text-center py-5 d-none" id="portalNoResults">
+            <i class="bi bi-chat-square-text fs-1 text-muted"></i>
+            <h5 class="mt-3">No discussions found</h5>
+            <p class="text-muted">Try adjusting your filter.</p>
         </div>
 
         <!-- Load More -->
@@ -194,112 +110,6 @@
                 <i class="bi bi-arrow-clockwise"></i>
                 Load More Discussions
             </button>
-        </div>
-    </div>
-
-    <!-- Sidebar -->
-    <div class="col-lg-4">
-        <!-- Search -->
-        <div class="ll-card mb-4">
-            <div class="ll-card-body">
-                <div class="position-relative">
-                    <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
-                    <input type="text" class="ll-form-control ps-5" placeholder="Search discussions...">
-                </div>
-            </div>
-        </div>
-
-        <!-- Trending Topics -->
-        <div class="ll-card mb-4">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title"><i class="bi bi-fire text-danger me-2"></i>Trending Topics</h5>
-            </div>
-            <div class="ll-card-body">
-                <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom">
-                    <span class="fw-bold text-muted">1</span>
-                    <div>
-                        <a href="#" class="text-decoration-none fw-medium d-block">#QuarterlyExamPrep</a>
-                        <small class="text-muted">156 discussions</small>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom">
-                    <span class="fw-bold text-muted">2</span>
-                    <div>
-                        <a href="#" class="text-decoration-none fw-medium d-block">#ScienceMonth</a>
-                        <small class="text-muted">98 discussions</small>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom">
-                    <span class="fw-bold text-muted">3</span>
-                    <div>
-                        <a href="#" class="text-decoration-none fw-medium d-block">#MathTips</a>
-                        <small class="text-muted">87 discussions</small>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom">
-                    <span class="fw-bold text-muted">4</span>
-                    <div>
-                        <a href="#" class="text-decoration-none fw-medium d-block">#StudyTechniques</a>
-                        <small class="text-muted">76 discussions</small>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-3">
-                    <span class="fw-bold text-muted">5</span>
-                    <div>
-                        <a href="#" class="text-decoration-none fw-medium d-block">#PhilippineHistory</a>
-                        <small class="text-muted">65 discussions</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Active Contributors -->
-        <div class="ll-card mb-4">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title"><i class="bi bi-trophy text-warning me-2"></i>Top Contributors</h5>
-            </div>
-            <div class="ll-card-body">
-                <div class="d-flex align-items-center gap-3 mb-3">
-                    <div class="ll-discussion-avatar" style="width: 44px; height: 44px;">MS</div>
-                    <div class="flex-fill">
-                        <div class="fw-medium">Maria Santos</div>
-                        <small class="text-muted">Mathematics Teacher</small>
-                    </div>
-                    <span class="ll-badge ll-badge-success">245 posts</span>
-                </div>
-                <div class="d-flex align-items-center gap-3 mb-3">
-                    <div class="ll-discussion-avatar" style="width: 44px; height: 44px; background: linear-gradient(135deg, #10b981, #059669);">JR</div>
-                    <div class="flex-fill">
-                        <div class="fw-medium">John Reyes</div>
-                        <small class="text-muted">Science Teacher</small>
-                    </div>
-                    <span class="ll-badge ll-badge-success">198 posts</span>
-                </div>
-                <div class="d-flex align-items-center gap-3 mb-3">
-                    <div class="ll-discussion-avatar" style="width: 44px; height: 44px; background: linear-gradient(135deg, #f59e0b, #d97706);">AC</div>
-                    <div class="flex-fill">
-                        <div class="fw-medium">Ana Cruz</div>
-                        <small class="text-muted">English Teacher</small>
-                    </div>
-                    <span class="ll-badge ll-badge-success">167 posts</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Community Guidelines -->
-        <div class="ll-card">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title"><i class="bi bi-info-circle me-2"></i>Community Guidelines</h5>
-            </div>
-            <div class="ll-card-body">
-                <ul class="list-unstyled mb-0 small">
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Be respectful and constructive</li>
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Share valuable educational content</li>
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Give credit to original sources</li>
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Stay on topic and relevant</li>
-                    <li><i class="bi bi-check-circle text-success me-2"></i>Report inappropriate content</li>
-                </ul>
-            </div>
         </div>
     </div>
 </div>
@@ -316,20 +126,20 @@
                 <div class="ll-form-group">
                     <label class="ll-form-label">Discussion Type</label>
                     <div class="d-flex flex-wrap gap-2">
-                        <button type="button" class="ll-btn ll-btn-outline ll-btn-sm active">Question</button>
-                        <button type="button" class="ll-btn ll-btn-outline ll-btn-sm">Idea</button>
-                        <button type="button" class="ll-btn ll-btn-outline ll-btn-sm">Resource Share</button>
-                        <button type="button" class="ll-btn ll-btn-outline ll-btn-sm">Study Group</button>
-                        <button type="button" class="ll-btn ll-btn-outline ll-btn-sm">General</button>
+                        <button type="button" class="ll-btn ll-btn-outline ll-btn-sm disc-type-btn active">Question</button>
+                        <button type="button" class="ll-btn ll-btn-outline ll-btn-sm disc-type-btn">Idea</button>
+                        <button type="button" class="ll-btn ll-btn-outline ll-btn-sm disc-type-btn">Resource Share</button>
+                        <button type="button" class="ll-btn ll-btn-outline ll-btn-sm disc-type-btn">Study Group</button>
+                        <button type="button" class="ll-btn ll-btn-outline ll-btn-sm disc-type-btn">General</button>
                     </div>
                 </div>
                 <div class="ll-form-group">
                     <label class="ll-form-label">Title</label>
-                    <input type="text" class="ll-form-control" placeholder="Enter a clear, descriptive title">
+                    <input type="text" class="ll-form-control" id="discTitle" placeholder="Enter a clear, descriptive title" required>
                 </div>
                 <div class="ll-form-group">
                     <label class="ll-form-label">Content</label>
-                    <textarea class="ll-form-control" rows="6" placeholder="Share your thoughts, questions, or ideas..."></textarea>
+                    <textarea class="ll-form-control" rows="6" id="discContent" placeholder="Share your thoughts, questions, or ideas..." required></textarea>
                 </div>
                 <div class="row g-3">
                     <div class="col-md-6">
@@ -369,7 +179,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="ll-btn ll-btn-primary">
+                <button type="button" class="ll-btn ll-btn-primary" id="postDiscussionBtn">
                     <i class="bi bi-send"></i>
                     Post Discussion
                 </button>
@@ -377,3 +187,88 @@
         </div>
     </div>
 </div>
+
+<!-- Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+    <div id="portalToast" class="toast" role="alert">
+        <div class="toast-header bg-success text-white">
+            <i class="bi bi-check-circle me-2"></i>
+            <strong class="me-auto">Success</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">Your discussion has been posted successfully!</div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    (function() {
+        const filterBtns = document.querySelectorAll('.portal-filter-btn');
+        const items = document.querySelectorAll('.portal-discussion-item');
+        const searchInput = document.getElementById('portalSearchInput');
+        const sortSelect = document.getElementById('portalSortSelect');
+        const list = document.getElementById('portalDiscussionsList');
+        const noResults = document.getElementById('portalNoResults');
+
+        function filterAndSort() {
+            const activeBtn = document.querySelector('.portal-filter-btn.active');
+            const typeFilter = activeBtn ? activeBtn.dataset.type : '';
+            const query = searchInput.value.toLowerCase();
+            let visibleCount = 0;
+
+            const arr = Array.from(items);
+            arr.forEach(item => {
+                const matchType = !typeFilter || item.dataset.type === typeFilter;
+                const matchSearch = !query || item.dataset.title.includes(query);
+                const visible = matchType && matchSearch;
+                item.classList.toggle('d-none', !visible);
+                if (visible) visibleCount++;
+            });
+
+            // Sort
+            arr.sort((a, b) => {
+                switch (sortSelect.value) {
+                    case 'likes': return parseInt(b.dataset.likes) - parseInt(a.dataset.likes);
+                    case 'comments': return parseInt(b.dataset.comments) - parseInt(a.dataset.comments);
+                    default: return b.dataset.date.localeCompare(a.dataset.date);
+                }
+            });
+            arr.forEach(item => list.appendChild(item));
+            noResults.classList.toggle('d-none', visibleCount > 0);
+        }
+
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                filterBtns.forEach(b => { b.classList.remove('ll-btn-primary', 'active'); b.classList.add('ll-btn-outline'); });
+                this.classList.remove('ll-btn-outline');
+                this.classList.add('ll-btn-primary', 'active');
+                filterAndSort();
+            });
+        });
+
+        searchInput.addEventListener('input', filterAndSort);
+        sortSelect.addEventListener('change', filterAndSort);
+
+        // Discussion type buttons in modal
+        document.querySelectorAll('.disc-type-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.disc-type-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Post discussion
+        document.getElementById('postDiscussionBtn').addEventListener('click', function() {
+            const title = document.getElementById('discTitle').value;
+            const content = document.getElementById('discContent').value;
+            if (!title || !content) { alert('Please fill in the title and content.'); return; }
+            var modal = bootstrap.Modal.getInstance(document.getElementById('newDiscussionModal'));
+            modal.hide();
+            var toast = new bootstrap.Toast(document.getElementById('portalToast'));
+            toast.show();
+            document.getElementById('discTitle').value = '';
+            document.getElementById('discContent').value = '';
+        });
+    })();
+</script>
+}
