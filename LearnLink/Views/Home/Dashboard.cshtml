@@ -6,9 +6,11 @@
     var isContributor = User.IsInRole("Contributor");
     var isManager = User.IsInRole("Manager");
     var canUpload = isAdmin || isContributor || isManager;
+    var canAdmin = isAdmin; // Added definition
 
     var stats = ViewBag.Stats as LearnLink.Models.DashboardStatsViewModel;
     var recentResources = ViewBag.RecentResources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
+    var pendingApprovals = ViewBag.PendingApprovals as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
     var recentActivity = ViewBag.RecentActivity as List<LearnLink.Models.ActivityViewModel> ?? new List<LearnLink.Models.ActivityViewModel>();
 }
 
@@ -44,10 +46,10 @@
             </div>
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@(stats?.TotalResources.ToString("N0") ?? "0")</div>
-                <div class="ll-stat-label">Total Resources</div>
+                <div class="ll-stat-label">Today's Resources</div>
                 <div class="ll-stat-change positive">
                     <i class="bi bi-arrow-up"></i>
-                    12% from last month
+                    12% from yesterday
                 </div>
             </div>
         </div>
@@ -59,10 +61,10 @@
             </div>
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@(stats?.TotalDownloads.ToString("N0") ?? "0")</div>
-                <div class="ll-stat-label">Total Downloads</div>
+                <div class="ll-stat-label">Today's Downloads</div>
                 <div class="ll-stat-change positive">
                     <i class="bi bi-arrow-up"></i>
-                    8% from last month
+                    8% from yesterday
                 </div>
             </div>
         </div>
@@ -74,10 +76,10 @@
             </div>
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@(stats?.ActiveUsers.ToString("N0") ?? "0")</div>
-                <div class="ll-stat-label">Active Users</div>
+                <div class="ll-stat-label">Active Users Today</div>
                 <div class="ll-stat-change positive">
                     <i class="bi bi-arrow-up"></i>
-                    5% from last month
+                    5% from yesterday
                 </div>
             </div>
         </div>
@@ -89,10 +91,10 @@
             </div>
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@(stats?.ActiveDiscussions.ToString("N0") ?? "0")</div>
-                <div class="ll-stat-label">Active Discussions</div>
+                <div class="ll-stat-label">Discussions Today</div>
                 <div class="ll-stat-change negative">
                     <i class="bi bi-arrow-down"></i>
-                    3% from last month
+                    3% from yesterday
                 </div>
             </div>
         </div>
@@ -100,8 +102,122 @@
 </div>
 
 <div class="row g-4">
+    @if (canAdmin || isManager)
+    {
+    <!-- Pending Approvals -->
+    <div class="col-12">
+        <div class="ll-card mb-4">
+            <div class="ll-card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                <h5 class="ll-card-title text-secondary mb-0"><i class="bi bi-hourglass-split me-2"></i>Pending Approvals</h5>
+                <span class="badge bg-light text-muted border">@pendingApprovals.Count Pending</span>
+            </div>
+            <div class="ll-card-body p-0">
+                <!-- Desktop: Table view -->
+                <div class="table-responsive d-none d-md-block">
+                    <table class="ll-table">
+                        <thead>
+                            <tr>
+                                <th>Resource</th>
+                                <th>Subject</th>
+                                <th>Contributor</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (pendingApprovals.Any())
+                            {
+                                foreach (var resource in pendingApprovals)
+                                {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div style="width: 40px; height: 40px; background: var(--ll-light); border: 1px solid #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                                <i class="bi @resource.IconClass text-secondary"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-medium">@resource.Title</div>
+                                                <div class="small text-muted">@resource.FileFormat • @resource.FileSize</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td><span class="ll-tag">@resource.Subject</span></td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div style="width: 32px; height: 32px; background: var(--ll-light); border: 1px solid #e2e8f0; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; color: var(--ll-secondary);">@resource.UploaderInitials</div>
+                                            <span>@resource.Uploader</span>
+                                        </div>
+                                    </td>
+                                    <td>@resource.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                    <td>
+                                        <div class="d-flex gap-2">
+                                            <a href="@Url.Action("ApproveResource", "Home", new { id = resource.Id })" class="ll-btn ll-btn-sm ll-btn-success" title="Approve"><i class="bi bi-check-lg"></i> Approve</a>
+                                            <a href="@Url.Action("RejectResource", "Home", new { id = resource.Id })" class="ll-btn ll-btn-sm ll-btn-danger-outline" title="Reject"><i class="bi bi-x-lg"></i> Reject</a>
+                                            <a href="@Url.Action("ResourceDetail", "Home", new { id = resource.Id })" class="ll-btn ll-btn-sm ll-btn-outline" title="View"><i class="bi bi-eye"></i></a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        <i class="bi bi-check-circle display-6 d-block mb-2"></i>
+                                        All caught up! No pending approvals.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Mobile: Card list view -->
+                <div class="d-md-none">
+                    @if (pendingApprovals.Any())
+                    {
+                        foreach (var resource in pendingApprovals)
+                        {
+                            <div class="p-3 border-bottom">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <div style="width: 40px; height: 40px; background: var(--ll-light); border: 1px solid #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                        <i class="bi @resource.IconClass text-secondary"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-medium">@resource.Title</div>
+                                        <div class="small text-muted">@resource.FileFormat • @resource.FileSize</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="ll-tag">@resource.Subject</span>
+                                    <div class="text-muted small">@resource.CreatedAt.ToString("MMM dd")</div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <div style="width: 24px; height: 24px; background: var(--ll-light); border: 1px solid #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 600; color: var(--ll-secondary);">@resource.UploaderInitials</div>
+                                    <span class="small text-muted">By @resource.Uploader</span>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <a href="@Url.Action("ApproveResource", "Home", new { id = resource.Id })" class="ll-btn ll-btn-sm ll-btn-success flex-grow-1"><i class="bi bi-check-lg"></i> Approve</a>
+                                    <a href="@Url.Action("RejectResource", "Home", new { id = resource.Id })" class="ll-btn ll-btn-sm ll-btn-danger-outline flex-grow-1"><i class="bi bi-x-lg"></i> Reject</a>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-check-circle display-6 d-block mb-2"></i>
+                            All caught up! No pending approvals.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    }
+
     <!-- Recent Resources -->
-    <div class="col-lg-8">
+    <div class="col-12">
         <div class="ll-card">
             <div class="ll-card-header">
                 <h5 class="ll-card-title">Recent Resources</h5>
@@ -175,27 +291,43 @@
         </div>
     </div>
 
-    <!-- Right Sidebar -->
-    <div class="col-lg-4">
-        <!-- Recent Activity -->
-        <div class="ll-card">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title">Recent Activity</h5>
-            </div>
-            <div class="ll-card-body">
-                @foreach (var activity in recentActivity)
-                {
-                <div class="ll-activity-item">
-                    <div class="ll-activity-avatar" @(string.IsNullOrEmpty(activity.UserColor) ? "" : $"style=\"{activity.UserColor}\"")>@activity.UserInitials</div>
-                    <div class="ll-activity-content">
-                        <div class="ll-activity-text">
-                            <strong>@activity.User</strong> @activity.Action "@activity.Target"
-                        </div>
-                        <div class="ll-activity-time">@activity.TimeAgo</div>
-                    </div>
+
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050; animation: slideIn 0.3s ease-out;">
+        <div class="ll-card shadow-lg" style="min-width: 320px; border: none; overflow: hidden;">
+            <div class="ll-card-header py-2 d-flex justify-content-between align-items-center" style="background: var(--ll-success); color: #fff;">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span class="fw-bold">@TempData["SuccessTitle"]</span>
                 </div>
-                }
+                <button type="button" class="btn-close btn-close-white small" onclick="this.parentElement.parentElement.parentElement.remove()" style="font-size: 0.65rem;"></button>
+            </div>
+            <div class="ll-card-body py-3" style="background: #fff;">
+                <p class="mb-0 small text-dark">@TempData["SuccessMessage"]</p>
             </div>
         </div>
     </div>
-</div>
+
+    <style>
+        @@keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+
+    <script>
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            const toast = document.querySelector('.position-fixed.bottom-0.end-0');
+            if (toast) {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(20px)';
+                toast.style.transition = 'all 0.5s ease';
+                setTimeout(() => toast.remove(), 500);
+            }
+        }, 5000);
+    </script>
+}

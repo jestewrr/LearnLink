@@ -1,0 +1,207 @@
+@using LearnLink.Models
+@{
+    ViewData["Title"] = "User Details";
+    var user = ViewBag.UserDetails as UserViewModel;
+    var activities = ViewBag.UserActivity as List<ActivityViewModel> ?? new List<ActivityViewModel>();
+    var resources = ViewBag.UserResources as List<ResourceViewModel> ?? new List<ResourceViewModel>();
+}
+
+<div class="ll-page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h1 class="ll-page-title">User Profile</h1>
+            <div class="ll-breadcrumb">
+                <a href="@Url.Action("Dashboard", "Home")">Home</a>
+                <i class="bi bi-chevron-right small"></i>
+                <a href="@Url.Action("Users", "Home")">User Management</a>
+                <i class="bi bi-chevron-right small"></i>
+                <span>@user.Name</span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="@Url.Action("Users", "Home")" class="ll-btn ll-btn-outline">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+            <button class="ll-btn ll-btn-primary" data-bs-toggle="modal" data-bs-target="#editUserModal">
+                <i class="bi bi-pencil"></i> Edit Profile
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- User Overview Sidebar -->
+    <div class="col-lg-4">
+        <div class="ll-card mb-4 text-center">
+            <div class="ll-card-body py-5">
+                <div class="ll-discussion-avatar mx-auto mb-3" style="width: 100px; height: 100px; font-size: 2.5rem; @user.AvatarColor">@user.Initials</div>
+                <h4 class="fw-bold mb-1">@user.Name</h4>
+                <p class="text-muted mb-3">@user.Email</p>
+                <div class="d-flex justify-content-center gap-2 mb-4">
+                    <span class="ll-badge @user.RoleBadgeClass">@user.Role</span>
+                    <span class="ll-badge @user.StatusBadgeClass">@user.Status</span>
+                </div>
+                
+                @if (user.Status == "Suspended")
+                {
+                    <div class="alert alert-danger text-start small mb-0">
+                        <div class="fw-bold mb-1"><i class="bi bi-exclamation-octagon me-1"></i> Suspension Details:</div>
+                        <div><strong>Reason:</strong> @user.SuspensionReason</div>
+                        <div><strong>Date:</strong> @user.SuspensionDate?.ToString("MMM dd, yyyy")</div>
+                    </div>
+                }
+            </div>
+            <div class="ll-card-body border-top p-0">
+                <div class="row g-0">
+                    <div class="col-6 border-end p-3">
+                        <div class="fw-bold fs-5">@user.ResourceCount</div>
+                        <div class="small text-muted text-uppercase fw-medium" style="font-size: 0.7rem;">Resources</div>
+                    </div>
+                    <div class="col-6 p-3">
+                        <div class="fw-bold fs-5">@activities.Count</div>
+                        <div class="small text-muted text-uppercase fw-medium" style="font-size: 0.7rem;">Activities</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ll-card">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title">User Information</h5>
+            </div>
+            <div class="ll-card-body">
+                <div class="mb-3">
+                    <label class="text-muted small text-uppercase fw-bold mb-1">Grade / Position</label>
+                    <div class="fw-medium">@user.GradeOrPosition</div>
+                </div>
+                <div class="mb-3">
+                    <label class="text-muted small text-uppercase fw-bold mb-1">Date Joined</label>
+                    <div class="fw-medium">@user.JoinedAt.ToString("MMMM dd, yyyy")</div>
+                </div>
+                <div class="mb-0">
+                    <label class="text-muted small text-uppercase fw-bold mb-1">Last Active</label>
+                    <div class="fw-medium">@user.LastActive</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-lg-8">
+        <!-- Tabs -->
+        <div class="ll-card mb-4">
+            <div class="ll-card-body p-0">
+                <ul class="nav nav-tabs ll-nav-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#activity-tab" type="button" role="tab">Recent Activity</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#resources-tab" type="button" role="tab">Contributions</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="ll-card-body">
+                <div class="tab-content mt-2">
+                    <!-- Activity Tab -->
+                    <div class="tab-pane fade show active" id="activity-tab" role="tabpanel">
+                        @if (activities.Any())
+                        {
+                            <div class="ll-activity-list mt-2">
+                                @foreach (var activity in activities)
+                                {
+                                    <div class="ll-activity-item">
+                                        <div class="ll-activity-icon @activity.IconColor.Replace("text-", "")">
+                                            <i class="bi @activity.IconClass"></i>
+                                        </div>
+                                        <div class="ll-activity-content">
+                                            <div class="ll-activity-text">
+                                                <strong>You</strong> @activity.Action <strong>@activity.Target</strong>
+                                            </div>
+                                            <div class="ll-activity-time">@activity.TimeAgo</div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-5">
+                                <i class="bi bi-activity text-muted fs-1 mb-3 d-block"></i>
+                                <p class="text-muted">No recent activity found for this user.</p>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Resources Tab -->
+                    <div class="tab-pane fade" id="resources-tab" role="tabpanel">
+                        @if (resources.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="ll-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Resource</th>
+                                            <th>Subject</th>
+                                            <th>Status</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var res in resources)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <div class="fw-medium">@res.Title</div>
+                                                    <small class="text-muted">@res.FileFormat • @res.FileSize</small>
+                                                </td>
+                                                <td>@res.Subject</td>
+                                                <td><span class="ll-badge @(res.Status == "Published" ? "ll-badge-success" : "ll-badge-warning")">@res.Status</span></td>
+                                                <td>@res.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-5">
+                                <i class="bi bi-archive text-muted fs-1 mb-3 d-block"></i>
+                                <p class="text-muted">This user hasn't uploaded any resources yet.</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal (Same as in Users.cshtml) -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="EditUser" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit User Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="email" value="@user.Email">
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Full Name</label>
+                        <input type="text" class="ll-form-control" name="name" value="@user.Name" required>
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Grade/Position</label>
+                        <input type="text" class="ll-form-control" name="grade" value="@user.GradeOrPosition" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="ll-btn ll-btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

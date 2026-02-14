@@ -138,30 +138,103 @@
     @foreach (var resource in resources)
     {
     <div class="col-sm-6 col-lg-4 col-xl-3 resource-item" data-subject="@resource.Subject" data-grade="@resource.GradeLevel" data-type="@resource.FileFormat" data-title="@resource.Title.ToLower()" data-views="@resource.ViewCount" data-downloads="@resource.DownloadCount" data-rating="@resource.Rating" data-date="@resource.CreatedAt.ToString("yyyy-MM-dd")">
-        <div class="ll-resource-card">
-            <div class="ll-resource-thumbnail" style="@GetThumbnailGradient(resource.FileFormat)">
-                <i class="bi @GetThumbnailIcon(resource.FileFormat)"></i>
-                <span class="ll-resource-type">@resource.FileFormat</span>
-            </div>
-            <div class="ll-resource-content">
-                <h5 class="ll-resource-title">@resource.Title</h5>
-                <div class="ll-resource-meta">
-                    <span><i class="bi bi-download"></i> @resource.DownloadCount.ToString("N0")</span>
-                    <span><i class="bi bi-eye"></i> @resource.ViewCount.ToString("N0")</span>
-                    @if (resource.Rating > 0)
-                    {
-                    <span><i class="bi bi-star-fill text-warning"></i> @resource.Rating.ToString("0.0")</span>
-                    }
+        <a href="@Url.Action("ResourceDetail", "Home", new { id = resource.Id })" class="ll-resource-card-link">
+            <div class="ll-resource-card">
+                <div class="ll-resource-thumbnail" style="@GetThumbnailGradient(resource.FileFormat)">
+                    <i class="bi @GetThumbnailIcon(resource.FileFormat)"></i>
+                    <span class="ll-resource-type">@resource.FileFormat</span>
                 </div>
-                <div class="ll-resource-tags">
-                    <span class="ll-tag">@resource.Subject</span>
-                    <span class="ll-tag">@resource.GradeLevel</span>
-                    <span class="ll-tag">@resource.ResourceType</span>
+                <div class="ll-resource-content">
+                    <h5 class="ll-resource-title">@resource.Title</h5>
+                    <div class="ll-resource-meta">
+                        <span><i class="bi bi-download"></i> @resource.DownloadCount.ToString("N0")</span>
+                        <span><i class="bi bi-eye"></i> @resource.ViewCount.ToString("N0")</span>
+                        @if (resource.Rating > 0)
+                        {
+                        <span><i class="bi bi-star-fill text-warning"></i> @resource.Rating.ToString("0.0")</span>
+                        }
+                    </div>
+                    <div class="ll-resource-tags">
+                        <span class="ll-tag">@resource.Subject</span>
+                        <span class="ll-tag">@resource.GradeLevel</span>
+                        <span class="ll-tag">@resource.ResourceType</span>
+                    </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     }
+</div>
+
+<!-- Resource Table (List View) -->
+<div class="ll-card mb-4 d-none" id="resourceTable">
+    <div class="table-responsive">
+        <table class="ll-table w-100">
+            <thead>
+                <tr>
+                    <th style="width: 30%;">Title</th>
+                    <th>Subject</th>
+                    <th>Grade</th>
+                    <th>Format</th>
+                    <th>Downloads</th>
+                    <th>Views</th>
+                    <th>Rating</th>
+                    <th>Date</th>
+                    <th style="width: 80px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var resource in resources)
+                {
+                <tr class="resource-table-row" data-subject="@resource.Subject" data-grade="@resource.GradeLevel" data-type="@resource.FileFormat" data-title="@resource.Title.ToLower()" data-views="@resource.ViewCount" data-downloads="@resource.DownloadCount" data-rating="@resource.Rating" data-date="@resource.CreatedAt.ToString("yyyy-MM-dd")">
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="ll-table-format-icon" style="@GetThumbnailGradient(resource.FileFormat)">
+                                <i class="bi @GetThumbnailIcon(resource.FileFormat)"></i>
+                            </div>
+                            <div>
+                                <a href="@Url.Action("ResourceDetail", "Home", new { id = resource.Id })" class="ll-table-title-link">@resource.Title</a>
+                                <div class="ll-table-uploader">by @resource.Uploader</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="ll-tag">@resource.Subject</span></td>
+                    <td><span class="ll-tag">@resource.GradeLevel</span></td>
+                    <td>
+                        <span class="ll-table-format-badge" style="@GetThumbnailGradient(resource.FileFormat)">@resource.FileFormat</span>
+                    </td>
+                    <td><i class="bi bi-download text-muted me-1"></i> @resource.DownloadCount.ToString("N0")</td>
+                    <td><i class="bi bi-eye text-muted me-1"></i> @resource.ViewCount.ToString("N0")</td>
+                    <td>
+                        @if (resource.Rating > 0)
+                        {
+                        <span><i class="bi bi-star-fill text-warning me-1"></i> @resource.Rating.ToString("0.0")</span>
+                        }
+                        else
+                        {
+                        <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td class="text-muted">@resource.CreatedAt.ToString("MMM dd, yyyy")</td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="@Url.Action("ResourceDetail", "Home", new { id = resource.Id })"><i class="bi bi-eye me-2"></i>View</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-download me-2"></i>Download</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-bookmark me-2"></i>Save for later</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-share me-2"></i>Share</a></li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <!-- No Results Message -->
@@ -249,10 +322,13 @@
         const typeFilter = document.getElementById('typeFilter');
         const sortSelect = document.getElementById('sortSelect');
         const resourceItems = document.querySelectorAll('.resource-item');
+        const tableRows = document.querySelectorAll('.resource-table-row');
         const noResults = document.getElementById('noResults');
         const resourceGrid = document.getElementById('resourceGrid');
+        const resourceTable = document.getElementById('resourceTable');
         const resultsInfo = document.getElementById('resultsInfo');
         const categoryBtns = document.querySelectorAll('.category-btn');
+        let isTableView = false;
 
         function filterResources() {
             const query = searchInput.value.toLowerCase();
@@ -261,6 +337,7 @@
             const type = typeFilter.value;
             let visibleCount = 0;
 
+            // Filter grid cards
             resourceItems.forEach(item => {
                 const matchSearch = !query || item.dataset.title.includes(query) || item.dataset.subject.toLowerCase().includes(query);
                 const matchSubject = !subject || item.dataset.subject === subject;
@@ -275,8 +352,28 @@
                 }
             });
 
+            // Filter table rows
+            tableRows.forEach(row => {
+                const matchSearch = !query || row.dataset.title.includes(query) || row.dataset.subject.toLowerCase().includes(query);
+                const matchSubject = !subject || row.dataset.subject === subject;
+                const matchGrade = !grade || row.dataset.grade === grade;
+                const matchType = !type || row.dataset.type === type;
+
+                if (matchSearch && matchSubject && matchGrade && matchType) {
+                    row.classList.remove('d-none');
+                } else {
+                    row.classList.add('d-none');
+                }
+            });
+
             noResults.classList.toggle('d-none', visibleCount > 0);
-            resourceGrid.classList.toggle('d-none', visibleCount === 0);
+            if (isTableView) {
+                resourceGrid.classList.add('d-none');
+                resourceTable.classList.toggle('d-none', visibleCount === 0);
+            } else {
+                resourceTable.classList.add('d-none');
+                resourceGrid.classList.toggle('d-none', visibleCount === 0);
+            }
             resultsInfo.innerHTML = 'Showing <strong>' + visibleCount + '</strong> resources';
         }
 
@@ -291,6 +388,19 @@
                 }
             });
             sorted.forEach(item => resourceGrid.appendChild(item));
+
+            // Sort table rows too
+            const tbody = resourceTable.querySelector('tbody');
+            const sortedRows = Array.from(tableRows).sort((a, b) => {
+                switch (sortSelect.value) {
+                    case 'popular': return parseInt(b.dataset.views) - parseInt(a.dataset.views);
+                    case 'downloads': return parseInt(b.dataset.downloads) - parseInt(a.dataset.downloads);
+                    case 'rating': return parseFloat(b.dataset.rating) - parseFloat(a.dataset.rating);
+                    case 'title': return a.dataset.title.localeCompare(b.dataset.title);
+                    default: return b.dataset.date.localeCompare(a.dataset.date);
+                }
+            });
+            sortedRows.forEach(row => tbody.appendChild(row));
         }
 
         // Event listeners
@@ -313,14 +423,20 @@
 
         // Grid/List view toggle
         document.getElementById('gridViewBtn').addEventListener('click', function() {
+            isTableView = false;
             this.classList.add('active');
             document.getElementById('listViewBtn').classList.remove('active');
-            resourceItems.forEach(item => { item.className = item.className.replace(/col-sm-\d+\s*col-lg-\d+\s*col-xl-\d+/, 'col-sm-6 col-lg-4 col-xl-3'); });
+            resourceGrid.classList.remove('d-none');
+            resourceTable.classList.add('d-none');
+            filterResources();
         });
         document.getElementById('listViewBtn').addEventListener('click', function() {
+            isTableView = true;
             this.classList.add('active');
             document.getElementById('gridViewBtn').classList.remove('active');
-            resourceItems.forEach(item => { item.className = item.className.replace(/col-sm-\d+\s*col-lg-\d+\s*col-xl-\d+/, 'col-sm-12 col-lg-12 col-xl-12'); });
+            resourceGrid.classList.add('d-none');
+            resourceTable.classList.remove('d-none');
+            filterResources();
         });
     })();
 </script>

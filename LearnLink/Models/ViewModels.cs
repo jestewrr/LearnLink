@@ -39,6 +39,7 @@ namespace LearnLink.Models
         public List<string> Tags { get; set; } = new();
         public int LikeCount { get; set; }
         public int CommentCount { get; set; }
+        public bool IsLiked { get; set; }
     }
 
     public class DiscussionViewModel
@@ -58,6 +59,7 @@ namespace LearnLink.Models
         public int LikeCount { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public string Status { get; set; } = "Open";
+        public bool IsLiked { get; set; }
     }
 
     public class ReplyViewModel
@@ -89,6 +91,8 @@ namespace LearnLink.Models
         public DateTime JoinedAt { get; set; } = DateTime.Now;
         public string LastActive { get; set; } = "";
         public int ResourceCount { get; set; }
+        public string? SuspensionReason { get; set; }
+        public DateTime? SuspensionDate { get; set; }
     }
 
     public class ActivityViewModel

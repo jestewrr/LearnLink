@@ -19,70 +19,107 @@ namespace LearnLink.Controllers
 
         // ==================== Sample Data Methods ====================
 
+        private static List<ResourceViewModel> _resources;
+        private static List<LessonViewModel> _lessons;
+        private static List<DiscussionViewModel> _discussions;
+        private static List<ReplyViewModel> _replies;
+
         private static List<ResourceViewModel> GetSampleResources()
         {
-            return new List<ResourceViewModel>
+            if (_resources == null)
             {
-                new() { Id = 1, Title = "Mathematics Grade 8 Reviewer", Description = "Comprehensive reviewer covering algebra, geometry, and statistics for Grade 8 students.", Subject = "Mathematics", GradeLevel = "Grade 8", ResourceType = "Reviewer", FileFormat = "PDF", FileSize = "2.4 MB", Status = "Published", ViewCount = 3890, DownloadCount = 1245, Rating = 4.8, RatingCount = 156, Uploader = "Maria Santos", UploaderInitials = "MS", UploaderColor = "", Quarter = "Q3", IconClass = "bi-file-earmark-pdf", IconColor = "text-danger", IconBg = "#fee2e2", CreatedAt = new DateTime(2024, 12, 15) },
-                new() { Id = 2, Title = "English Literature Study Guide", Description = "Study guide for Filipino and English literature with reading comprehension exercises.", Subject = "English", GradeLevel = "Grade 9", ResourceType = "Study Guide", FileFormat = "DOCX", FileSize = "1.8 MB", Status = "Pending", ViewCount = 0, DownloadCount = 0, Rating = 0, RatingCount = 0, Uploader = "Maria Santos", UploaderInitials = "MS", UploaderColor = "", Quarter = "Q2", IconClass = "bi-file-earmark-word", IconColor = "text-primary", IconBg = "#dbeafe", CreatedAt = new DateTime(2024, 12, 14) },
-                new() { Id = 3, Title = "Philippine History Presentation", Description = "Interactive presentation on Philippine history from pre-colonial to modern era.", Subject = "History", GradeLevel = "Grade 10", ResourceType = "Presentation", FileFormat = "PPTX", FileSize = "5.2 MB", Status = "Published", ViewCount = 4562, DownloadCount = 1023, Rating = 4.9, RatingCount = 203, Uploader = "John Reyes", UploaderInitials = "JR", UploaderColor = "background: linear-gradient(135deg, #10b981, #059669)", Quarter = "Q1", IconClass = "bi-file-earmark-ppt", IconColor = "text-warning", IconBg = "#fef3c7", CreatedAt = new DateTime(2024, 12, 12) },
-                new() { Id = 4, Title = "Science Lab Activities", Description = "Hands-on laboratory activities for General Science covering biology and chemistry.", Subject = "Science", GradeLevel = "Grade 7", ResourceType = "Activity Sheet", FileFormat = "PDF", FileSize = "3.1 MB", Status = "Draft", ViewCount = 0, DownloadCount = 0, Rating = 0, RatingCount = 0, Uploader = "Maria Santos", UploaderInitials = "MS", UploaderColor = "", Quarter = "Q4", IconClass = "bi-file-earmark", IconColor = "text-muted", IconBg = "#e2e8f0", CreatedAt = new DateTime(2024, 12, 10) },
-                new() { Id = 5, Title = "Filipino Grammar Workbook", Description = "Complete grammar workbook with exercises on Filipino language structure and usage.", Subject = "Filipino", GradeLevel = "Grade 8", ResourceType = "Workbook", FileFormat = "PDF", FileSize = "4.0 MB", Status = "Published", ViewCount = 2341, DownloadCount = 876, Rating = 4.6, RatingCount = 98, Uploader = "Ana Cruz", UploaderInitials = "AC", UploaderColor = "background: linear-gradient(135deg, #f59e0b, #d97706)", Quarter = "Q2", IconClass = "bi-file-earmark-pdf", IconColor = "text-danger", IconBg = "#fee2e2", CreatedAt = new DateTime(2024, 12, 8) },
-                new() { Id = 6, Title = "MAPEH Arts Module", Description = "Module covering music, arts, physical education, and health for junior high school.", Subject = "MAPEH", GradeLevel = "Grade 7", ResourceType = "Module", FileFormat = "PDF", FileSize = "6.5 MB", Status = "Published", ViewCount = 1987, DownloadCount = 654, Rating = 4.5, RatingCount = 72, Uploader = "Pedro Garcia", UploaderInitials = "PG", UploaderColor = "background: linear-gradient(135deg, #8b5cf6, #7c3aed)", Quarter = "Q3", IconClass = "bi-file-earmark-pdf", IconColor = "text-danger", IconBg = "#fee2e2", CreatedAt = new DateTime(2024, 12, 5) },
-                new() { Id = 7, Title = "TLE Cookery Lesson Plan", Description = "Detailed lesson plan for Technology and Livelihood Education - Cookery strand.", Subject = "TLE", GradeLevel = "Grade 9", ResourceType = "Lesson Plan", FileFormat = "DOCX", FileSize = "1.2 MB", Status = "Published", ViewCount = 1543, DownloadCount = 432, Rating = 4.7, RatingCount = 65, Uploader = "Rosa Mendoza", UploaderInitials = "RM", UploaderColor = "background: linear-gradient(135deg, #ef4444, #dc2626)", Quarter = "Q1", IconClass = "bi-file-earmark-word", IconColor = "text-primary", IconBg = "#dbeafe", CreatedAt = new DateTime(2024, 12, 2) },
-                new() { Id = 8, Title = "Values Education Worksheets", Description = "Worksheets on values formation, character development, and civic responsibility.", Subject = "Values Education", GradeLevel = "Grade 10", ResourceType = "Worksheet", FileFormat = "PDF", FileSize = "1.9 MB", Status = "Published", ViewCount = 1210, DownloadCount = 389, Rating = 4.4, RatingCount = 51, Uploader = "John Reyes", UploaderInitials = "JR", UploaderColor = "background: linear-gradient(135deg, #10b981, #059669)", Quarter = "Q4", IconClass = "bi-file-earmark-pdf", IconColor = "text-danger", IconBg = "#fee2e2", CreatedAt = new DateTime(2024, 11, 28) },
-                new() { Id = 9, Title = "Math Algebra Basics for Beginners", Description = "Introduction to algebraic expressions, equations, and inequalities for Grade 7 students. Includes practice exercises and answer keys.", Subject = "Mathematics", GradeLevel = "Grade 7", ResourceType = "Module", FileFormat = "PDF", FileSize = "3.5 MB", Status = "Published", ViewCount = 2780, DownloadCount = 1102, Rating = 4.7, RatingCount = 134, Uploader = "Maria Santos", UploaderInitials = "MS", UploaderColor = "", Quarter = "Q1", IconClass = "bi-file-earmark-pdf", IconColor = "text-danger", IconBg = "#fee2e2", CreatedAt = new DateTime(2024, 11, 20) },
-                new() { Id = 10, Title = "Math Geometry Theorems and Proofs", Description = "Covers fundamental geometry theorems including Pythagorean theorem, triangle congruence, and circle properties with step-by-step proofs.", Subject = "Mathematics", GradeLevel = "Grade 9", ResourceType = "Reviewer", FileFormat = "PPTX", FileSize = "4.8 MB", Status = "Published", ViewCount = 3120, DownloadCount = 987, Rating = 4.9, RatingCount = 178, Uploader = "John Reyes", UploaderInitials = "JR", UploaderColor = "background: linear-gradient(135deg, #10b981, #059669)", Quarter = "Q2", IconClass = "bi-file-earmark-ppt", IconColor = "text-warning", IconBg = "#fef3c7", CreatedAt = new DateTime(2024, 11, 15) },
-                new() { Id = 11, Title = "Math Statistics and Probability Introduction", Description = "Beginner-friendly guide to statistics concepts: mean, median, mode, range, and basic probability with real-world examples.", Subject = "Mathematics", GradeLevel = "Grade 10", ResourceType = "Study Guide", FileFormat = "DOCX", FileSize = "2.1 MB", Status = "Published", ViewCount = 1890, DownloadCount = 654, Rating = 4.5, RatingCount = 89, Uploader = "Ana Cruz", UploaderInitials = "AC", UploaderColor = "background: linear-gradient(135deg, #f59e0b, #d97706)", Quarter = "Q3", IconClass = "bi-file-earmark-word", IconColor = "text-primary", IconBg = "#dbeafe", CreatedAt = new DateTime(2024, 11, 10) },
-                new() { Id = 12, Title = "Math Trigonometry Basics and Applications", Description = "Introduction to trigonometric ratios (sine, cosine, tangent), unit circle, and real-world applications in measurement and navigation.", Subject = "Mathematics", GradeLevel = "Grade 10", ResourceType = "Module", FileFormat = "PDF", FileSize = "5.3 MB", Status = "Published", ViewCount = 2450, DownloadCount = 823, Rating = 4.6, RatingCount = 112, Uploader = "Pedro Garcia", UploaderInitials = "PG", UploaderColor = "background: linear-gradient(135deg, #8b5cf6, #7c3aed)", Quarter = "Q4", IconClass = "bi-file-earmark-pdf", IconColor = "text-danger", IconBg = "#fee2e2", CreatedAt = new DateTime(2024, 11, 5) }
-            };
+                _resources = new List<ResourceViewModel>
+                {
+                    new() { Id = 1, Title = "Mathematics Grade 8 Reviewer", Description = "Comprehensive reviewer covering algebra, geometry, and statistics for Grade 8 students.", Subject = "Mathematics", GradeLevel = "Grade 8", ResourceType = "Reviewer", FileFormat = "PDF", FileSize = "2.4 MB", Status = "Published", ViewCount = 3890, DownloadCount = 1245, Rating = 4.8, RatingCount = 156, Uploader = "Maria Santos", UploaderInitials = "MS", UploaderColor = "", Quarter = "Q3", IconClass = "bi-file-earmark-pdf", IconColor = "text-danger", IconBg = "#fee2e2", CreatedAt = new DateTime(2024, 12, 15) },
+                    new() { Id = 2, Title = "English Literature Study Guide", Description = "Study guide for Filipino and English literature with reading comprehension exercises.", Subject = "English", GradeLevel = "Grade 9", ResourceType = "Study Guide", FileFormat = "DOCX", FileSize = "1.8 MB", Status = "Pending", ViewCount = 0, DownloadCount = 0, Rating = 0, RatingCount = 0, Uploader = "Maria Santos", UploaderInitials = "MS", UploaderColor = "", Quarter = "Q2", IconClass = "bi-file-earmark-word", IconColor = "text-primary", IconBg = "#dbeafe", CreatedAt = new DateTime(2024, 12, 14) },
+                    new() { Id = 13, Title = "Araling Panlipunan Grade 7 Module", Description = "Module on Asian History and Civilization.", Subject = "Araling Panlipunan", GradeLevel = "Grade 7", ResourceType = "Module", FileFormat = "PDF", FileSize = "4.2 MB", Status = "Pending", ViewCount = 0, DownloadCount = 0, Rating = 0, RatingCount = 0, Uploader = "John Reyes", UploaderInitials = "JR", UploaderColor = "background: linear-gradient(135deg, #10b981, #059669)", Quarter = "Q1", IconClass = "bi-file-earmark-pdf", IconColor = "text-danger", IconBg = "#fee2e2", CreatedAt = DateTime.Now.AddHours(-2) },
+                    new() { Id = 14, Title = "TLE ICT Computer Parts", Description = "Presentation on different parts of a computer system and their functions.", Subject = "TLE", GradeLevel = "Grade 8", ResourceType = "Presentation", FileFormat = "PPTX", FileSize = "8.5 MB", Status = "Pending", ViewCount = 0, DownloadCount = 0, Rating = 0, RatingCount = 0, Uploader = "Ana Cruz", UploaderInitials = "AC", UploaderColor = "background: linear-gradient(135deg, #f59e0b, #d97706)", Quarter = "Q2", IconClass = "bi-file-earmark-ppt", IconColor = "text-warning", IconBg = "#fef3c7", CreatedAt = DateTime.Now.AddHours(-5) },
+                    new() { Id = 3, Title = "Philippine History Presentation", Description = "Interactive presentation on Philippine history from pre-colonial to modern era.", Subject = "History", GradeLevel = "Grade 10", ResourceType = "Presentation", FileFormat = "PPTX", FileSize = "5.2 MB", Status = "Published", ViewCount = 4562, DownloadCount = 1023, Rating = 4.9, RatingCount = 203, Uploader = "John Reyes", UploaderInitials = "JR", UploaderColor = "background: linear-gradient(135deg, #10b981, #059669)", Quarter = "Q1", IconClass = "bi-file-earmark-ppt", IconColor = "text-warning", IconBg = "#fef3c7", CreatedAt = new DateTime(2024, 12, 12) },
+                    new() { Id = 4, Title = "Science Lab Activities", Description = "Hands-on laboratory activities for General Science covering biology and chemistry.", Subject = "Science", GradeLevel = "Grade 7", ResourceType = "Activity Sheet", FileFormat = "PDF", FileSize = "3.1 MB", Status = "Draft", ViewCount = 0, DownloadCount = 0, Rating = 0, RatingCount = 0, Uploader = "Maria Santos", UploaderInitials = "MS", UploaderColor = "", Quarter = "Q4", IconClass = "bi-file-earmark", IconColor = "text-muted", IconBg = "#e2e8f0", CreatedAt = new DateTime(2024, 12, 10) },
+                    new() { Id = 5, Title = "Filipino Grammar Workbook", Description = "Complete grammar workbook with exercises on Filipino language structure and usage.", Subject = "Filipino", GradeLevel = "Grade 8", ResourceType = "Workbook", FileFormat = "PDF", FileSize = "4.0 MB", Status = "Published", ViewCount = 2341, DownloadCount = 876, Rating = 4.6, RatingCount = 98, Uploader = "Ana Cruz", UploaderInitials = "AC", UploaderColor = "background: linear-gradient(135deg, #f59e0b, #d97706)", Quarter = "Q2", IconClass = "bi-file-earmark-pdf", IconColor = "text-danger", IconBg = "#fee2e2", CreatedAt = new DateTime(2024, 12, 8) },
+                    new() { Id = 6, Title = "MAPEH Arts Module", Description = "Module covering music, arts, physical education, and health for junior high school.", Subject = "MAPEH", GradeLevel = "Grade 7", ResourceType = "Module", FileFormat = "PDF", FileSize = "6.5 MB", Status = "Published", ViewCount = 1987, DownloadCount = 654, Rating = 4.5, RatingCount = 72, Uploader = "Pedro Garcia", UploaderInitials = "PG", UploaderColor = "background: linear-gradient(135deg, #8b5cf6, #7c3aed)", Quarter = "Q3", IconClass = "bi-file-earmark-pdf", IconColor = "text-danger", IconBg = "#fee2e2", CreatedAt = new DateTime(2024, 12, 5) },
+                    new() { Id = 7, Title = "TLE Cookery Lesson Plan", Description = "Detailed lesson plan for Technology and Livelihood Education - Cookery strand.", Subject = "TLE", GradeLevel = "Grade 9", ResourceType = "Lesson Plan", FileFormat = "DOCX", FileSize = "1.2 MB", Status = "Published", ViewCount = 1543, DownloadCount = 432, Rating = 4.7, RatingCount = 65, Uploader = "Rosa Mendoza", UploaderInitials = "RM", UploaderColor = "background: linear-gradient(135deg, #ef4444, #dc2626)", Quarter = "Q1", IconClass = "bi-file-earmark-word", IconColor = "text-primary", IconBg = "#dbeafe", CreatedAt = new DateTime(2024, 12, 2) },
+                    new() { Id = 8, Title = "Values Education Worksheets", Description = "Worksheets on values formation, character development, and civic responsibility.", Subject = "Values Education", GradeLevel = "Grade 10", ResourceType = "Worksheet", FileFormat = "PDF", FileSize = "1.9 MB", Status = "Published", ViewCount = 1210, DownloadCount = 389, Rating = 4.4, RatingCount = 51, Uploader = "John Reyes", UploaderInitials = "JR", UploaderColor = "background: linear-gradient(135deg, #10b981, #059669)", Quarter = "Q4", IconClass = "bi-file-earmark-pdf", IconColor = "text-danger", IconBg = "#fee2e2", CreatedAt = new DateTime(2024, 11, 28) },
+                    new() { Id = 9, Title = "Math Algebra Basics for Beginners", Description = "Introduction to algebraic expressions, equations, and inequalities for Grade 7 students. Includes practice exercises and answer keys.", Subject = "Mathematics", GradeLevel = "Grade 7", ResourceType = "Module", FileFormat = "PDF", FileSize = "3.5 MB", Status = "Published", ViewCount = 2780, DownloadCount = 1102, Rating = 4.7, RatingCount = 134, Uploader = "Maria Santos", UploaderInitials = "MS", UploaderColor = "", Quarter = "Q1", IconClass = "bi-file-earmark-pdf", IconColor = "text-danger", IconBg = "#fee2e2", CreatedAt = new DateTime(2024, 11, 20) },
+                    new() { Id = 10, Title = "Math Geometry Theorems and Proofs", Description = "Covers fundamental geometry theorems including Pythagorean theorem, triangle congruence, and circle properties with step-by-step proofs.", Subject = "Mathematics", GradeLevel = "Grade 9", ResourceType = "Reviewer", FileFormat = "PPTX", FileSize = "4.8 MB", Status = "Published", ViewCount = 3120, DownloadCount = 987, Rating = 4.9, RatingCount = 178, Uploader = "John Reyes", UploaderInitials = "JR", UploaderColor = "background: linear-gradient(135deg, #10b981, #059669)", Quarter = "Q2", IconClass = "bi-file-earmark-ppt", IconColor = "text-warning", IconBg = "#fef3c7", CreatedAt = new DateTime(2024, 11, 15) },
+                    new() { Id = 11, Title = "Math Statistics and Probability Introduction", Description = "Beginner-friendly guide to statistics concepts: mean, median, mode, range, and basic probability with real-world examples.", Subject = "Mathematics", GradeLevel = "Grade 10", ResourceType = "Study Guide", FileFormat = "DOCX", FileSize = "2.1 MB", Status = "Published", ViewCount = 1890, DownloadCount = 654, Rating = 4.5, RatingCount = 89, Uploader = "Ana Cruz", UploaderInitials = "AC", UploaderColor = "background: linear-gradient(135deg, #f59e0b, #d97706)", Quarter = "Q3", IconClass = "bi-file-earmark-word", IconColor = "text-primary", IconBg = "#dbeafe", CreatedAt = new DateTime(2024, 11, 10) },
+                    new() { Id = 12, Title = "Math Trigonometry Basics and Applications", Description = "Introduction to trigonometric ratios (sine, cosine, tangent), unit circle, and real-world applications in measurement and navigation.", Subject = "Mathematics", GradeLevel = "Grade 10", ResourceType = "Module", FileFormat = "PDF", FileSize = "5.3 MB", Status = "Published", ViewCount = 2450, DownloadCount = 823, Rating = 4.6, RatingCount = 112, Uploader = "Pedro Garcia", UploaderInitials = "PG", UploaderColor = "background: linear-gradient(135deg, #8b5cf6, #7c3aed)", Quarter = "Q4", IconClass = "bi-file-earmark-pdf", IconColor = "text-danger", IconBg = "#fee2e2", CreatedAt = new DateTime(2024, 11, 5) }
+                };
+            }
+            return _resources;
         }
 
         private static List<LessonViewModel> GetSampleLessons()
         {
-            return new List<LessonViewModel>
+            if (_lessons == null)
             {
-                new() { Id = 1, Title = "Effective Strategies for Teaching Fractions", Content = "Using visual aids and manipulatives significantly improved student understanding of fractions. Students who worked with physical fraction tiles scored 25% higher on assessments compared to those who only used traditional methods.", Category = "Teaching Strategies", Author = "Maria Santos", AuthorInitials = "MS", AuthorColor = "", AuthorRole = "Contributor", CreatedAt = new DateTime(2024, 12, 15), Tags = new() { "Mathematics", "Fractions", "Visual Learning" }, LikeCount = 24, CommentCount = 8 },
-                new() { Id = 2, Title = "Integrating Technology in Science Labs", Content = "Virtual lab simulations can supplement physical experiments effectively. Students showed equal understanding when combining virtual and physical labs, while reducing material costs by 40%. The key is to use virtual labs for introduction and physical labs for reinforcement.", Category = "Technology Integration", Author = "John Reyes", AuthorInitials = "JR", AuthorColor = "background: linear-gradient(135deg, #10b981, #059669)", AuthorRole = "Contributor", CreatedAt = new DateTime(2024, 12, 12), Tags = new() { "Science", "Technology", "Virtual Labs" }, LikeCount = 31, CommentCount = 12 },
-                new() { Id = 3, Title = "Building Reading Comprehension Skills", Content = "Implementing the SQ3R method (Survey, Question, Read, Recite, Review) showed remarkable improvement in reading comprehension scores. Students improved their reading speed by 15% and comprehension accuracy by 30% over one semester.", Category = "Reading Skills", Author = "Ana Cruz", AuthorInitials = "AC", AuthorColor = "background: linear-gradient(135deg, #f59e0b, #d97706)", AuthorRole = "Contributor", CreatedAt = new DateTime(2024, 12, 10), Tags = new() { "English", "Reading", "SQ3R" }, LikeCount = 18, CommentCount = 5 },
-                new() { Id = 4, Title = "Classroom Management for Large Classes", Content = "Group rotation technique works effectively for classes with 40+ students. By dividing the class into 4 groups and rotating activities every 15 minutes, engagement increased and behavioral issues decreased by 60%.", Category = "Classroom Management", Author = "Pedro Garcia", AuthorInitials = "PG", AuthorColor = "background: linear-gradient(135deg, #8b5cf6, #7c3aed)", AuthorRole = "Manager", CreatedAt = new DateTime(2024, 12, 8), Tags = new() { "Management", "Large Classes", "Group Work" }, LikeCount = 42, CommentCount = 15 },
-                new() { Id = 5, Title = "Assessment Alternatives Beyond Written Tests", Content = "Portfolio-based assessment combined with oral presentations provided a more holistic view of student learning. Students who struggled with written tests showed their understanding through creative projects and verbal explanations.", Category = "Assessment", Author = "Rosa Mendoza", AuthorInitials = "RM", AuthorColor = "background: linear-gradient(135deg, #ef4444, #dc2626)", AuthorRole = "Contributor", CreatedAt = new DateTime(2024, 12, 5), Tags = new() { "Assessment", "Portfolio", "Alternative" }, LikeCount = 27, CommentCount = 9 }
-            };
+                _lessons = new List<LessonViewModel>
+                {
+                    new() { Id = 1, Title = "Effective Strategies for Teaching Fractions", Content = "Using visual aids and manipulatives significantly improved student understanding of fractions. Students who worked with physical fraction tiles scored 25% higher on assessments compared to those who only used traditional methods.", Category = "Teaching Strategies", Author = "Maria Santos", AuthorInitials = "MS", AuthorColor = "", AuthorRole = "Contributor", CreatedAt = new DateTime(2024, 12, 15), Tags = new() { "Mathematics", "Fractions", "Visual Learning" }, LikeCount = 24, CommentCount = 8 },
+                    new() { Id = 2, Title = "Integrating Technology in Science Labs", Content = "Virtual lab simulations can supplement physical experiments effectively. Students showed equal understanding when combining virtual and physical labs, while reducing material costs by 40%. The key is to use virtual labs for introduction and physical labs for reinforcement.", Category = "Technology Integration", Author = "John Reyes", AuthorInitials = "JR", AuthorColor = "background: linear-gradient(135deg, #10b981, #059669)", AuthorRole = "Contributor", CreatedAt = new DateTime(2024, 12, 12), Tags = new() { "Science", "Technology", "Virtual Labs" }, LikeCount = 31, CommentCount = 12 },
+                    new() { Id = 3, Title = "Building Reading Comprehension Skills", Content = "Implementing the SQ3R method (Survey, Question, Read, Recite, Review) showed remarkable improvement in reading comprehension scores. Students improved their reading speed by 15% and comprehension accuracy by 30% over one semester.", Category = "Reading Skills", Author = "Ana Cruz", AuthorInitials = "AC", AuthorColor = "background: linear-gradient(135deg, #f59e0b, #d97706)", AuthorRole = "Contributor", CreatedAt = new DateTime(2024, 12, 10), Tags = new() { "English", "Reading", "SQ3R" }, LikeCount = 18, CommentCount = 5 },
+                    new() { Id = 4, Title = "Classroom Management for Large Classes", Content = "Group rotation technique works effectively for classes with 40+ students. By dividing the class into 4 groups and rotating activities every 15 minutes, engagement increased and behavioral issues decreased by 60%.", Category = "Classroom Management", Author = "Pedro Garcia", AuthorInitials = "PG", AuthorColor = "background: linear-gradient(135deg, #8b5cf6, #7c3aed)", AuthorRole = "Manager", CreatedAt = new DateTime(2024, 12, 8), Tags = new() { "Management", "Large Classes", "Group Work" }, LikeCount = 42, CommentCount = 15 },
+                    new() { Id = 5, Title = "Assessment Alternatives Beyond Written Tests", Content = "Portfolio-based assessment combined with oral presentations provided a more holistic view of student learning. Students who struggled with written tests showed their understanding through creative projects and verbal explanations.", Category = "Assessment", Author = "Rosa Mendoza", AuthorInitials = "RM", AuthorColor = "background: linear-gradient(135deg, #ef4444, #dc2626)", AuthorRole = "Contributor", CreatedAt = new DateTime(2024, 12, 5), Tags = new() { "Assessment", "Portfolio", "Alternative" }, LikeCount = 27, CommentCount = 9 }
+                };
+            }
+            return _lessons;
         }
 
         private static List<DiscussionViewModel> GetSampleDiscussions()
         {
-            return new List<DiscussionViewModel>
+            if (_discussions == null)
             {
-                new() { Id = 1, Title = "Tips for Solving Quadratic Equations Faster", Content = "I've been teaching quadratic equations for years and noticed many students struggle with the formula method. Does anyone have tips or alternative approaches that work better for visual learners?", Author = "Maria Santos", AuthorInitials = "MS", AuthorColor = "", AuthorRole = "Contributor", Type = "Question", Category = "Teaching Strategies", Tags = new() { "Mathematics", "Grade 8", "Algebra" }, ReplyCount = 12, ViewCount = 156, LikeCount = 24, CreatedAt = DateTime.Now.AddHours(-2), Status = "Open" },
-                new() { Id = 2, Title = "Sharing my Science Lab Safety Guidelines Poster", Content = "Created a colorful and engaging lab safety poster for our science classroom. Feel free to download and use it! It covers all the essential safety protocols in a way that students find easy to remember.", Author = "John Reyes", AuthorInitials = "JR", AuthorColor = "background: linear-gradient(135deg, #10b981, #059669)", AuthorRole = "Contributor", Type = "Resource", Category = "Resources", Tags = new() { "Science", "Lab Safety", "Poster" }, ReplyCount = 8, ViewCount = 234, LikeCount = 45, CreatedAt = DateTime.Now.AddHours(-5), Status = "Open" },
-                new() { Id = 3, Title = "Study Group: Grade 9 English Literature - Short Stories", Content = "Starting a study group for Grade 9 students preparing for the upcoming English quarterly exam. We'll be focusing on short stories analysis and interpretation. Join us this Saturday!", Author = "Ana Cruz", AuthorInitials = "AC", AuthorColor = "background: linear-gradient(135deg, #f59e0b, #d97706)", AuthorRole = "User", Type = "Study Group", Category = "Study Groups", Tags = new() { "English", "Grade 9", "Study Group" }, ReplyCount = 25, ViewCount = 189, LikeCount = 18, CreatedAt = DateTime.Now.AddDays(-1), Status = "Open" },
-                new() { Id = 4, Title = "💡 Idea: Interactive Timeline for Philippine History", Content = "What if we created an interactive digital timeline showing key events in Philippine History? Students could click on events to see detailed information, images, and related resources. Who's interested in collaborating?", Author = "Pedro Garcia", AuthorInitials = "PG", AuthorColor = "background: linear-gradient(135deg, #8b5cf6, #7c3aed)", AuthorRole = "Contributor", Type = "Idea", Category = "Ideas", Tags = new() { "History", "Interactive", "Collaboration" }, ReplyCount = 34, ViewCount = 412, LikeCount = 67, CreatedAt = DateTime.Now.AddDays(-2), Status = "Open" },
-                new() { Id = 5, Title = "Best practices for creating engaging worksheets?", Content = "I want to create more engaging worksheets for my Filipino class. Any tips on layout, formatting, or activities that keep students interested? Looking for practical advice from experienced contributors.", Author = "Rosa Mendoza", AuthorInitials = "RM", AuthorColor = "background: linear-gradient(135deg, #ef4444, #dc2626)", AuthorRole = "Contributor", Type = "Question", Category = "Best Practices", Tags = new() { "Filipino", "Worksheet Design", "Best Practices" }, ReplyCount = 19, ViewCount = 278, LikeCount = 31, CreatedAt = DateTime.Now.AddDays(-3), Status = "Open" }
-            };
+                _discussions = new List<DiscussionViewModel>
+                {
+                    new() { Id = 1, Title = "Tips for Solving Quadratic Equations Faster", Content = "I've been teaching quadratic equations for years and noticed many students struggle with the formula method. Does anyone have tips or alternative approaches that work better for visual learners?", Author = "Maria Santos", AuthorInitials = "MS", AuthorColor = "", AuthorRole = "Contributor", Type = "Question", Category = "Teaching Strategies", Tags = new() { "Mathematics", "Grade 8", "Algebra" }, ReplyCount = 12, ViewCount = 156, LikeCount = 24, CreatedAt = DateTime.Now.AddHours(-2), Status = "Open" },
+                    new() { Id = 2, Title = "Sharing my Science Lab Safety Guidelines Poster", Content = "Created a colorful and engaging lab safety poster for our science classroom. Feel free to download and use it! It covers all the essential safety protocols in a way that students find easy to remember.", Author = "John Reyes", AuthorInitials = "JR", AuthorColor = "background: linear-gradient(135deg, #10b981, #059669)", AuthorRole = "Contributor", Type = "Resource", Category = "Resources", Tags = new() { "Science", "Lab Safety", "Poster" }, ReplyCount = 8, ViewCount = 234, LikeCount = 45, CreatedAt = DateTime.Now.AddHours(-5), Status = "Open" },
+                    new() { Id = 3, Title = "Study Group: Grade 9 English Literature - Short Stories", Content = "Starting a study group for Grade 9 students preparing for the upcoming English quarterly exam. We'll be focusing on short stories analysis and interpretation. Join us this Saturday!", Author = "Ana Cruz", AuthorInitials = "AC", AuthorColor = "background: linear-gradient(135deg, #f59e0b, #d97706)", AuthorRole = "User", Type = "Study Group", Category = "Study Groups", Tags = new() { "English", "Grade 9", "Study Group" }, ReplyCount = 25, ViewCount = 189, LikeCount = 18, CreatedAt = DateTime.Now.AddDays(-1), Status = "Open" },
+                    new() { Id = 4, Title = "💡 Idea: Interactive Timeline for Philippine History", Content = "What if we created an interactive digital timeline showing key events in Philippine History? Students could click on events to see detailed information, images, and related resources. Who's interested in collaborating?", Author = "Pedro Garcia", AuthorInitials = "PG", AuthorColor = "background: linear-gradient(135deg, #8b5cf6, #7c3aed)", AuthorRole = "Contributor", Type = "Idea", Category = "Ideas", Tags = new() { "History", "Interactive", "Collaboration" }, ReplyCount = 34, ViewCount = 412, LikeCount = 67, CreatedAt = DateTime.Now.AddDays(-2), Status = "Open" },
+                    new() { Id = 5, Title = "Best practices for creating engaging worksheets?", Content = "I want to create more engaging worksheets for my Filipino class. Any tips on layout, formatting, or activities that keep students interested? Looking for practical advice from experienced contributors.", Author = "Rosa Mendoza", AuthorInitials = "RM", AuthorColor = "background: linear-gradient(135deg, #ef4444, #dc2626)", AuthorRole = "Contributor", Type = "Question", Category = "Best Practices", Tags = new() { "Filipino", "Worksheet Design", "Best Practices" }, ReplyCount = 19, ViewCount = 278, LikeCount = 31, CreatedAt = DateTime.Now.AddDays(-3), Status = "Open" }
+                };
+            }
+            return _discussions;
         }
 
         private static List<ReplyViewModel> GetSampleReplies()
         {
-            return new List<ReplyViewModel>
+            if (_replies == null)
             {
-                new() { Id = 1, Content = "<p>Great question, Maria! I've found that teaching the \"ac method\" (also known as factoring by grouping) works really well for visual learners. Here's a quick overview:</p><ol><li>Multiply a × c to get the \"magic number\"</li><li>Find two numbers that multiply to give the magic number and add to give b</li><li>Rewrite the middle term using these numbers</li><li>Factor by grouping</li></ol><p>I also recommend using colored markers to highlight different parts of the equation. Visual cues really help students track the coefficients!</p>", Author = "John Reyes", AuthorInitials = "JR", AuthorColor = "background: linear-gradient(135deg, #10b981, #059669)", AuthorRole = "Contributor", AuthorTitle = "Science Teacher", LikeCount = 15, IsBestAnswer = false, IsLiked = false, CreatedAt = DateTime.Now.AddHours(-1) },
-                new() { Id = 2, Content = "<p>As a student, I can share that what helped me the most was practicing with the \"box method\" or area model. It made factoring trinomials so much easier to visualize! Also, using the quadratic formula song (to the tune of \"Pop Goes the Weasel\") really helped me remember it! 🎵</p>", Author = "Ana Cruz", AuthorInitials = "AC", AuthorColor = "background: linear-gradient(135deg, #f59e0b, #d97706)", AuthorRole = "User", AuthorTitle = "Grade 8 Student", LikeCount = 8, IsBestAnswer = false, IsLiked = true, CreatedAt = DateTime.Now.AddMinutes(-45) },
-                new() { Id = 3, Content = "<p>I've compiled a comprehensive approach that has shown great results in our department:</p><div class=\"bg-light rounded p-3 mb-3\"><h6 class=\"fw-bold\">Multi-Sensory Approach to Quadratics:</h6><ol class=\"mb-0\"><li><strong>Visual:</strong> Use graphing calculators to show how changing a, b, c affects the parabola</li><li><strong>Kinesthetic:</strong> Have students physically sort coefficient cards</li><li><strong>Auditory:</strong> Create mnemonics for the formula (negative boy, etc.)</li><li><strong>Practice:</strong> Start with \"nice\" numbers before moving to complex ones</li></ol></div><p>I've actually uploaded a comprehensive resource on this topic. You can find it here: <a href=\"#\">Quadratic Equations Visual Guide</a></p>", Author = "Pedro Garcia", AuthorInitials = "PG", AuthorColor = "background: linear-gradient(135deg, #8b5cf6, #7c3aed)", AuthorRole = "Moderator", AuthorTitle = "Math Department Head", LikeCount = 32, IsBestAnswer = true, IsLiked = false, CreatedAt = DateTime.Now.AddMinutes(-30) }
-            };
+                _replies = new List<ReplyViewModel>
+                {
+                    new() { Id = 1, Content = "<p>Great question, Maria! I've found that teaching the \"ac method\" (also known as factoring by grouping) works really well for visual learners. Here's a quick overview:</p><ol><li>Multiply a × c to get the \"magic number\"</li><li>Find two numbers that multiply to give the magic number and add to give b</li><li>Rewrite the middle term using these numbers</li><li>Factor by grouping</li></ol><p>I also recommend using colored markers to highlight different parts of the equation. Visual cues really help students track the coefficients!</p>", Author = "John Reyes", AuthorInitials = "JR", AuthorColor = "background: linear-gradient(135deg, #10b981, #059669)", AuthorRole = "Contributor", AuthorTitle = "Science Teacher", LikeCount = 15, IsBestAnswer = false, IsLiked = false, CreatedAt = DateTime.Now.AddHours(-1) },
+                    new() { Id = 2, Content = "<p>As a student, I can share that what helped me the most was practicing with the \"box method\" or area model. It made factoring trinomials so much easier to visualize! Also, using the quadratic formula song (to the tune of \"Pop Goes the Weasel\") really helped me remember it! 🎵</p>", Author = "Ana Cruz", AuthorInitials = "AC", AuthorColor = "background: linear-gradient(135deg, #f59e0b, #d97706)", AuthorRole = "User", AuthorTitle = "Grade 8 Student", LikeCount = 8, IsBestAnswer = false, IsLiked = true, CreatedAt = DateTime.Now.AddMinutes(-45) },
+                    new() { Id = 3, Content = "<p>I've compiled a comprehensive approach that has shown great results in our department:</p><div class=\"bg-light rounded p-3 mb-3\"><h6 class=\"fw-bold\">Multi-Sensory Approach to Quadratics:</h6><ol class=\"mb-0\"><li><strong>Visual:</strong> Use graphing calculators to show how changing a, b, c affects the parabola</li><li><strong>Kinesthetic:</strong> Have students physically sort coefficient cards</li><li><strong>Auditory:</strong> Create mnemonics for the formula (negative boy, etc.)</li><li><strong>Practice:</strong> Start with \"nice\" numbers before moving to complex ones</li></ol></div><p>I've actually uploaded a comprehensive resource on this topic. You can find it here: <a href=\"#\">Quadratic Equations Visual Guide</a></p>", Author = "Pedro Garcia", AuthorInitials = "PG", AuthorColor = "background: linear-gradient(135deg, #8b5cf6, #7c3aed)", AuthorRole = "Moderator", AuthorTitle = "Math Department Head", LikeCount = 32, IsBestAnswer = true, IsLiked = false, CreatedAt = DateTime.Now.AddMinutes(-30) }
+                };
+            }
+            return _replies;
         }
 
-        private static List<UserViewModel> GetSampleUsers()
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        public IActionResult ApproveResource(int id)
         {
-            return new List<UserViewModel>
+            var resource = GetSampleResources().FirstOrDefault(r => r.Id == id);
+            if (resource != null)
             {
-                new() { Name = "Maria Santos", Email = "maria.santos@learnlink.edu", Initials = "MS", AvatarColor = "", Role = "Contributor", RoleBadgeClass = "ll-badge-warning", GradeOrPosition = "Mathematics Teacher", Status = "Active", StatusBadgeClass = "ll-badge-success", JoinedAt = new DateTime(2024, 1, 15), LastActive = "2 hours ago", ResourceCount = 24 },
-                new() { Name = "John Reyes", Email = "john.reyes@learnlink.edu", Initials = "JR", AvatarColor = "background: linear-gradient(135deg, #10b981, #059669)", Role = "Contributor", RoleBadgeClass = "ll-badge-warning", GradeOrPosition = "Science Teacher", Status = "Active", StatusBadgeClass = "ll-badge-success", JoinedAt = new DateTime(2024, 2, 8), LastActive = "5 hours ago", ResourceCount = 18 },
-                new() { Name = "Ana Cruz", Email = "ana.cruz@student.learnlink.edu", Initials = "AC", AvatarColor = "background: linear-gradient(135deg, #f59e0b, #d97706)", Role = "Student", RoleBadgeClass = "ll-badge-info", GradeOrPosition = "Grade 8 - Section A", Status = "Active", StatusBadgeClass = "ll-badge-success", JoinedAt = new DateTime(2024, 3, 12), LastActive = "1 day ago", ResourceCount = 3 },
-                new() { Name = "Pedro Garcia", Email = "pedro.garcia@learnlink.edu", Initials = "PG", AvatarColor = "background: linear-gradient(135deg, #8b5cf6, #7c3aed)", Role = "Manager", RoleBadgeClass = "ll-badge-danger", GradeOrPosition = "Content Moderator", Status = "Active", StatusBadgeClass = "ll-badge-success", JoinedAt = new DateTime(2024, 1, 5), LastActive = "3 hours ago", ResourceCount = 12 },
-                new() { Name = "Rosa Mendoza", Email = "rosa.mendoza@student.learnlink.edu", Initials = "RM", AvatarColor = "background: linear-gradient(135deg, #ef4444, #dc2626)", Role = "Student", RoleBadgeClass = "ll-badge-info", GradeOrPosition = "Grade 9 - Section B", Status = "Pending", StatusBadgeClass = "ll-badge-warning", JoinedAt = new DateTime(2024, 12, 18), LastActive = "Never", ResourceCount = 0 },
-                new() { Name = "Luis Torres", Email = "luis.torres@student.learnlink.edu", Initials = "LT", AvatarColor = "background: linear-gradient(135deg, #6b7280, #4b5563)", Role = "Student", RoleBadgeClass = "ll-badge-info", GradeOrPosition = "Grade 7 - Section C", Status = "Suspended", StatusBadgeClass = "ll-badge-danger", JoinedAt = new DateTime(2024, 4, 20), LastActive = "1 week ago", ResourceCount = 1 }
-            };
+                resource.Status = "Published";
+                TempData["SuccessMessage"] = $"Resource \"{resource.Title}\" has been approved and published.";
+                TempData["SuccessTitle"] = "Approval Successful";
+            }
+            return RedirectToAction("Dashboard");
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        public IActionResult RejectResource(int id)
+        {
+            var resource = GetSampleResources().FirstOrDefault(r => r.Id == id);
+            if (resource != null)
+            {
+                // Rejecting moves it back to Draft status (or a dedicated Reviewed/Rejected status if desired)
+                resource.Status = "Draft"; 
+                TempData["SuccessMessage"] = $"Resource \"{resource.Title}\" has been rejected and returned to drafts.";
+                TempData["SuccessTitle"] = "Resource Rejected";
+            }
+            return RedirectToAction("Dashboard");
         }
 
         private static List<ActivityViewModel> GetSampleActivities()
@@ -182,6 +219,12 @@ namespace LearnLink.Controllers
         [Authorize]
         public IActionResult Dashboard()
         {
+            // Contributors and Students use the Repository as their landing page
+            if (User.IsInRole("Contributor") || User.IsInRole("Student"))
+            {
+                return RedirectToAction("Repository");
+            }
+
             ViewBag.Stats = new DashboardStatsViewModel
             {
                 TotalResources = GetSampleResources().Count,
@@ -190,6 +233,7 @@ namespace LearnLink.Controllers
                 ActiveDiscussions = GetSampleDiscussions().Count
             };
             ViewBag.RecentResources = GetSampleResources().OrderByDescending(r => r.CreatedAt).Take(5).ToList();
+            ViewBag.PendingApprovals = GetSampleResources().Where(r => r.Status == "Pending").OrderBy(r => r.CreatedAt).ToList();
             ViewBag.RecentActivity = GetSampleActivities();
             return View();
         }
@@ -197,31 +241,56 @@ namespace LearnLink.Controllers
         [Authorize]
         public IActionResult Repository()
         {
-            ViewBag.Resources = GetSampleResources();
+            var resources = GetSampleResources();
+
+            // Students and registered users only see Published resources.
+            // Managers and SuperAdmin see everything for review purposes.
+            if (User.IsInRole("Student"))
+            {
+                resources = resources.Where(r => r.Status == "Published").ToList();
+            }
+
+            ViewBag.Resources = resources;
+            return View();
+        }
+
+        [Authorize]
+        public IActionResult ResourceDetail(int id)
+        {
+            var resources = GetSampleResources();
+            var resource = resources.FirstOrDefault(r => r.Id == id);
+            if (resource == null)
+                return RedirectToAction("Repository");
+
+            ViewBag.Resource = resource;
+            ViewBag.RelatedResources = resources
+                .Where(r => r.Id != id && r.Subject == resource.Subject && r.Status == "Published")
+                .Take(4)
+                .ToList();
             return View();
         }
 
         [AllowAnonymous]
         public IActionResult Search(string q = null)
         {
+            // Authenticated users use the Repository page (which has search built in)
+            if (User.Identity?.IsAuthenticated ?? false)
+            {
+                return RedirectToAction("Repository");
+            }
+
+            // Anonymous visitors get a public search page (no sidebar, no auth header)
             var resources = GetSampleResources();
             ViewBag.Resources = resources;
             ViewBag.AllResources = resources;
             ViewBag.SearchQuery = q;
-
-            // Anonymous visitors get a public search page (no sidebar, no auth header)
-            if (!User.Identity?.IsAuthenticated ?? true)
-            {
-                return View("PublicSearch");
-            }
-
-            return View();
+            return View("PublicSearch");
         }
 
         [Authorize]
         public IActionResult LessonsLearned()
         {
-            var lessons = GetSampleLessons();
+            var lessons = GetSampleLessons().OrderByDescending(l => l.CreatedAt).ToList();
             ViewBag.Lessons = lessons;
             var categories = lessons.Select(l => l.Category).Distinct().ToList();
             ViewBag.Categories = categories;
@@ -230,6 +299,84 @@ namespace LearnLink.Controllers
             ViewBag.TotalComments = lessons.Sum(l => l.CommentCount);
             ViewBag.Contributors = lessons.Select(l => l.Author).Distinct().Count();
             return View();
+        }
+
+        [Authorize]
+        [HttpPost]
+        public IActionResult SubmitLesson(LessonViewModel model)
+        {
+            var lessons = GetSampleLessons();
+            model.Id = lessons.Any() ? lessons.Max(l => l.Id) + 1 : 1;
+            model.CreatedAt = DateTime.Now;
+            model.Author = User.Identity?.Name ?? "Anonymous";
+            model.AuthorInitials = model.Author.Length >= 2 ? model.Author.Substring(0, 2).ToUpper() : "U";
+            // Random color for demo
+            model.AuthorColor = "background: linear-gradient(135deg, #6366f1, #4f46e5)"; 
+            
+            // Clean up tags
+            if (model.Tags != null && model.Tags.Any())
+            {
+                // If it came in as a single string manually via binder or form, split it
+                // But simplified model binding usually lists them. 
+                // For this demo, we assume the user input string needs parsing if we changed logic,
+                // but simpler to just add it.
+            }
+
+            lessons.Add(model);
+
+            TempData["SuccessMessage"] = "Your lesson has been submitted successfully!";
+            TempData["SuccessTitle"] = "Lesson Submitted";
+            return RedirectToAction("LessonsLearned");
+        }
+
+        [Authorize]
+        [HttpPost]
+        public IActionResult EditLesson(int id, string title, string content, string category, string tags)
+        {
+            var lesson = GetSampleLessons().FirstOrDefault(l => l.Id == id);
+            // In a real app, check if User.Identity.Name == lesson.Author
+            if (lesson != null)
+            {
+                lesson.Title = title;
+                lesson.Content = content;
+                lesson.Category = category;
+                if (!string.IsNullOrEmpty(tags))
+                {
+                    lesson.Tags = tags.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim()).ToList();
+                }
+                TempData["SuccessMessage"] = "Lesson updated successfully!";
+            }
+            return RedirectToAction("LessonsLearned");
+        }
+
+        [Authorize]
+        [HttpPost]
+        public IActionResult DeleteLesson(int id)
+        {
+            var lessons = GetSampleLessons();
+            var lesson = lessons.FirstOrDefault(l => l.Id == id);
+            if (lesson != null)
+            {
+                lessons.Remove(lesson);
+                TempData["SuccessMessage"] = "Lesson deleted successfully.";
+            }
+            return RedirectToAction("LessonsLearned");
+        }
+
+        [Authorize]
+        [HttpPost]
+        public IActionResult LikeLesson(int id)
+        {
+            var lesson = GetSampleLessons().FirstOrDefault(l => l.Id == id);
+            if (lesson != null)
+            {
+                // Toggle logic mock
+                lesson.LikeCount++; 
+                lesson.IsLiked = true;
+                // In real app, track if user liked it
+                return Json(new { success = true, likes = lesson.LikeCount, isLiked = true });
+            }
+            return Json(new { success = false });
         }
 
         [Authorize]
@@ -253,16 +400,155 @@ namespace LearnLink.Controllers
         [Authorize]
         public IActionResult KnowledgePortal()
         {
-            ViewBag.Discussions = GetSampleDiscussions();
+            ViewBag.Discussions = GetSampleDiscussions().OrderByDescending(d => d.CreatedAt).ToList();
             return View();
         }
 
         [Authorize]
-        public IActionResult Discussions(int id = 1)
+        [HttpPost]
+        public IActionResult PostDiscussion(DiscussionViewModel model)
         {
             var discussions = GetSampleDiscussions();
-            ViewBag.Discussion = discussions.FirstOrDefault(d => d.Id == id) ?? discussions.First();
-            ViewBag.Replies = GetSampleReplies();
+            model.Id = discussions.Any() ? discussions.Max(d => d.Id) + 1 : 1;
+            model.CreatedAt = DateTime.Now;
+            model.Author = User.Identity?.Name ?? "Anonymous";
+            model.AuthorInitials = model.Author.Length >= 2 ? model.Author.Substring(0, 2).ToUpper() : "U";
+            model.AuthorRole = "User"; // Default
+            model.AuthorColor = "background: linear-gradient(135deg, #ec4899, #db2777)";
+            model.Status = "Open";
+            
+            discussions.Add(model);
+
+            TempData["SuccessMessage"] = "Your discussion has been posted successfully!";
+            TempData["SuccessTitle"] = "Discussion Started";
+            return RedirectToAction("KnowledgePortal");
+        }
+
+        [Authorize]
+        [HttpPost]
+        public IActionResult EditDiscussion(int id, string title, string content, string type)
+        {
+            var discussion = GetSampleDiscussions().FirstOrDefault(d => d.Id == id);
+            if (discussion != null)
+            {
+                discussion.Title = title;
+                discussion.Content = content;
+                discussion.Type = type;
+                TempData["SuccessMessage"] = "Discussion updated successfully!";
+            }
+            return RedirectToAction("Discussions", new { id = id });
+        }
+
+        [Authorize]
+        [HttpPost]
+        public IActionResult DeleteDiscussion(int id)
+        {
+            var discussions = GetSampleDiscussions();
+            var discussion = discussions.FirstOrDefault(d => d.Id == id);
+            if (discussion != null)
+            {
+                discussions.Remove(discussion);
+                TempData["SuccessMessage"] = "Discussion deleted successfully.";
+                return RedirectToAction("KnowledgePortal");
+            }
+            return RedirectToAction("KnowledgePortal");
+        }
+
+        [Authorize]
+        [HttpPost]
+        public IActionResult LikeDiscussion(int id)
+        {
+            var discussion = GetSampleDiscussions().FirstOrDefault(d => d.Id == id);
+            if (discussion != null)
+            {
+                discussion.LikeCount++;
+                discussion.IsLiked = true;
+                return Json(new { success = true, likes = discussion.LikeCount, isLiked = true });
+            }
+            return Json(new { success = false });
+        }
+
+        [Authorize]
+        [HttpPost]
+        public IActionResult PostReply(int discussionId, string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return RedirectToAction("Discussions", new { id = discussionId });
+            }
+
+            var replies = GetSampleReplies();
+            var newReply = new ReplyViewModel
+            {
+                Id = replies.Any() ? replies.Max(r => r.Id) + 1 : 1,
+                Content = content,
+                Author = User.Identity?.Name ?? "Anonymous",
+                AuthorInitials = User.Identity?.Name?.Substring(0, 2).ToUpper() ?? "U",
+                AuthorRole = "User",
+                AuthorColor = "background: linear-gradient(135deg, #6366f1, #4f46e5)",
+                AuthorTitle = "Community Member",
+                CreatedAt = DateTime.Now,
+                LikeCount = 0
+            };
+            replies.Add(newReply);
+
+            // Increment reply count for the discussion
+            var discussion = GetSampleDiscussions().FirstOrDefault(d => d.Id == discussionId);
+            if (discussion != null)
+            {
+                discussion.ReplyCount++;
+            }
+
+            TempData["SuccessMessage"] = "Your reply has been posted successfully!";
+            return RedirectToAction("Discussions", new { id = discussionId });
+        }
+
+        [Authorize]
+        [HttpPost]
+        public IActionResult DeleteReply(int id, int discussionId)
+        {
+            var replies = GetSampleReplies();
+            var reply = replies.FirstOrDefault(r => r.Id == id);
+            if (reply != null)
+            {
+                replies.Remove(reply);
+                 // Update reply count mock
+                var discussion = GetSampleDiscussions().FirstOrDefault(d => d.Id == discussionId);
+                if (discussion != null) discussion.ReplyCount--;
+
+                TempData["SuccessMessage"] = "Reply deleted successfully.";
+            }
+            return RedirectToAction("Discussions", new { id = discussionId });
+        }
+        
+        [Authorize]
+        [HttpPost]
+        public IActionResult LikeReply(int id)
+        {
+             var reply = GetSampleReplies().FirstOrDefault(r => r.Id == id);
+            if (reply != null)
+            {
+                reply.LikeCount++;
+                reply.IsLiked = true; // Mock
+                return Json(new { success = true, likes = reply.LikeCount, isLiked = true });
+            }
+            return Json(new { success = false });
+        }
+
+        [Authorize]
+        public IActionResult Discussions(int id)
+        {
+            var discussions = GetSampleDiscussions();
+            var discussion = discussions.FirstOrDefault(d => d.Id == id);
+            
+            // If ID not found, just take the first one instead of hardcoded First()
+            if (discussion == null)
+            {
+                discussion = discussions.FirstOrDefault();
+            }
+
+            ViewBag.Discussion = discussion;
+            ViewBag.Replies = GetSampleReplies().OrderByDescending(r => r.CreatedAt).ToList(); 
             ViewBag.SimilarDiscussions = discussions.Where(d => d.Id != id).Take(3).ToList();
             return View();
         }
@@ -295,6 +581,25 @@ namespace LearnLink.Controllers
         }
 
         // ==================== Administration — SuperAdmin Only ====================
+        
+        private static List<UserViewModel> _usersList;
+
+        private static List<UserViewModel> GetSampleUsers()
+        {
+            if (_usersList == null)
+            {
+                _usersList = new List<UserViewModel>
+                {
+                    new() { Name = "Maria Santos", Email = "maria.santos@learnlink.edu", Initials = "MS", AvatarColor = "", Role = "Contributor", RoleBadgeClass = "ll-badge-warning", GradeOrPosition = "Mathematics Teacher", Status = "Active", StatusBadgeClass = "ll-badge-success", JoinedAt = new DateTime(2024, 1, 15), LastActive = "2 hours ago", ResourceCount = 24 },
+                    new() { Name = "John Reyes", Email = "john.reyes@learnlink.edu", Initials = "JR", AvatarColor = "background: linear-gradient(135deg, #10b981, #059669)", Role = "Contributor", RoleBadgeClass = "ll-badge-warning", GradeOrPosition = "Science Teacher", Status = "Active", StatusBadgeClass = "ll-badge-success", JoinedAt = new DateTime(2024, 2, 8), LastActive = "5 hours ago", ResourceCount = 18 },
+                    new() { Name = "Ana Cruz", Email = "ana.cruz@student.learnlink.edu", Initials = "AC", AvatarColor = "background: linear-gradient(135deg, #f59e0b, #d97706)", Role = "Student", RoleBadgeClass = "ll-badge-info", GradeOrPosition = "Grade 8 - Section A", Status = "Active", StatusBadgeClass = "ll-badge-success", JoinedAt = new DateTime(2024, 3, 12), LastActive = "1 day ago", ResourceCount = 3 },
+                    new() { Name = "Pedro Garcia", Email = "pedro.garcia@learnlink.edu", Initials = "PG", AvatarColor = "background: linear-gradient(135deg, #8b5cf6, #7c3aed)", Role = "Manager", RoleBadgeClass = "ll-badge-danger", GradeOrPosition = "Content Moderator", Status = "Active", StatusBadgeClass = "ll-badge-success", JoinedAt = new DateTime(2024, 1, 5), LastActive = "3 hours ago", ResourceCount = 12 },
+                    new() { Name = "Rosa Mendoza", Email = "rosa.mendoza@student.learnlink.edu", Initials = "RM", AvatarColor = "background: linear-gradient(135deg, #ef4444, #dc2626)", Role = "Student", RoleBadgeClass = "ll-badge-info", GradeOrPosition = "Grade 9 - Section B", Status = "Pending", StatusBadgeClass = "ll-badge-warning", JoinedAt = new DateTime(2024, 12, 18), LastActive = "Never", ResourceCount = 0 },
+                    new() { Name = "Luis Torres", Email = "luis.torres@student.learnlink.edu", Initials = "LT", AvatarColor = "background: linear-gradient(135deg, #6b7280, #4b5563)", Role = "Student", RoleBadgeClass = "ll-badge-info", GradeOrPosition = "Grade 7 - Section C", Status = "Suspended", StatusBadgeClass = "ll-badge-danger", JoinedAt = new DateTime(2024, 4, 20), LastActive = "1 week ago", ResourceCount = 1, SuspensionReason = "Inappropriate content sharing", SuspensionDate = new DateTime(2024, 5, 2) }
+                };
+            }
+            return _usersList;
+        }
 
         [Authorize(Roles = "SuperAdmin")]
         public IActionResult Users()
@@ -306,6 +611,108 @@ namespace LearnLink.Controllers
             ViewBag.ContributorCount = users.Count(u => u.Role == "Contributor");
             ViewBag.ManagerCount = users.Count(u => u.Role == "Manager");
             return View();
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPost]
+        public IActionResult PostAddUser(UserViewModel model)
+        {
+            var users = GetSampleUsers();
+            model.JoinedAt = DateTime.Now;
+            model.Status = "Active";
+            model.StatusBadgeClass = "ll-badge-success";
+            model.Initials = model.Name.Length >= 2 ? model.Name.Substring(0, 2).ToUpper() : "U";
+            model.RoleBadgeClass = model.Role switch {
+                "Manager" => "ll-badge-danger",
+                "Contributor" => "ll-badge-warning",
+                "Student" => "ll-badge-info",
+                _ => "ll-badge-info"
+            };
+            model.AvatarColor = "background: linear-gradient(135deg, #6366f1, #4f46e5)";
+            model.LastActive = "Never";
+            
+            users.Add(model);
+            TempData["SuccessMessage"] = $"{model.Name} has been added successfully!";
+            return RedirectToAction("Users");
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        public IActionResult UserDetails(string email)
+        {
+            var user = GetSampleUsers().FirstOrDefault(u => u.Email == email);
+            if (user == null) return RedirectToAction("Users");
+            
+            ViewBag.UserDetails = user;
+            ViewBag.UserActivity = GetSampleActivities().Where(a => a.User == user.Name).ToList();
+            ViewBag.UserResources = GetSampleResources().Where(r => r.Uploader == user.Name).ToList();
+            
+            return View();
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPost]
+        public IActionResult EditUser(string email, string name, string grade)
+        {
+            var user = GetSampleUsers().FirstOrDefault(u => u.Email == email);
+            if (user != null)
+            {
+                user.Name = name;
+                user.GradeOrPosition = grade;
+                user.Initials = name.Length >= 2 ? name.Substring(0, 2).ToUpper() : "U";
+                TempData["SuccessMessage"] = $"Profile for {user.Name} has been updated.";
+            }
+            return RedirectToAction("Users");
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPost]
+        public IActionResult ChangeRole(string email, string role)
+        {
+            var user = GetSampleUsers().FirstOrDefault(u => u.Email == email);
+            if (user != null)
+            {
+                user.Role = role;
+                user.RoleBadgeClass = role switch {
+                    "Manager" => "ll-badge-danger",
+                    "Contributor" => "ll-badge-warning",
+                    "Student" => "ll-badge-info",
+                    _ => "ll-badge-info"
+                };
+                TempData["SuccessMessage"] = $"Role for {user.Name} changed to {role}.";
+            }
+            return RedirectToAction("Users");
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPost]
+        public IActionResult SuspendUser(string email, string reason)
+        {
+            var user = GetSampleUsers().FirstOrDefault(u => u.Email == email);
+            if (user != null)
+            {
+                user.Status = "Suspended";
+                user.StatusBadgeClass = "ll-badge-danger";
+                user.SuspensionReason = reason;
+                user.SuspensionDate = DateTime.Now;
+                TempData["SuccessMessage"] = $"{user.Name} has been suspended.";
+            }
+            return RedirectToAction("Users");
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPost]
+        public IActionResult ReactivateUser(string email)
+        {
+            var user = GetSampleUsers().FirstOrDefault(u => u.Email == email);
+            if (user != null)
+            {
+                user.Status = "Active";
+                user.StatusBadgeClass = "ll-badge-success";
+                user.SuspensionReason = null;
+                user.SuspensionDate = null;
+                TempData["SuccessMessage"] = $"{user.Name} has been reactivated.";
+            }
+            return RedirectToAction("Users");
         }
 
         [Authorize(Roles = "SuperAdmin")]

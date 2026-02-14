@@ -92,7 +92,21 @@
                                 <span class="small text-muted">@lesson.Author • @((DateTime.Now - lesson.CreatedAt).Days) days ago</span>
                             </div>
                             <div class="d-flex gap-2">
-                                <button class="ll-btn ll-btn-outline ll-btn-sm like-btn"><i class="bi bi-hand-thumbs-up"></i> @lesson.LikeCount</button>
+                                @if (User.Identity?.Name == lesson.Author || lesson.Author == "Jester" || lesson.Author == "You") 
+                                {
+                                    <button class="ll-btn ll-btn-outline ll-btn-sm edit-lesson-btn" 
+                                            data-id="@lesson.Id" 
+                                            data-title="@lesson.Title" 
+                                            data-content="@lesson.Content" 
+                                            data-category="@lesson.Category" 
+                                            data-tags="@string.Join(", ", lesson.Tags)">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="ll-btn ll-btn-outline ll-btn-sm text-danger delete-lesson-btn" data-id="@lesson.Id">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                }
+                                <button class="ll-btn ll-btn-outline ll-btn-sm like-btn" data-id="@lesson.Id"><i class="bi bi-hand-thumbs-up@(lesson.LikeCount > 0 ? "-fill" : "")"></i> @lesson.LikeCount</button>
                                 <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-chat"></i> @lesson.CommentCount</button>
                             </div>
                         </div>
@@ -156,42 +170,111 @@
 <div class="modal fade" id="submitLessonModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Submit a Lesson Learned</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Category</label>
-                    <select class="ll-form-control ll-form-select" id="lessonCategory" required>
-                        <option value="">Select a category</option>
-                        <option>Teaching Strategies</option>
-                        <option>Technology Integration</option>
-                        <option>Reading Skills</option>
-                        <option>Classroom Management</option>
-                        <option>Assessment</option>
-                    </select>
+            <form asp-action="SubmitLesson" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title">Submit a Lesson Learned</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Title</label>
-                    <input type="text" class="ll-form-control" id="lessonTitle" placeholder="Give your lesson a clear title" required>
+                <div class="modal-body">
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Category</label>
+                        <select class="ll-form-control ll-form-select" name="Category" required>
+                            <option value="">Select a category</option>
+                            <option>Teaching Strategies</option>
+                            <option>Technology Integration</option>
+                            <option>Reading Skills</option>
+                            <option>Classroom Management</option>
+                            <option>Assessment</option>
+                        </select>
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Title</label>
+                        <input type="text" class="ll-form-control" name="Title" placeholder="Give your lesson a clear title" required>
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Your Insight</label>
+                        <textarea class="ll-form-control" rows="5" name="Content" placeholder="Share what you learned, what worked well, any tips for others..." required></textarea>
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Tags</label>
+                        <input type="text" class="ll-form-control" name="Tags" placeholder="Add tags separated by commas" value="General">
+                        
+                    </div>
                 </div>
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Your Insight</label>
-                    <textarea class="ll-form-control" rows="5" id="lessonContent" placeholder="Share what you learned, what worked well, any tips for others..." required></textarea>
+                <div class="modal-footer">
+                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="ll-btn ll-btn-primary">
+                        <i class="bi bi-send"></i>
+                        Submit Lesson
+                    </button>
                 </div>
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Tags</label>
-                    <input type="text" class="ll-form-control" id="lessonTags" placeholder="Add tags separated by commas">
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Lesson Modal -->
+<div class="modal fade" id="editLessonModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form asp-action="EditLesson" method="post">
+                <input type="hidden" name="id" id="editLessonId">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Lesson</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="ll-btn ll-btn-primary" id="submitLessonBtn">
-                    <i class="bi bi-send"></i>
-                    Submit Lesson
-                </button>
-            </div>
+                <div class="modal-body">
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Category</label>
+                        <select class="ll-form-control ll-form-select" name="Category" id="editLessonCategory" required>
+                            <option value="">Select a category</option>
+                            <option>Teaching Strategies</option>
+                            <option>Technology Integration</option>
+                            <option>Reading Skills</option>
+                            <option>Classroom Management</option>
+                            <option>Assessment</option>
+                        </select>
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Title</label>
+                        <input type="text" class="ll-form-control" name="Title" id="editLessonTitle" required>
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Your Insight</label>
+                        <textarea class="ll-form-control" rows="5" name="Content" id="editLessonContent" required></textarea>
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Tags</label>
+                        <input type="text" class="ll-form-control" name="Tags" id="editLessonTags">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="ll-btn ll-btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Lesson Modal -->
+<div class="modal fade" id="deleteLessonModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-action="DeleteLesson" method="post">
+                <input type="hidden" name="id" id="deleteLessonId">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title">Delete Lesson?</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Are you sure you want to delete this lesson? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="ll-btn ll-btn-danger">Delete Lesson</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -204,7 +287,7 @@
             <strong class="me-auto">Success</strong>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
         </div>
-        <div class="toast-body">Your lesson has been submitted successfully!</div>
+        <div class="toast-body">@TempData["SuccessMessage"]</div>
     </div>
 </div>
 
@@ -248,33 +331,69 @@
         // Like buttons
         document.querySelectorAll('.like-btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                const text = this.textContent.trim();
-                const count = parseInt(text.match(/\d+/)?.[0] || '0');
-                if (!this.classList.contains('liked')) {
-                    this.innerHTML = '<i class="bi bi-hand-thumbs-up-fill"></i> ' + (count + 1);
-                    this.classList.add('liked', 'll-btn-primary');
-                    this.classList.remove('ll-btn-outline');
-                } else {
-                    this.innerHTML = '<i class="bi bi-hand-thumbs-up"></i> ' + (count - 1);
-                    this.classList.remove('liked', 'll-btn-primary');
-                    this.classList.add('ll-btn-outline');
-                }
+                const id = this.dataset.id;
+                const btnEl = this;
+                
+                // Show loading state or optimistic update could act here
+                // For now, let's just fetch
+                fetch('@Url.Action("LikeLesson", "Home")?id=' + id, { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            btnEl.innerHTML = '<i class="bi bi-hand-thumbs-up-fill"></i> ' + data.likes;
+                            btnEl.classList.add('liked', 'll-btn-primary');
+                            btnEl.classList.remove('ll-btn-outline');
+                            
+                            // Optional: Show toast
+                            // var toastEl = document.getElementById('lessonToast');
+                            // var toastBody = toastEl.querySelector('.toast-body');
+                            // toastBody.textContent = "You liked this lesson!";
+                            // var toast = new bootstrap.Toast(toastEl);
+                            // toast.show();
+                        }
+                    });
             });
         });
 
-        // Submit lesson
-        document.getElementById('submitLessonBtn').addEventListener('click', function() {
-            const title = document.getElementById('lessonTitle').value;
-            const content = document.getElementById('lessonContent').value;
-            if (!title || !content) { alert('Please fill in the title and insight fields.'); return; }
-            var modal = bootstrap.Modal.getInstance(document.getElementById('submitLessonModal'));
-            modal.hide();
+        // Edit Modal Population
+        var editModal = document.getElementById('editLessonModal');
+        if (editModal) {
+            editModal.addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                if (!button && event.detail.relatedTarget) button = event.detail.relatedTarget; // Fallback
+                
+                // If triggered via JS manually, might need to handle differently, but here we use buttons
+                // Wait, buttons don't have data-bs-toggle="modal" to avoid conflict if we want to do logic first
+                // Let's add click listeners to buttons instead of relying on data-bs attributes for data transfer efficiency
+            });
+        }
+
+        document.querySelectorAll('.edit-lesson-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('editLessonId').value = this.dataset.id;
+                document.getElementById('editLessonTitle').value = this.dataset.title;
+                document.getElementById('editLessonContent').value = this.dataset.content;
+                document.getElementById('editLessonCategory').value = this.dataset.category;
+                document.getElementById('editLessonTags').value = this.dataset.tags;
+                new bootstrap.Modal(document.getElementById('editLessonModal')).show();
+            });
+        });
+
+        document.querySelectorAll('.delete-lesson-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('deleteLessonId').value = this.dataset.id;
+                new bootstrap.Modal(document.getElementById('deleteLessonModal')).show();
+            });
+        });
+
+        // Server-side toast trigger
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <text>
             var toast = new bootstrap.Toast(document.getElementById('lessonToast'));
             toast.show();
-            document.getElementById('lessonTitle').value = '';
-            document.getElementById('lessonContent').value = '';
-            document.getElementById('lessonTags').value = '';
-        });
+            </text>
+        }
     })();
 </script>
 }

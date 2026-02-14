@@ -5,6 +5,52 @@
     var recentUploads = ViewBag.RecentUploads as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
 }
 
+<style>
+    /* Date picker styling */
+    input[type="datetime-local"] {
+        position: relative;
+    }
+
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        border-radius: 4px;
+        margin-right: 4px;
+        opacity: 0.6;
+        filter: invert(0.8);
+    }
+
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+        opacity: 1;
+    }
+
+    #accessDurationDate {
+        font-family: inherit;
+    }
+
+    #accessDurationDate:disabled {
+        background-color: #f8f9fa;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .access-duration-wrapper {
+        position: relative;
+    }
+
+    #accessDurationHint {
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    #accessDurationHint.text-success {
+        color: #10b981 !important;
+    }
+
+    #accessDurationHint.text-info {
+        color: #0ea5e9 !important;
+    }
+</style>
+
 <!-- Page Header -->
 <div class="ll-page-header">
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
@@ -143,13 +189,14 @@
                         <div class="col-md-6">
                             <div class="ll-form-group">
                                 <label class="ll-form-label">Access Duration</label>
-                                <select class="ll-form-control ll-form-select">
-                                    <option>Unlimited Access</option>
-                                    <option>7 Days</option>
-                                    <option>30 Days</option>
-                                    <option>90 Days</option>
-                                    <option>Until End of School Year</option>
-                                </select>
+                                <div class="d-flex gap-2">
+                                    <select class="ll-form-control ll-form-select" id="accessDurationType" style="flex: 0 0 150px;">
+                                        <option value="unlimited">Unlimited</option>
+                                        <option value="custom" selected>Custom Date</option>
+                                    </select>
+                                    <input type="datetime-local" class="ll-form-control" id="accessDurationDate" required>
+                                </div>
+                                <small class="text-muted d-block mt-2" id="accessDurationHint">Resources will be accessible until the selected date and time</small>
                             </div>
                         </div>
                     </div>
@@ -259,6 +306,8 @@
                     <label class="ll-form-label">Title</label>
                     <input type="text" class="ll-form-control" id="editUploadTitle">
                 </div>
+                @if (User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
+                {
                 <div class="ll-form-group">
                     <label class="ll-form-label">Status</label>
                     <select class="ll-form-control ll-form-select" id="editUploadStatus">
@@ -267,6 +316,11 @@
                         <option>Draft</option>
                     </select>
                 </div>
+                }
+                else
+                {
+                <input type="hidden" id="editUploadStatus" />
+                }
             </div>
             <div class="modal-footer">
                 <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
@@ -487,7 +541,10 @@
                 return;
             }
             upload.title = editUploadTitle.value.trim() || upload.title;
-            upload.status = editUploadStatus.value;
+            // Only update status if the status dropdown is a <select> (Manager/SuperAdmin)
+            if (editUploadStatus.tagName === 'SELECT') {
+                upload.status = editUploadStatus.value;
+            }
             renderUploads();
             editUploadModal.hide();
         });
@@ -520,6 +577,53 @@
             input.addEventListener('input', clearFormFeedback);
             input.addEventListener('change', clearFormFeedback);
         });
+
+        // ==================== Access Duration Date Picker Logic ====================
+        const accessDurationType = document.getElementById('accessDurationType');
+        const accessDurationDate = document.getElementById('accessDurationDate');
+        const accessDurationHint = document.getElementById('accessDurationHint');
+
+        // Set default date to 30 days from now
+        function setDefaultDate() {
+            const now = new Date();
+            const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            const isoString = thirtyDaysLater.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:mm
+            accessDurationDate.value = isoString;
+        }
+
+        // Toggle date picker based on access duration type
+        accessDurationType.addEventListener('change', function() {
+            if (this.value === 'unlimited') {
+                accessDurationDate.disabled = true;
+                accessDurationDate.required = false;
+                accessDurationHint.textContent = 'Resources will be accessible indefinitely';
+                accessDurationHint.classList.add('text-success');
+            } else {
+                accessDurationDate.disabled = false;
+                accessDurationDate.required = true;
+                accessDurationHint.textContent = 'Resources will be accessible until the selected date and time';
+                accessDurationHint.classList.remove('text-success');
+            }
+        });
+
+        // Update hint when date changes
+        accessDurationDate.addEventListener('change', function() {
+            if (this.value) {
+                const selectedDate = new Date(this.value);
+                const formatted = selectedDate.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                accessDurationHint.textContent = `Access expires on: ${formatted}`;
+                accessDurationHint.classList.add('text-info');
+            }
+        });
+
+        // Initialize on page load
+        setDefaultDate();
 
         renderUploads();
     </script>

@@ -33,11 +33,21 @@ builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
-// Seed roles and users
+// Auto-apply migrations and seed data
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    await SeedData.InitializeAsync(services);
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        await context.Database.MigrateAsync();
+        await SeedData.InitializeAsync(services);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating/seeding the database.");
+    }
 }
 
 // Configure the HTTP request pipeline.
@@ -49,18 +59,15 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapStaticAssets();
-
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
-
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 app.MapRazorPages();
 
 

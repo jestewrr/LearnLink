@@ -46,7 +46,7 @@
                 <!-- Main Navigation -->
                 <div class="ll-nav-section">
                     <div class="ll-nav-section-title">Main Menu</div>
-                    @if (!isStudent)
+                    @if (!isStudent && !isContributor)
                     {
                     <div class="ll-nav-item">
                         <a href="@Url.Action("Dashboard", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Dashboard" ? "active" : "")">
@@ -61,12 +61,6 @@
                             <span class="nav-text">Knowledge Repository</span>
                         </a>
                     </div>
-                    <div class="ll-nav-item">
-                        <a href="@Url.Action("Search", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Search" ? "active" : "")">
-                            <i class="bi bi-search"></i>
-                            <span class="nav-text">Search Resources</span>
-                        </a>
-                    </div>
                 </div>
 
                 <!-- Content Management (Contributors, Manager & Admin) -->
@@ -78,7 +72,6 @@
                         <a href="@Url.Action("MyUploads", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "MyUploads" ? "active" : "")">
                             <i class="bi bi-file-earmark-check"></i>
                             <span class="nav-text">My Uploads</span>
-                            <span class="badge bg-primary rounded-pill">12</span>
                         </a>
                     </div>
                     <div class="ll-nav-item">
@@ -120,7 +113,6 @@
                         <a href="@Url.Action("KnowledgePortal", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "KnowledgePortal" ? "active" : "")">
                             <i class="bi bi-chat-square-text"></i>
                             <span class="nav-text">Knowledge Sharing</span>
-                            <span class="badge bg-success rounded-pill">New</span>
                         </a>
                     </div>
                     <div class="ll-nav-item">
@@ -144,12 +136,7 @@
                             <span class="nav-text">User Management</span>
                         </a>
                     </div>
-                    <div class="ll-nav-item">
-                        <a href="@Url.Action("Settings", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Settings" ? "active" : "")">
-                            <i class="bi bi-gear"></i>
-                            <span class="nav-text">System Settings</span>
-                        </a>
-                    </div>
+
                     }
                     @if (canReport)
                     {
@@ -378,7 +365,6 @@
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#profileModal"><i class="bi bi-person me-2"></i>My Profile</a></li>
-                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#accountSettingsModal"><i class="bi bi-gear me-2"></i>Account Settings</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form asp-action="Logout" asp-controller="Home" method="post" class="d-inline">
@@ -409,69 +395,50 @@
         </div>
     </div>
 
+    <!-- My Profile Modal -->
     <div class="modal fade" id="profileModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h6 class="modal-title">My Profile</h6>
+                <div class="modal-header border-0">
+                    <h6 class="modal-title fw-bold">My Profile</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="ll-table-detail-list">
-                        <div class="ll-table-detail-item">
-                            <div class="ll-table-detail-label">Name</div>
-                            <div class="ll-table-detail-value">@userEmail</div>
-                        </div>
-                        <div class="ll-table-detail-item">
-                            <div class="ll-table-detail-label">Role</div>
-                            <div class="ll-table-detail-value">@userRole</div>
-                        </div>
-                        <div class="ll-table-detail-item">
-                            <div class="ll-table-detail-label">Email</div>
-                            <div class="ll-table-detail-value">@userEmail</div>
-                        </div>
-                        <div class="ll-table-detail-item">
-                            <div class="ll-table-detail-label">Member Since</div>
-                            <div class="ll-table-detail-value">January 2024</div>
+                <div class="modal-body text-center pt-0 pb-4">
+                    <div class="mb-3">
+                        <div class="d-inline-flex align-items-center justify-content-center text-white fw-bold display-5" 
+                             style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #0d6efd, #0a58ca);">
+                            @userInitials
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
+                    <h4 class="fw-bold mb-1">@userEmail.Split('@')[0]</h4>
+                    <p class="text-muted small mb-3">@userEmail</p>
+                    
+                    <div class="d-flex justify-content-center gap-2 mb-4">
+                        <span class="badge bg-warning text-dark border border-warning bg-opacity-10">@userRole</span>
+                        <span class="badge bg-success text-success border border-success bg-opacity-10">Active</span>
+                    </div>
 
-    <div class="modal fade" id="accountSettingsModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h6 class="modal-title">Account Settings</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="ll-table-detail-list">
-                        <div class="ll-table-detail-item">
-                            <div class="ll-table-detail-label">Notifications</div>
-                            <div class="ll-table-detail-value">Enabled</div>
+                    <div class="text-start px-3">
+                        <div class="mb-3">
+                            <label class="small text-muted fw-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Name</label>
+                            <div class="fw-medium">@userEmail</div>
                         </div>
-                        <div class="ll-table-detail-item">
-                            <div class="ll-table-detail-label">Two-Factor Auth</div>
-                            <div class="ll-table-detail-value">On</div>
+                        <div class="mb-3">
+                            <label class="small text-muted fw-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Role</label>
+                            <div class="fw-medium">@userRole</div>
                         </div>
-                        <div class="ll-table-detail-item">
-                            <div class="ll-table-detail-label">Language</div>
-                            <div class="ll-table-detail-value">English (US)</div>
+                        <div class="mb-3">
+                            <label class="small text-muted fw-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Email</label>
+                            <div class="fw-medium">@userEmail</div>
                         </div>
-                        <div class="ll-table-detail-item">
-                            <div class="ll-table-detail-label">Theme</div>
-                            <div class="ll-table-detail-value">System Default</div>
+                        <div class="mb-0">
+                            <label class="small text-muted fw-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Member Since</label>
+                            <div class="fw-medium">January 2024</div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Close</button>
+                <div class="modal-footer border-0 justify-content-center pb-4">
+                    <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>

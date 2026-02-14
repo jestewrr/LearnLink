@@ -75,29 +75,25 @@
                                         <label class="form-label">Password</label>
                                         <div class="ll-auth-input-group">
                                             <i class="bi bi-lock ll-auth-input-icon"></i>
-                                            <input type="password" class="form-control" placeholder="Create password" required>
+                                            <input type="password" id="regPassword" class="form-control" placeholder="Create password" required>
+                                            <button type="button" class="ll-auth-password-toggle" onclick="togglePassword('regPassword', this)">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label">Confirm Password</label>
                                         <div class="ll-auth-input-group">
                                             <i class="bi bi-lock-fill ll-auth-input-icon"></i>
-                                            <input type="password" class="form-control" placeholder="Re-enter password" required>
+                                            <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter password" required>
+                                            <button type="button" class="ll-auth-password-toggle" onclick="togglePassword('confirmPassword', this)">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="mb-3">
-                                    <label class="form-label">Register as</label>
-                                    <div class="ll-auth-input-group">
-                                        <i class="bi bi-mortarboard ll-auth-input-icon"></i>
-                                        <select class="form-select" required>
-                                            <option value="">Select your role</option>
-                                            <option value="student">Student</option>
-                                            <option value="contributor">Contributor (Teacher)</option>
-                                        </select>
-                                    </div>
-                                </div>
+
 
                                 <div class="form-check mb-4">
                                     <input class="form-check-input" type="checkbox" id="agreeTerms" required>
@@ -116,9 +112,7 @@
                                 </div>
                             </form>
 
-                            <div class="ll-auth-footer">
-                                <p class="mb-0">&copy; 2026 LearnLink — Student Resource Management System</p>
-                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -128,5 +122,20 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            }
+        }
+    </script>
 </body>
 </html>

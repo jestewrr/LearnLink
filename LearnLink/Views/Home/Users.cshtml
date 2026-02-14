@@ -144,11 +144,12 @@
                     @foreach (var user in users)
                     {
                     <tr class="user-row"
-                        data-name="@user.Name.ToLower()"
-                        data-email="@user.Email.ToLower()"
+                        data-name="@user.Name"
+                        data-email="@user.Email"
                         data-role="@user.Role"
                         data-status="@user.Status"
-                        data-grade="@user.GradeOrPosition.ToLower()">
+                        data-grade="@user.GradeOrPosition"
+                        data-joined="@user.JoinedAt.ToString("MMMM dd, yyyy")">
                         <td><input type="checkbox" class="form-check-input user-checkbox"></td>
                         <td>
                             <div class="d-flex align-items-center gap-3">
@@ -173,24 +174,24 @@
                                     @if (user.Status == "Pending")
                                     {
                                     <li><a class="dropdown-item" href="#"><i class="bi bi-check-circle me-2"></i>Approve</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
+                                    <li><a class="dropdown-item" href="@Url.Action("UserDetails", "Home", new { email = user.Email })"><i class="bi bi-eye me-2"></i>View Profile</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-x-circle me-2"></i>Reject</a></li>
                                     }
                                     else if (user.Status == "Suspended")
                                     {
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-person-check me-2"></i>Reactivate</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
+                                    <li><form asp-action="ReactivateUser" method="post" class="d-inline"><input type="hidden" name="email" value="@user.Email"><button type="submit" class="dropdown-item"><i class="bi bi-person-check me-2"></i>Reactivate</button></form></li>
+                                    <li><a class="dropdown-item" href="@Url.Action("UserDetails", "Home", new { email = user.Email })"><i class="bi bi-eye me-2"></i>View Profile</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-trash me-2"></i>Delete</a></li>
                                     }
                                     else
                                     {
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-eye me-2"></i>View Profile</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit User</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-shield me-2"></i>Change Role</a></li>
+                                    <li><a class="dropdown-item view-profile-action" href="#" data-bs-toggle="modal" data-bs-target="#userDetailsModal" data-email="@user.Email" data-name="@user.Name" data-role="@user.Role" data-status="@user.Status" data-joined="@user.JoinedAt.ToString("MMMM dd, yyyy")"><i class="bi bi-eye me-2"></i>View Profile</a></li>
+                                    <li><a class="dropdown-item edit-user-action" href="#" data-bs-toggle="modal" data-bs-target="#editUserModal" data-email="@user.Email" data-name="@user.Name" data-grade="@user.GradeOrPosition"><i class="bi bi-pencil me-2"></i>Edit User</a></li>
+                                    <li><a class="dropdown-item change-role-action" href="#" data-bs-toggle="modal" data-bs-target="#changeRoleModal" data-email="@user.Email" data-name="@user.Name" data-role="@user.Role"><i class="bi bi-shield me-2"></i>Change Role</a></li>
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-person-slash me-2"></i>Suspend</a></li>
+                                    <li><a class="dropdown-item suspend-user-action text-danger" href="#" data-bs-toggle="modal" data-bs-target="#suspendUserModal" data-email="@user.Email" data-name="@user.Name"><i class="bi bi-person-slash me-2"></i>Suspend</a></li>
                                     }
                                 </ul>
                             </div>
@@ -223,6 +224,7 @@
                  data-res-status="@user.Status"
                  data-res-date="@user.JoinedAt.ToString("MMM dd, yyyy")"
                  data-res-type="@user.LastActive"
+                 data-joined="@user.JoinedAt.ToString("MMMM dd, yyyy")"
                  data-actions="@mobileActions">
                 <div class="ll-discussion-avatar" style="width: 40px; height: 40px; @(user.AvatarColor)">@user.Initials</div>
                 <div class="ll-mobile-card-info">
@@ -254,48 +256,186 @@
 <div class="modal fade" id="addUserModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Add New User</h5>
+            <form asp-action="PostAddUser" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Full Name</label>
+                        <input type="text" class="ll-form-control" name="Name" placeholder="Enter full name" required>
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Email Address</label>
+                        <input type="email" class="ll-form-control" name="Email" placeholder="Enter email address" required>
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Role</label>
+                        <select class="ll-form-control ll-form-select" name="Role" required>
+                            <option value="">Select role</option>
+                            <option value="Manager">Manager</option>
+                            <option value="Contributor">Contributor</option>
+                            <option value="Student">Student</option>
+                        </select>
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Grade/Position</label>
+                        <input type="text" class="ll-form-control" name="GradeOrPosition" placeholder="e.g., Grade 8 - Section A or Math Teacher" required>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="sendInvite" checked>
+                        <label class="form-check-label" for="sendInvite">Send email invitation to user</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="ll-btn ll-btn-primary">
+                        <i class="bi bi-person-plus"></i>
+                        Add User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="EditUser" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit User Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="email" id="editUserEmail">
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Full Name</label>
+                        <input type="text" class="ll-form-control" name="name" id="editUserName" required>
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Grade/Position</label>
+                        <input type="text" class="ll-form-control" name="grade" id="editUserGrade" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="ll-btn ll-btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Change Role Modal -->
+<div class="modal fade" id="changeRoleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="ChangeRole" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title">Change User Role</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="email" id="changeRoleEmail">
+                    <p>Changing role for <strong id="changeRoleUserName"></strong></p>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">New Role</label>
+                        <select class="ll-form-control ll-form-select" name="role" id="changeRoleSelect" required>
+                            <option value="Manager">Manager</option>
+                            <option value="Contributor">Contributor</option>
+                            <option value="Student">Student</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="ll-btn ll-btn-primary">Update Role</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Suspend User Modal -->
+<div class="modal fade" id="suspendUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="SuspendUser" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title">Suspend User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="email" id="suspendUserEmail">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Are you sure you want to suspend <strong id="suspendUserName"></strong>? They will lose access to the platform immediately.
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Reason for Suspension</label>
+                        <textarea class="ll-form-control" name="reason" rows="3" placeholder="Explain why this user is being suspended..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="ll-btn ll-btn-danger">Suspend User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- User Details Modal -->
+<div class="modal fade" id="userDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h6 class="modal-title fw-bold">User Management Details</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Full Name</label>
-                    <input type="text" class="ll-form-control" id="newUserName" placeholder="Enter full name">
+            <div class="modal-body text-center pt-0 pb-4">
+                <div class="mb-3">
+                    <div class="d-inline-flex align-items-center justify-content-center text-white fw-bold display-5" 
+                            id="detailsUserInitials"
+                            style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #0d6efd, #0a58ca);">
+                        <!-- Initials via JS -->
+                    </div>
                 </div>
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Email Address</label>
-                    <input type="email" class="ll-form-control" id="newUserEmail" placeholder="Enter email address">
+                <h4 class="fw-bold mb-1" id="detailsUserName">User Name</h4>
+                <p class="text-muted small mb-3" id="detailsUserEmail">email@example.com</p>
+                
+                <div class="d-flex justify-content-center gap-2 mb-4">
+                    <span class="badge bg-warning text-dark border border-warning bg-opacity-10" id="detailsUserRole">Role</span>
+                    <span class="badge bg-success text-success border border-success bg-opacity-10" id="detailsUserStatus">Status</span>
                 </div>
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Role</label>
-                    <select class="ll-form-control ll-form-select" id="newUserRole">
-                        <option value="">Select role</option>
-                        <option>Admin</option>
-                        <option>Manager</option>
-                        <option>Contributor</option>
-                        <option>Student</option>
-                    </select>
-                </div>
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Grade/Position</label>
-                    <input type="text" class="ll-form-control" id="newUserGrade" placeholder="e.g., Grade 8 - Section A or Math Teacher">
-                </div>
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Temporary Password</label>
-                    <input type="password" class="ll-form-control" id="newUserPassword" placeholder="Enter temporary password">
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="sendInvite" checked>
-                    <label class="form-check-label" for="sendInvite">Send email invitation to user</label>
+
+                <div class="text-start px-3">
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Name</label>
+                        <div class="fw-medium" id="detailsNameField">Name</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Role</label>
+                        <div class="fw-medium" id="detailsRoleField">Role</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Email</label>
+                        <div class="fw-medium" id="detailsEmailField">Email</div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="small text-muted fw-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Member Since</label>
+                        <div class="fw-medium" id="detailsJoinedField">Date</div>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="ll-btn ll-btn-primary" id="addUserBtn">
-                    <i class="bi bi-person-plus"></i>
-                    Add User
-                </button>
+            <div class="modal-footer border-0 p-3 pt-0 flex-column gap-2">
+                <a href="#" id="viewFullProfileBtn" class="ll-btn ll-btn-outline w-100 text-center">View Profile</a>
+                <button type="button" class="ll-btn ll-btn-outline w-100" id="mobileEditBtn">Edit User</button>
+                <button type="button" class="ll-btn ll-btn-outline w-100" id="mobileRoleBtn">Change Role</button>
+                <button type="button" class="ll-btn ll-btn-outline w-100 text-danger" id="mobileSuspendBtn">Suspend</button>
             </div>
         </div>
     </div>
@@ -309,7 +449,7 @@
             <strong class="me-auto">Success</strong>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
         </div>
-        <div class="toast-body" id="userToastBody">User added successfully!</div>
+        <div class="toast-body" id="userToastBody">@TempData["SuccessMessage"]</div>
     </div>
 </div>
 
@@ -326,11 +466,11 @@
             var visible = 0;
 
             rows.forEach(function(row) {
-                var name = row.dataset.name;
-                var email = row.dataset.email;
+                var name = row.dataset.name.toLowerCase();
+                var email = row.dataset.email.toLowerCase();
                 var r = row.dataset.role;
                 var s = row.dataset.status;
-                var g = row.dataset.grade;
+                var g = row.dataset.grade.toLowerCase();
 
                 var matchSearch = !search || name.includes(search) || email.includes(search);
                 var matchRole = !role || r === role;
@@ -369,41 +509,161 @@
             });
         });
 
-        // Add user modal
-        document.getElementById('addUserBtn').addEventListener('click', function() {
-            var name = document.getElementById('newUserName').value;
-            var email = document.getElementById('newUserEmail').value;
-            var role = document.getElementById('newUserRole').value;
-            var password = document.getElementById('newUserPassword').value;
-
-            if (!name || !email || !role || !password) {
-                alert('Please fill in all required fields.');
-                return;
-            }
-
-            // Close modal
-            var modal = bootstrap.Modal.getInstance(document.getElementById('addUserModal'));
-            modal.hide();
-
-            // Show toast
-            document.getElementById('userToastBody').textContent = name + ' has been added successfully!';
-            var toast = new bootstrap.Toast(document.getElementById('userToast'));
-            toast.show();
-
-            // Clear form
-            document.getElementById('newUserName').value = '';
-            document.getElementById('newUserEmail').value = '';
-            document.getElementById('newUserRole').value = '';
-            document.getElementById('newUserGrade').value = '';
-            document.getElementById('newUserPassword').value = '';
+        // Populate Edit Modal
+        document.querySelectorAll('.edit-user-action').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('editUserEmail').value = this.dataset.email;
+                document.getElementById('editUserName').value = this.dataset.name;
+                document.getElementById('editUserGrade').value = this.dataset.grade;
+            });
         });
 
-        // Export button
-        document.getElementById('exportUsersBtn').addEventListener('click', function() {
-            document.getElementById('userToastBody').textContent = 'User list exported successfully!';
+        // Populate Role Modal
+        document.querySelectorAll('.change-role-action').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('changeRoleEmail').value = this.dataset.email;
+                document.getElementById('changeRoleUserName').textContent = this.dataset.name;
+                document.getElementById('changeRoleSelect').value = this.dataset.role;
+            });
+        });
+
+        // Populate Suspend Modal
+        document.querySelectorAll('.suspend-user-action').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('suspendUserEmail').value = this.dataset.email;
+                document.getElementById('suspendUserName').textContent = this.dataset.name;
+            });
+        });
+
+        // Server-side toast trigger
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <text>
             var toast = new bootstrap.Toast(document.getElementById('userToast'));
             toast.show();
+            </text>
+        }
+
+        // --- User Details Modal Population ---
+        function populateUserDetails(email, name, role, status, joined) {
+            document.getElementById('detailsUserName').textContent = name;
+            document.getElementById('detailsUserEmail').textContent = email;
+            document.getElementById('detailsUserRole').textContent = role;
+            document.getElementById('detailsUserStatus').textContent = status;
+            
+            // Initials
+            var initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            document.getElementById('detailsUserInitials').textContent = initials;
+            
+            // List fields
+            document.getElementById('detailsNameField').textContent = name;
+            document.getElementById('detailsRoleField').textContent = role;
+            document.getElementById('detailsEmailField').textContent = email;
+            document.getElementById('detailsJoinedField').textContent = joined;
+            
+            // Configure buttons if needed (for mobile flow)
+            // If viewing from table, buttons in modal are generic.
+            // If we want buttons in UserDetailsModal to work, we need to attach data to them.
+            // But UserDetailsModal (as per image) seems to be Read-Only + "Actions".
+            // The image 3 shows "View Profile", "Edit User", "Change Role", "Suspend" stacked.
+            // That corresponds to "User Management Details" modal (which I named userDetailsModal above).
+            
+            // Let's wire the buttons inside userDetailsModal
+            // View Profile -> Full page? Or is this it?
+            // "View Profile" button inside the modal probably goes to the separate page.
+            document.getElementById('viewFullProfileBtn').href = '@Url.Action("UserDetails", "Home")?email=' + email;
+            
+            // Edit
+            var editBtn = document.getElementById('mobileEditBtn');
+            editBtn.onclick = function() {
+                var modal = bootstrap.Modal.getInstance(document.getElementById('userDetailsModal'));
+                modal.hide();
+                // Trigger edit modal
+                document.getElementById('editUserEmail').value = email;
+                document.getElementById('editUserName').value = name;
+                // data-grade is needed. We need to pass it.
+                // Simplified: userDetailsModal stores data in dataset of modal?
+            };
+            
+            // We need 'grade' for Edit. We need 'role' for Change Role.
+            // Let's store all data on the modal element itself for easy access.
+            var modalEl = document.getElementById('userDetailsModal');
+            modalEl.dataset.email = email;
+            modalEl.dataset.name = name;
+            modalEl.dataset.role = role;
+            modalEl.dataset.grade = ""; // Need to pass this in
+        }
+
+        document.querySelectorAll('.view-profile-action').forEach(btn => {
+            btn.addEventListener('click', function() {
+                var email = this.dataset.email;
+                var name = this.dataset.name;
+                var role = this.dataset.role;
+                var status = this.dataset.status;
+                var joined = this.dataset.joined;
+                populateUserDetails(email, name, role, status, joined);
+                
+                // Hide action buttons in this modal if opened from desktop table?
+                // The desktop table has actions in dropdown. 
+                // The user request: "when i click the view profile update that also that it will pop up like this"
+                // So desktop "View Profile" opens this modal. The buttons in the modal (Edit/Suspend) are redundant but useful.
+                // However, 'Edit' needs 'grade'. 'Change Role' needs 'role'.
+                // I need to ensure I pass 'grade' to populate function.
+            });
         });
+
+        // --- Mobile Row Click ---
+        document.querySelectorAll('.user-row-mobile').forEach(row => {
+            row.addEventListener('click', function() {
+                // Determine layout: User wants "User Management Details" modal (screenshot 3)
+                // This modal shows details AND actions.
+                var name = this.dataset.name; // These are lowercased in dataset for search?
+                // Wait, dataset.name is whatever is in attribute. I lowercased it in HTML?
+                // HTML: data-name="user name"
+                // I should probably fix capitalization for display.
+                // Actually, let's use the .ll-mobile-card-title text content which is correct casing.
+                var displayModal = new bootstrap.Modal(document.getElementById('userDetailsModal'));
+                
+                var realName = this.querySelector('.ll-mobile-card-title').textContent;
+                var email = this.dataset.resUploader; // I mapped email to res-uploader in HTML
+                var role = this.dataset.role;
+                var status = this.dataset.status;
+                var joined = this.dataset.joined;
+                var grade = this.dataset.resGrade;
+                
+                populateUserDetails(email, realName, role, status, joined);
+                
+                // Set data for action buttons
+                var editBtn = document.getElementById('mobileEditBtn');
+                editBtn.onclick = function() {
+                    displayModal.hide();
+                    document.getElementById('editUserEmail').value = email;
+                    document.getElementById('editUserName').value = realName;
+                    document.getElementById('editUserGrade').value = grade;
+                    new bootstrap.Modal(document.getElementById('editUserModal')).show();
+                };
+                
+                var roleBtn = document.getElementById('mobileRoleBtn');
+                roleBtn.onclick = function() {
+                    displayModal.hide();
+                    document.getElementById('changeRoleEmail').value = email;
+                    document.getElementById('changeRoleUserName').textContent = realName;
+                    document.getElementById('changeRoleSelect').value = role;
+                    new bootstrap.Modal(document.getElementById('changeRoleModal')).show();
+                };
+                
+                var suspendBtn = document.getElementById('mobileSuspendBtn');
+                suspendBtn.onclick = function() {
+                    displayModal.hide();
+                    document.getElementById('suspendUserEmail').value = email;
+                    document.getElementById('suspendUserName').textContent = realName;
+                    new bootstrap.Modal(document.getElementById('suspendUserModal')).show();
+                };
+                
+                displayModal.show();
+            });
+        });
+
     })();
 </script>
 }
