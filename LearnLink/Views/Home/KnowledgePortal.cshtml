@@ -99,7 +99,7 @@
                     <span class="text-muted small"><i class="bi bi-eye"></i> @discussion.ViewCount views</span>
                 </div>
                 <div class="d-flex gap-2">
-                    @if (User.Identity?.Name == discussion.Author || discussion.Author == "Jester" || discussion.Author == "You")
+                    @if (ViewBag.CurrentUserId != null && ViewBag.CurrentUserId == discussion.UserId || User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
                     {
                         <button class="ll-btn ll-btn-outline ll-btn-sm edit-disc-btn" 
                                 data-id="@discussion.Id" 

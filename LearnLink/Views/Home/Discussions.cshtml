@@ -46,7 +46,7 @@
                     <div class="d-flex gap-2">
                         <button class="ll-btn ll-btn-outline ll-btn-sm" id="bookmarkDiscBtn"><i class="bi bi-bookmark"></i></button>
                         <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-share"></i></button>
-                        @if (User.Identity?.Name == discussion.Author || discussion.Author == "Jester" || discussion.Author == "You")
+                        @if (ViewBag.CurrentUserId != null && ViewBag.CurrentUserId == discussion.UserId || User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
                         {
                             <div class="dropdown">
                                 <button class="ll-btn ll-btn-outline ll-btn-sm" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
@@ -142,7 +142,7 @@
                         <i class="bi @(reply.IsLiked ? "bi-heart-fill text-danger" : "bi-heart")"></i> <span class="like-count">@reply.LikeCount</span>
                     </button>
                     <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-reply"></i> Reply</button>
-                    @if (User.Identity?.Name == reply.Author || reply.Author == "Jester" || reply.Author == "You")
+                    @if (ViewBag.CurrentUserId != null && ViewBag.CurrentUserId == reply.UserId || User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
                     {
                         <button class="ll-btn ll-btn-outline ll-btn-sm text-danger delete-reply-btn" data-id="@reply.Id"><i class="bi bi-trash"></i></button>
                     }

@@ -254,6 +254,7 @@ namespace LearnLink.Controllers
                 Content = l.Content,
                 Category = l.Category,
                 Author = l.User?.FullName ?? "Unknown",
+                UserId = l.User?.Id ?? "",
                 AuthorInitials = l.User?.Initials ?? "?",
                 AuthorColor = l.User?.AvatarColor ?? "",
                 AuthorRole = "Contributor",
@@ -275,6 +276,7 @@ namespace LearnLink.Controllers
                 Title = d.Title,
                 Content = d.Content,
                 Author = d.User?.FullName ?? "Unknown",
+                UserId = d.User?.Id ?? "",
                 AuthorInitials = d.User?.Initials ?? "?",
                 AuthorColor = d.User?.AvatarColor ?? "",
                 AuthorRole = "User",
@@ -297,6 +299,7 @@ namespace LearnLink.Controllers
                 Id = p.PostId,
                 Content = p.Content,
                 Author = p.User?.FullName ?? "Unknown",
+                UserId = p.User?.Id ?? "",
                 AuthorInitials = p.User?.Initials ?? "?",
                 AuthorColor = p.User?.AvatarColor ?? "",
                 AuthorRole = "User",
@@ -1159,6 +1162,7 @@ namespace LearnLink.Controllers
         public async Task<IActionResult> LessonsLearned()
         {
             var currentUser = await GetCurrentUserAsync();
+            ViewBag.CurrentUserId = currentUser?.Id;
             var lessons = await _context.LessonsLearned
                 .Include(l => l.User)
                 .Include(l => l.Resource)
@@ -1434,6 +1438,7 @@ namespace LearnLink.Controllers
         public async Task<IActionResult> KnowledgePortal()
         {
             var currentUser = await GetCurrentUserAsync();
+            ViewBag.CurrentUserId = currentUser?.Id;
             var discussions = await _context.Discussions
                 .Include(d => d.User)
                 .Include(d => d.Posts)
@@ -1639,6 +1644,7 @@ namespace LearnLink.Controllers
         public async Task<IActionResult> Discussions(int id)
         {
             var currentUser = await GetCurrentUserAsync();
+            ViewBag.CurrentUserId = currentUser?.Id;
             var discussions = await _context.Discussions
                 .Include(d => d.User)
                 .Include(d => d.Posts)

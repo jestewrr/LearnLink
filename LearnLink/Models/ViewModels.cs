@@ -37,6 +37,7 @@ namespace LearnLink.Models
         public string Content { get; set; } = "";
         public string Category { get; set; } = "";
         public string Author { get; set; } = "";
+        public string UserId { get; set; } = "";
         public string AuthorInitials { get; set; } = "";
         public string AuthorColor { get; set; } = "";
         public string AuthorRole { get; set; } = "";
@@ -55,6 +56,7 @@ namespace LearnLink.Models
         public string Title { get; set; } = "";
         public string Content { get; set; } = "";
         public string Author { get; set; } = "";
+        public string UserId { get; set; } = "";
         public string AuthorInitials { get; set; } = "";
         public string AuthorColor { get; set; } = "";
         public string AuthorRole { get; set; } = "";
@@ -74,6 +76,7 @@ namespace LearnLink.Models
         public int Id { get; set; }
         public string Content { get; set; } = "";
         public string Author { get; set; } = "";
+        public string UserId { get; set; } = "";
         public string AuthorInitials { get; set; } = "";
         public string AuthorColor { get; set; } = "";
         public string AuthorRole { get; set; } = "";

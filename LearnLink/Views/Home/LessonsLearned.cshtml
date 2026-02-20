@@ -78,7 +78,7 @@
                         <span class="small text-muted ms-2">• @((DateTime.Now - lesson.CreatedAt).Days) days ago</span>
                     </div>
                     <div class="d-inline-flex gap-2 align-items-center text-muted">
-                        @if (User.Identity?.Name == lesson.Author || lesson.Author == "Jester" || lesson.Author == "You") 
+                        @if (ViewBag.CurrentUserId != null && ViewBag.CurrentUserId == lesson.UserId || User.IsInRole("SuperAdmin") || User.IsInRole("Manager")) 
                         {
                             <a href="#" class="btn btn-sm btn-link text-muted p-0 edit-lesson-btn" title="Edit"
                                         data-id="@lesson.Id" 
