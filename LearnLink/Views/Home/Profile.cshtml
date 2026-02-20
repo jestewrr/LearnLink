@@ -1,0 +1,289 @@
+@{
+    ViewData["Title"] = "My Profile";
+    var user = (LearnLink.Models.UserViewModel)ViewBag.ProfileUser;
+    var myLessons = (List<LearnLink.Models.LessonViewModel>)ViewBag.MyLessons;
+    var myDiscussions = (List<LearnLink.Models.DiscussionViewModel>)ViewBag.MyDiscussions;
+    var joinedDiscussions = (List<LearnLink.Models.DiscussionViewModel>)ViewBag.JoinedDiscussions;
+    var likedResources = (List<LearnLink.Models.ResourceViewModel>)ViewBag.LikedResources;
+}
+
+<!-- Breadcrumb -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">My Profile</h4>
+        <nav class="small text-muted">
+            <a href="@Url.Action("Dashboard", "Home")" class="text-decoration-none" style="color: var(--ll-primary);">Home</a>
+            <i class="bi bi-chevron-right mx-1"></i>
+            <span>Profile</span>
+        </nav>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show small py-2 mb-3" role="alert">
+        <i class="bi bi-check-circle me-1"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-4">
+    <!-- Left: Profile Card -->
+    <div class="col-lg-4">
+        <div class="ll-card p-4 text-center">
+            <!-- Avatar -->
+            <div class="d-inline-flex align-items-center justify-content-center text-white fw-bold display-4 mb-3"
+                 style="width: 100px; height: 100px; border-radius: 50%; @(string.IsNullOrEmpty(user.AvatarColor) ? "background: linear-gradient(135deg, #0d6efd, #0a58ca);" : user.AvatarColor)">
+                @user.Initials
+            </div>
+            <h4 class="fw-bold mb-1">@user.Name</h4>
+            <p class="text-muted small mb-3">@user.Email</p>
+
+            <!-- Badges -->
+            <div class="d-flex justify-content-center gap-2 mb-4">
+                <span class="badge @user.StatusBadgeClass">@user.Status</span>
+            </div>
+
+
+
+            <!-- Personal Info -->
+            <div class="text-start border-top pt-3 mt-3">
+                <div class="mb-3">
+                    <div class="small text-muted fw-bold text-uppercase mb-1" style="font-size: 0.7rem; letter-spacing: 0.05em;">Full Name</div>
+                    <div class="fw-medium">@user.Name</div>
+                </div>
+                <div class="mb-3">
+                    <div class="small text-muted fw-bold text-uppercase mb-1" style="font-size: 0.7rem; letter-spacing: 0.05em;">Email Address</div>
+                    <div class="fw-medium">@user.Email</div>
+                </div>
+                <div class="mb-3">
+                    <div class="small text-muted fw-bold text-uppercase mb-1" style="font-size: 0.7rem; letter-spacing: 0.05em;">Role</div>
+                    <div class="fw-medium">@user.Role</div>
+                </div>
+                @if (!string.IsNullOrEmpty(user.GradeOrPosition))
+                {
+                    <div class="mb-3">
+                        <div class="small text-muted fw-bold text-uppercase mb-1" style="font-size: 0.7rem; letter-spacing: 0.05em;">Position / Grade</div>
+                        <div class="fw-medium">@user.GradeOrPosition</div>
+                    </div>
+                }
+                <div class="mb-0">
+                    <div class="small text-muted fw-bold text-uppercase mb-1" style="font-size: 0.7rem; letter-spacing: 0.05em;">Member Since</div>
+                    <div class="fw-medium">@user.JoinedAt.ToString("MMMM yyyy")</div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="border-top pt-3 mt-3">
+                <div class="row text-center g-2">
+                    <div class="col-4">
+                        <div class="fw-bold fs-5" style="color: var(--ll-primary);">@myLessons.Count</div>
+                        <div class="small text-muted">Lessons</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="fw-bold fs-5" style="color: var(--ll-primary);">@(myDiscussions.Count + joinedDiscussions.Count)</div>
+                        <div class="small text-muted">Discussions</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="fw-bold fs-5" style="color: var(--ll-primary);">@likedResources.Count</div>
+                        <div class="small text-muted">Liked</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Activity Tabs -->
+    <div class="col-lg-8">
+        <div class="ll-card">
+            <!-- Tab Navigation -->
+            <ul class="nav nav-tabs px-3 pt-3" id="profileTabs" role="tablist" style="border-bottom: 2px solid #e2e8f0;">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active fw-medium" id="lessons-tab" data-bs-toggle="tab" data-bs-target="#lessonsPane" type="button" role="tab" style="border: none; border-bottom: 3px solid transparent; color: var(--ll-text-secondary);">
+                        <i class="bi bi-lightbulb me-1"></i>Lessons Learned <span class="badge bg-secondary bg-opacity-10 text-secondary ms-1">@myLessons.Count</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-medium" id="discussions-tab" data-bs-toggle="tab" data-bs-target="#discussionsPane" type="button" role="tab" style="border: none; border-bottom: 3px solid transparent; color: var(--ll-text-secondary);">
+                        <i class="bi bi-chat-square-text me-1"></i>Discussions <span class="badge bg-secondary bg-opacity-10 text-secondary ms-1">@(myDiscussions.Count + joinedDiscussions.Count)</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-medium" id="liked-tab" data-bs-toggle="tab" data-bs-target="#likedPane" type="button" role="tab" style="border: none; border-bottom: 3px solid transparent; color: var(--ll-text-secondary);">
+                        <i class="bi bi-heart me-1"></i>Liked Resources <span class="badge bg-secondary bg-opacity-10 text-secondary ms-1">@likedResources.Count</span>
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content p-4" id="profileTabContent">
+                <!-- Lessons Learned -->
+                <div class="tab-pane fade show active" id="lessonsPane" role="tabpanel">
+                    @if (myLessons.Any())
+                    {
+                        foreach (var lesson in myLessons)
+                        {
+                            <div class="d-flex gap-3 border-bottom pb-3 mb-3">
+                                <div class="ll-discussion-avatar" style="width: 40px; height: 40px; font-size: 0.9rem; flex-shrink: 0; @lesson.AuthorColor">
+                                    @lesson.AuthorInitials
+                                </div>
+                                <div class="flex-fill">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <div>
+                                            <span class="fw-bold small">@lesson.Title</span>
+                                            <span class="small text-muted ms-2">• @lesson.CreatedAt.ToString("MMM dd, yyyy")</span>
+                                        </div>
+                                        <span class="badge bg-warning bg-opacity-10 text-warning small">@lesson.Category</span>
+                                    </div>
+                                    <p class="small text-muted mb-2" style="white-space: pre-wrap; max-height: 80px; overflow: hidden;">@lesson.Content</p>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <span class="small text-muted"><i class="bi bi-link-45deg me-1"></i>@lesson.ResourceTitle</span>
+                                        <span class="small text-muted"><i class="bi bi-hand-thumbs-up me-1"></i>@lesson.LikeCount</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-lightbulb display-4 d-block mb-2 opacity-25"></i>
+                            <div class="fw-medium mb-1">No lessons yet</div>
+                            <p class="small">Share your learnings from resources you've explored!</p>
+                            <a href="@Url.Action("LessonsLearned", "Home")" class="ll-btn ll-btn-primary ll-btn-sm">
+                                <i class="bi bi-plus me-1"></i>Submit a Lesson
+                            </a>
+                        </div>
+                    }
+                </div>
+
+                <!-- Discussions -->
+                <div class="tab-pane fade" id="discussionsPane" role="tabpanel">
+                    @if (myDiscussions.Any())
+                    {
+                        <h6 class="fw-bold text-muted small text-uppercase mb-3" style="letter-spacing: 0.05em;">Discussions You Started</h6>
+                        foreach (var disc in myDiscussions)
+                        {
+                            <a href="@Url.Action("Discussions", "Home", new { id = disc.Id })" class="text-decoration-none d-block">
+                                <div class="d-flex gap-3 border-bottom pb-3 mb-3 align-items-start">
+                                    <div class="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
+                                         style="width: 40px; height: 40px; background: #dbeafe;">
+                                        <i class="bi bi-chat-square-text" style="color: var(--ll-primary);"></i>
+                                    </div>
+                                    <div class="flex-fill">
+                                        <div class="fw-bold small text-dark">@disc.Title</div>
+                                        <div class="small text-muted">
+                                            <span class="me-3"><i class="bi bi-chat me-1"></i>@disc.ReplyCount replies</span>
+                                            <span class="me-3"><i class="bi bi-eye me-1"></i>@disc.ViewCount views</span>
+                                            <span><i class="bi bi-clock me-1"></i>@disc.CreatedAt.ToString("MMM dd, yyyy")</span>
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary small">@disc.Type</span>
+                                </div>
+                            </a>
+                        }
+                    }
+
+                    @if (joinedDiscussions.Any())
+                    {
+                        <h6 class="fw-bold text-muted small text-uppercase mb-3 @(myDiscussions.Any() ? "mt-4" : "")" style="letter-spacing: 0.05em;">Discussions You Joined</h6>
+                        foreach (var disc in joinedDiscussions)
+                        {
+                            <a href="@Url.Action("Discussions", "Home", new { id = disc.Id })" class="text-decoration-none d-block">
+                                <div class="d-flex gap-3 border-bottom pb-3 mb-3 align-items-start">
+                                    <div class="ll-discussion-avatar" style="width: 40px; height: 40px; font-size: 0.9rem; flex-shrink: 0; @disc.AuthorColor">
+                                        @disc.AuthorInitials
+                                    </div>
+                                    <div class="flex-fill">
+                                        <div class="fw-bold small text-dark">@disc.Title</div>
+                                        <div class="small text-muted">
+                                            <span class="me-3">by @disc.Author</span>
+                                            <span class="me-3"><i class="bi bi-chat me-1"></i>@disc.ReplyCount replies</span>
+                                            <span><i class="bi bi-clock me-1"></i>@disc.CreatedAt.ToString("MMM dd, yyyy")</span>
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-success bg-opacity-10 text-success small">Joined</span>
+                                </div>
+                            </a>
+                        }
+                    }
+
+                    @if (!myDiscussions.Any() && !joinedDiscussions.Any())
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-chat-square-text display-4 d-block mb-2 opacity-25"></i>
+                            <div class="fw-medium mb-1">No discussions yet</div>
+                            <p class="small">Start or join discussions in the Knowledge Sharing portal!</p>
+                            <a href="@Url.Action("KnowledgePortal", "Home")" class="ll-btn ll-btn-primary ll-btn-sm">
+                                <i class="bi bi-plus me-1"></i>Browse Discussions
+                            </a>
+                        </div>
+                    }
+                </div>
+
+                <!-- Liked Resources -->
+                <div class="tab-pane fade" id="likedPane" role="tabpanel">
+                    @if (likedResources.Any())
+                    {
+                        foreach (var resource in likedResources)
+                        {
+                            <a href="@Url.Action("ResourceDetail", "Home", new { id = resource.Id })" class="text-decoration-none d-block">
+                                <div class="d-flex gap-3 border-bottom pb-3 mb-3 align-items-center">
+                                    <div class="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
+                                         style="width: 44px; height: 44px; background: @resource.IconBg;">
+                                        <i class="bi @resource.IconClass fs-5 @resource.IconColor"></i>
+                                    </div>
+                                    <div class="flex-fill">
+                                        <div class="fw-bold small text-dark">@resource.Title</div>
+                                        <div class="small text-muted">
+                                            <span class="me-3">@resource.Subject</span>
+                                            <span class="me-3"><i class="bi bi-person me-1"></i>@resource.Uploader</span>
+                                            <span><i class="bi bi-download me-1"></i>@resource.DownloadCount</span>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="small text-muted">@resource.CreatedAt.ToString("MMM dd")</div>
+                                        <span class="badge bg-light text-dark border small mt-1">@resource.FileFormat</span>
+                                    </div>
+                                </div>
+                            </a>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-heart display-4 d-block mb-2 opacity-25"></i>
+                            <div class="fw-medium mb-1">No liked resources yet</div>
+                            <p class="small">Explore the repository and like resources you find helpful!</p>
+                            <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-primary ll-btn-sm">
+                                <i class="bi bi-folder2-open me-1"></i>Browse Repository
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Activate tab styles
+    document.querySelectorAll('#profileTabs .nav-link').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function() {
+            document.querySelectorAll('#profileTabs .nav-link').forEach(t => {
+                t.style.borderBottomColor = 'transparent';
+                t.style.color = 'var(--ll-text-secondary)';
+            });
+            this.style.borderBottomColor = 'var(--ll-primary)';
+            this.style.color = 'var(--ll-primary)';
+        });
+    });
+    // Set initial active style
+    var activeTab = document.querySelector('#profileTabs .nav-link.active');
+    if (activeTab) {
+        activeTab.style.borderBottomColor = 'var(--ll-primary)';
+        activeTab.style.color = 'var(--ll-primary)';
+    }
+</script>
+}

@@ -1,5 +1,6 @@
+@model LearnLink.Models.Resource
 @{
-    ViewData["Title"] = "Upload Materials";
+    ViewData["Title"] = Model == null ? "Upload Materials" : "Edit Resource";
     ViewData["ActivePage"] = "Upload";
 
     var recentUploads = ViewBag.RecentUploads as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
@@ -73,7 +74,15 @@
                 <h5 class="ll-card-title">Resource Information</h5>
             </div>
             <div class="ll-card-body">
-                <form id="uploadForm">
+                <form id="uploadForm" asp-action="UploadResource" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="submitType" id="submitTypeField" value="Pending" />
+                    @if (TempData["ErrorMessage"] != null)
+                    {
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        @TempData["ErrorMessage"]
+                    </div>
+                    }
                     <div id="formFeedback" class="alert alert-danger d-none" role="alert">Please fill in all required fields.</div>
                     <!-- File Upload -->
                     <div class="ll-form-group">
@@ -82,47 +91,61 @@
                             <div class="ll-file-upload-icon">
                                 <i class="bi bi-cloud-arrow-up"></i>
                             </div>
-                            <div class="ll-file-upload-text">
-                                <strong>Click to upload</strong> or drag and drop<br>
-                                <span class="small">PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, MP4 (Max. 50MB)</span>
-                            </div>
-                            <input type="file" class="d-none" id="fileInput">
+                            @if (Model != null && !string.IsNullOrEmpty(Model.FilePath))
+                            {
+                                <div class="ll-file-upload-text">
+                                    <div class="d-flex align-items-center gap-2 justify-content-center">
+                                        <i class="bi bi-file-earmark-check text-success"></i>
+                                        <strong>Current file: @System.IO.Path.GetFileName(Model.FilePath)</strong>
+                                    </div>
+                                    <span class="small">Click to replace or drag new file</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="ll-file-upload-text">
+                                    <strong>Click to upload</strong> or drag and drop<br>
+                                    <span class="small">PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, MP4 (Max. 50MB)</span>
+                                </div>
+                            }
                         </div>
+                        <!-- File input MUST be outside dropZone so handleFile() innerHTML replacement doesn't destroy it -->
+                        <input type="file" class="d-none" id="fileInput" name="file">
                     </div>
 
                     <!-- Basic Info -->
                     <div class="ll-form-group">
                         <label class="ll-form-label">Resource Title <span class="text-danger">*</span></label>
-                        <input type="text" class="ll-form-control" id="resourceTitle" placeholder="Enter a descriptive title for the resource" required>
+                        <input type="text" class="ll-form-control" id="resourceTitle" name="Title" value="@Model?.Title" placeholder="Enter a descriptive title for the resource" required>
                     </div>
 
                     <div class="row g-3">
                         <div class="col-md-6">
                             <div class="ll-form-group">
                                 <label class="ll-form-label">Subject <span class="text-danger">*</span></label>
-                                <select class="ll-form-control ll-form-select" id="resourceSubject" required>
+                                <select class="ll-form-control ll-form-select" id="resourceSubject" name="Subject" required>
                                     <option value="">Select subject</option>
-                                    <option>Mathematics</option>
-                                    <option>Science</option>
-                                    <option>English</option>
-                                    <option>Filipino</option>
-                                    <option>Araling Panlipunan</option>
-                                    <option>MAPEH</option>
-                                    <option>TLE</option>
-                                    <option>Values Education</option>
+                                    <option selected="@(Model?.Subject == "Mathematics")">Mathematics</option>
+                                    <option selected="@(Model?.Subject == "Science")">Science</option>
+                                    <option selected="@(Model?.Subject == "English")">English</option>
+                                    <option selected="@(Model?.Subject == "Filipino")">Filipino</option>
+                                    <option selected="@(Model?.Subject == "Araling Panlipunan")">Araling Panlipunan</option>
+                                    <option selected="@(Model?.Subject == "MAPEH")">MAPEH</option>
+                                    <option selected="@(Model?.Subject == "TLE")">TLE</option>
+                                    <option selected="@(Model?.Subject == "Values Education")">Values Education</option>
                                 </select>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="ll-form-group">
                                 <label class="ll-form-label">Grade Level <span class="text-danger">*</span></label>
-                                <select class="ll-form-control ll-form-select" id="resourceGrade" required>
+                                <select class="ll-form-control ll-form-select" id="resourceGrade" name="gradeLevel" required>
                                     <option value="">Select grade level</option>
-                                    <option>Grade 7</option>
-                                    <option>Grade 8</option>
-                                    <option>Grade 9</option>
-                                    <option>Grade 10</option>
-                                    <option>All Grades</option>
+                                    <option selected="@(Model?.GradeLevel == "Grade 7")">Grade 7</option>
+                                    <option selected="@(Model?.GradeLevel == "Grade 8")">Grade 8</option>
+                                    <option selected="@(Model?.GradeLevel == "Grade 9")">Grade 9</option>
+                                    <option selected="@(Model?.GradeLevel == "Grade 10")">Grade 10</option>
+                                    <option selected="@(Model?.GradeLevel == "All Grades")">All Grades</option>
                                 </select>
                             </div>
                         </div>
@@ -132,29 +155,29 @@
                         <div class="col-md-6">
                             <div class="ll-form-group">
                                 <label class="ll-form-label">Resource Type <span class="text-danger">*</span></label>
-                                <select class="ll-form-control ll-form-select" id="resourceType" required>
+                                <select class="ll-form-control ll-form-select" id="resourceType" name="resourceType" required>
                                     <option value="">Select type</option>
-                                    <option>Reviewer / Study Guide</option>
-                                    <option>Lesson Plan</option>
-                                    <option>Activity Sheet</option>
-                                    <option>Assessment / Quiz</option>
-                                    <option>Presentation</option>
-                                    <option>Video Tutorial</option>
-                                    <option>Reading Material</option>
-                                    <option>Reference Document</option>
+                                    <option selected="@(Model?.ResourceType == "Reviewer / Study Guide")">Reviewer / Study Guide</option>
+                                    <option selected="@(Model?.ResourceType == "Lesson Plan")">Lesson Plan</option>
+                                    <option selected="@(Model?.ResourceType == "Activity Sheet")">Activity Sheet</option>
+                                    <option selected="@(Model?.ResourceType == "Assessment / Quiz")">Assessment / Quiz</option>
+                                    <option selected="@(Model?.ResourceType == "Presentation")">Presentation</option>
+                                    <option selected="@(Model?.ResourceType == "Video Tutorial")">Video Tutorial</option>
+                                    <option selected="@(Model?.ResourceType == "Reading Material")">Reading Material</option>
+                                    <option selected="@(Model?.ResourceType == "Reference Document")">Reference Document</option>
                                 </select>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="ll-form-group">
                                 <label class="ll-form-label">Quarter</label>
-                                <select class="ll-form-control ll-form-select">
+                                <select class="ll-form-control ll-form-select" id="resourceQuarter" name="Quarter">
                                     <option value="">Select quarter (optional)</option>
-                                    <option>1st Quarter</option>
-                                    <option>2nd Quarter</option>
-                                    <option>3rd Quarter</option>
-                                    <option>4th Quarter</option>
-                                    <option>All Quarters</option>
+                                    <option selected="@(Model?.Quarter == "1st Quarter")">1st Quarter</option>
+                                    <option selected="@(Model?.Quarter == "2nd Quarter")">2nd Quarter</option>
+                                    <option selected="@(Model?.Quarter == "3rd Quarter")">3rd Quarter</option>
+                                    <option selected="@(Model?.Quarter == "4th Quarter")">4th Quarter</option>
+                                    <option selected="@(Model?.Quarter == "All Quarters")">All Quarters</option>
                                 </select>
                             </div>
                         </div>
@@ -162,12 +185,12 @@
 
                     <div class="ll-form-group">
                         <label class="ll-form-label">Description <span class="text-danger">*</span></label>
-                        <textarea class="ll-form-control" rows="4" id="resourceDesc" placeholder="Provide a detailed description of the resource content, learning objectives, and how it can be used..." required></textarea>
+                        <textarea class="ll-form-control" rows="4" id="resourceDesc" name="Description" placeholder="Provide a detailed description of the resource content, learning objectives, and how it can be used..." required>@Model?.Description</textarea>
                     </div>
 
                     <div class="ll-form-group">
                         <label class="ll-form-label">Tags</label>
-                        <input type="text" class="ll-form-control" placeholder="Enter tags separated by commas (e.g., algebra, equations, problem-solving)">
+                        <input type="text" class="ll-form-control" name="Tags" placeholder="Enter tags separated by commas (e.g., algebra, equations, problem-solving)">
                         <small class="text-muted">Tags help users find your resource more easily</small>
                     </div>
 
@@ -179,7 +202,7 @@
                         <div class="col-md-6">
                             <div class="ll-form-group">
                                 <label class="ll-form-label">Access Level</label>
-                                <select class="ll-form-control ll-form-select">
+                                <select class="ll-form-control ll-form-select" name="AccessLevel">
                                     <option>Public - All users can access</option>
                                     <option>Registered - Only logged in users</option>
                                     <option>Restricted - Selected users only</option>
@@ -219,10 +242,10 @@
                     <hr class="my-4">
 
                     <div class="d-flex gap-2 justify-content-end">
-                        <button type="button" class="ll-btn ll-btn-outline" id="saveDraftBtn">Save as Draft</button>
-                        <button type="button" class="ll-btn ll-btn-primary" id="uploadBtn">
+                        <button type="submit" class="ll-btn ll-btn-outline" id="saveDraftBtn">Save as Draft</button>
+                        <button type="submit" class="ll-btn ll-btn-primary" id="uploadBtn">
                             <i class="bi bi-cloud-arrow-up"></i>
-                            Upload Resource
+                            @(Model == null ? "Upload Resource" : "Save Changes")
                         </button>
                     </div>
                 </form>
@@ -266,7 +289,7 @@
                     <div class="d-flex flex-column align-items-end gap-2">
                         <span class="ll-badge @statusClass">@upload.Status</span>
                         <div class="d-flex gap-1">
-                            <button type="button" class="ll-btn ll-btn-outline ll-btn-sm edit-upload" data-id="@i" title="Edit">
+                            <button type="button" class="ll-btn ll-btn-outline ll-btn-sm" onclick="window.location.href='@Url.Action("Upload", "Home", new { id = upload.Id })'" title="Edit">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <button type="button" class="ll-btn ll-btn-outline ll-btn-sm delete-upload" data-id="@i" title="Delete">
@@ -390,6 +413,10 @@
             dropZone.style.background = '';
             const files = e.dataTransfer.files;
             if (files.length) {
+                // Assign the dropped file to the hidden file input so it gets submitted with the form
+                const dt = new DataTransfer();
+                dt.items.add(files[0]);
+                fileInput.files = dt.files;
                 handleFile(files[0]);
             }
         });
@@ -507,32 +534,31 @@
             });
         }
 
-        function validateRequiredFields() {
+        function validateRequiredFields(isDraft) {
             const title = document.getElementById('resourceTitle').value.trim();
+            if (!title) {
+                showFormFeedback('Please provide a resource title.');
+                return false;
+            }
+
+            if (isDraft) {
+                clearFormFeedback();
+                return true;
+            }
+
             const subject = document.getElementById('resourceSubject').value.trim();
             const grade = document.getElementById('resourceGrade').value.trim();
             const type = document.getElementById('resourceType').value.trim();
             const desc = document.getElementById('resourceDesc').value.trim();
+            const fileSelected = fileInput.files && fileInput.files.length > 0;
 
-            if (!title || !subject || !grade || !type || !desc) {
-                showFormFeedback('Please fill in all required fields.');
-                return null;
+            if (!subject || !grade || !type || !desc || !fileSelected) {
+                showFormFeedback('Please fill in all required fields and select a file to upload.');
+                return false;
             }
-            clearFormFeedback();
-            return { title, subject, grade, type, desc };
-        }
 
-        function addUpload(title, status) {
-            uploads.unshift({
-                id: nextUploadId++,
-                title,
-                status,
-                createdAt: new Date().toISOString(),
-                iconBg: '#dbeafe',
-                iconClass: 'bi-file-earmark-text',
-                iconColor: 'text-primary'
-            });
-            renderUploads();
+            clearFormFeedback();
+            return true;
         }
 
         saveEditUploadBtn.addEventListener('click', () => {
@@ -549,28 +575,25 @@
             editUploadModal.hide();
         });
 
-        document.getElementById('uploadBtn').addEventListener('click', function() {
-            const fields = validateRequiredFields();
-            if (!fields) {
-                return;
-            }
-            addUpload(fields.title, 'Pending');
-            document.getElementById('uploadToastBody').textContent = 'Resource uploaded successfully! It will be reviewed shortly.';
-            var toast = new bootstrap.Toast(document.getElementById('uploadToast'));
-            toast.show();
+        const uploadForm = document.getElementById('uploadForm');
+        const submitTypeField = document.getElementById('submitTypeField');
+        const saveDraftBtn = document.getElementById('saveDraftBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+
+        saveDraftBtn.addEventListener('click', function() {
+            submitTypeField.value = 'Draft';
         });
 
-        document.getElementById('saveDraftBtn').addEventListener('click', function() {
-            const title = document.getElementById('resourceTitle').value.trim();
-            if (!title) {
-                showFormFeedback('Please fill in all required fields.');
-                return;
+        uploadBtn.addEventListener('click', function() {
+            submitTypeField.value = 'Pending';
+        });
+
+        // Handle form submission with validation
+        uploadForm.addEventListener('submit', function(e) {
+            const isDraft = submitTypeField.value === 'Draft';
+            if (!validateRequiredFields(isDraft)) {
+                e.preventDefault();
             }
-            clearFormFeedback();
-            addUpload(title, 'Draft');
-            document.getElementById('uploadToastBody').textContent = 'Resource saved as draft.';
-            var toast = new bootstrap.Toast(document.getElementById('uploadToast'));
-            toast.show();
         });
 
         document.querySelectorAll('#resourceTitle, #resourceSubject, #resourceGrade, #resourceType, #resourceDesc').forEach(input => {

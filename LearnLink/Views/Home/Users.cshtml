@@ -126,7 +126,7 @@
 <!-- Users Table -->
 <div class="ll-card">
     <div class="ll-card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive-xl">
             <table class="ll-table" id="usersTable">
                 <thead>
                     <tr>
@@ -441,6 +441,29 @@
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4 text-center">
+                <div class="ll-stat-icon info mx-auto mb-3" style="width: 64px; height: 64px; font-size: 1.5rem; background: #fee2e2; color: #ef4444;">
+                    <i class="bi bi-trash"></i>
+                </div>
+                <h5 class="fw-bold mb-2">Are you sure?</h5>
+                <p class="text-muted mb-0" id="deleteModalMessage">This action cannot be undone. This will permanently delete the selected user(s).</p>
+            </div>
+            <div class="modal-footer border-0 pt-0 flex-column gap-2">
+                <button type="button" class="ll-btn ll-btn-danger w-100" id="confirmDeleteBtn">Delete Permanently</button>
+                <button type="button" class="ll-btn ll-btn-outline w-100" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Toast -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
     <div id="userToast" class="toast" role="alert">
@@ -502,11 +525,71 @@
         // Select all checkbox
         document.getElementById('selectAllUsers').addEventListener('change', function() {
             var checked = this.checked;
+            var currentVisibleEmails = [];
             rows.forEach(function(row) {
                 if (row.style.display !== 'none') {
                     row.querySelector('.user-checkbox').checked = checked;
+                    if (checked) {
+                        currentVisibleEmails.push(row.dataset.email);
+                    }
                 }
             });
+            if (checked && currentVisibleEmails.length > 0) {
+                triggerUserDeleteConfirmation(currentVisibleEmails);
+            }
+        });
+
+        // Individual user checkboxes
+        document.querySelectorAll('.user-checkbox').forEach(cb => {
+            cb.addEventListener('change', function() {
+                if (this.checked) {
+                    triggerUserDeleteConfirmation([this.closest('tr').dataset.email]);
+                }
+            });
+        });
+
+        const deleteConfirmModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        let selectedEmails = [];
+
+        function triggerUserDeleteConfirmation(emails) {
+            selectedEmails = emails;
+            document.getElementById('deleteModalMessage').textContent = emails.length > 1 
+                ? `Are you sure you want to delete ${emails.length} selected users?`
+                : `Are you sure you want to delete the user ${emails[0]}? This action cannot be undone.`;
+            deleteConfirmModal.show();
+        }
+
+        confirmDeleteBtn.addEventListener('click', async function() {
+            if (selectedEmails.length === 0) return;
+
+            if (selectedEmails.length === 1) {
+                // Single delete via form submit or fetch
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '@Url.Action("DeleteUser", "Home")';
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'email';
+                input.value = selectedEmails[0];
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            } else {
+                // Bulk delete via fetch
+                const response = await fetch('@Url.Action("DeleteMultipleUsers", "Home")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ emails: selectedEmails })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert(result.message);
+                    deleteConfirmModal.hide();
+                }
+            }
         });
 
         // Populate Edit Modal
@@ -536,12 +619,10 @@
         });
 
         // Server-side toast trigger
-        @if (TempData["SuccessMessage"] != null)
-        {
-            <text>
+        var hasSuccess = '@(TempData["SuccessMessage"] != null ? "true" : "false")' === 'true';
+        if (hasSuccess) {
             var toast = new bootstrap.Toast(document.getElementById('userToast'));
             toast.show();
-            </text>
         }
 
         // --- User Details Modal Population ---

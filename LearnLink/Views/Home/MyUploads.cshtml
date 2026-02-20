@@ -7,6 +7,7 @@
     var publishedCount = (int)(ViewBag.PublishedCount ?? 0);
     var pendingCount = (int)(ViewBag.PendingCount ?? 0);
     var draftCount = (int)(ViewBag.DraftCount ?? 0);
+    var rejectedCount = (int)(ViewBag.RejectedCount ?? 0);
 }
 
 <!-- Page Header -->
@@ -85,6 +86,7 @@
             <button class="ll-btn ll-btn-outline ll-btn-sm upload-filter-btn" data-status="Published">Published (@publishedCount)</button>
             <button class="ll-btn ll-btn-outline ll-btn-sm upload-filter-btn" data-status="Pending">Pending (@pendingCount)</button>
             <button class="ll-btn ll-btn-outline ll-btn-sm upload-filter-btn" data-status="Draft">Drafts (@draftCount)</button>
+            <button class="ll-btn ll-btn-outline ll-btn-sm upload-filter-btn" data-status="Rejected">Rejected (@rejectedCount)</button>
             <div class="ms-auto d-flex gap-2">
                 <div class="position-relative">
                     <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
@@ -103,7 +105,7 @@
 <!-- Uploads Table -->
 <div class="ll-card">
     <div class="ll-card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive-xl">
             <table class="ll-table">
                 <thead>
                     <tr>
@@ -121,15 +123,15 @@
                 <tbody id="uploadsTableBody">
                     @foreach (var upload in uploads)
                     {
-                    <tr class="upload-row @(upload.Status == "Draft" ? "bg-light" : "")" data-status="@upload.Status" data-title="@upload.Title.ToLower()">
-                        <td><input type="checkbox" class="form-check-input row-checkbox"></td>
+                    <tr class="upload-row @(upload.Status == "Draft" ? "bg-light" : upload.Status == "Rejected" ? "bg-light" : "")" data-id="@upload.Id" data-status="@upload.Status" data-title="@upload.Title.ToLower()">
+                        <td><input type="checkbox" class="form-check-input row-checkbox" data-id="@upload.Id"></td>
                         <td>
                             <div class="d-flex align-items-center gap-3">
                                 <div style="width: 40px; height: 40px; background: @upload.IconBg; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                                     <i class="bi @upload.IconClass @upload.IconColor"></i>
                                 </div>
                                 <div>
-                                    <div class="fw-medium @(upload.Status == "Draft" ? "text-muted" : "")">@upload.Title @(upload.Status == "Draft" ? "(Draft)" : "")</div>
+                                    <div class="fw-medium @(upload.Status == "Draft" || upload.Status == "Rejected" ? "text-muted" : "")">@upload.Title @(upload.Status == "Draft" ? "(Draft)" : upload.Status == "Rejected" ? "(Rejected)" : "")</div>
                                     <small class="text-muted">@upload.FileFormat • @upload.FileSize</small>
                                 </div>
                             </div>
@@ -141,6 +143,7 @@
                                 {
                                     "Published" => "text-success",
                                     "Pending" => "text-warning",
+                                    "Rejected" => "text-danger",
                                     "Draft" => "text-muted",
                                     _ => "text-secondary"
                                 };
@@ -169,20 +172,19 @@
                                     <i class="bi bi-three-dots-vertical"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-clock me-2"></i>@DateTime.Now.ToString("h:mm tt")</a></li>
                                     @if (upload.Status == "Draft")
                                     {
-                                        <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Continue Editing</a></li>
+                                        <li><a class="dropdown-item" href="@Url.Action("Upload", "Home", new { id = upload.Id })"><i class="bi bi-pencil me-2"></i>Continue Editing</a></li>
                                         <li><a class="dropdown-item" href="#"><i class="bi bi-send me-2"></i>Submit for Review</a></li>
                                         <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-trash me-2"></i>Discard</a></li>
+                                        <li><a class="dropdown-item text-danger delete-resource-btn" href="javascript:void(0)" data-id="@upload.Id"><i class="bi bi-trash me-2"></i>Discard</a></li>
                                     }
                                     else if (upload.Status == "Pending")
                                     {
                                         <li><a class="dropdown-item" href="@Url.Action("ResourceDetail", "Home", new { id = upload.Id })"><i class="bi bi-eye me-2"></i>View</a></li>
                                         @if (User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
                                         {
-                                        <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit</a></li>
+                                        <li><a class="dropdown-item" href="@Url.Action("Upload", "Home", new { id = upload.Id })"><i class="bi bi-pencil me-2"></i>Edit</a></li>
                                         <li><hr class="dropdown-divider"></li>
                                         <li><a class="dropdown-item text-danger" href="@Url.Action("RejectResource", "Home", new { id = upload.Id })"><i class="bi bi-x-circle me-2"></i>Reject</a></li>
                                         }
@@ -197,9 +199,9 @@
                                         <li><a class="dropdown-item" href="#"><i class="bi bi-bar-chart me-2"></i>Analytics</a></li>
                                         @if (User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
                                         {
-                                        <li><a class="dropdown-item" href="#"><i class="bi bi-pencil me-2"></i>Edit</a></li>
+                                        <li><a class="dropdown-item" href="@Url.Action("Upload", "Home", new { id = upload.Id })"><i class="bi bi-pencil me-2"></i>Edit</a></li>
                                         <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                                        <li><a class="dropdown-item text-danger delete-resource-btn" href="javascript:void(0)" data-id="@upload.Id"><i class="bi bi-trash me-2"></i>Delete</a></li>
                                         }
                                     }
                                 </ul>
@@ -224,6 +226,7 @@
                     _ => "View|Analytics"
                 };
             <div class="ll-mobile-card-item upload-row-mobile"
+                 data-id="@upload.Id"
                  data-status="@upload.Status"
                  data-title="@upload.Title.ToLower()"
                  data-res-title="@upload.Title"
@@ -241,7 +244,7 @@
                 </div>
                 <div class="ll-mobile-card-info">
                     <div class="ll-mobile-card-title">@upload.Title @(upload.Status == "Draft" ? "(Draft)" : "")</div>
-                    <div class="ll-mobile-card-sub">@upload.FileFormat • @upload.FileSize • <span class="@(upload.Status == "Published" ? "text-success" : upload.Status == "Pending" ? "text-warning" : "text-muted")">@upload.Status</span></div>
+                    <div class="ll-mobile-card-sub">@upload.FileFormat • @upload.FileSize • <span class="@(upload.Status == "Published" ? "text-success" : upload.Status == "Pending" ? "text-warning" : upload.Status == "Rejected" ? "text-danger" : "text-muted")">@upload.Status</span></div>
                 </div>
                 <div class="ll-mobile-card-chevron">
                     <i class="bi bi-chevron-right"></i>
@@ -264,6 +267,29 @@
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4 text-center">
+                <div class="ll-stat-icon info mx-auto mb-3" style="width: 64px; height: 64px; font-size: 1.5rem; background: #fee2e2; color: #ef4444;">
+                    <i class="bi bi-trash"></i>
+                </div>
+                <h5 class="fw-bold mb-2">Are you sure?</h5>
+                <p class="text-muted mb-0" id="deleteModalMessage">This action cannot be undone. This will permanently delete the selected resource(s).</p>
+            </div>
+            <div class="modal-footer border-0 pt-0 flex-column gap-2">
+                <button type="button" class="ll-btn ll-btn-danger w-100" id="confirmDeleteBtn">Delete Permanently</button>
+                <button type="button" class="ll-btn ll-btn-outline w-100" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
     (function() {
@@ -271,6 +297,9 @@
         const searchInput = document.getElementById('uploadSearchInput');
         const rows = document.querySelectorAll('.upload-row');
         const selectAll = document.getElementById('selectAll');
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        let selectedIds = [];
 
         function filterUploads() {
             const activeBtn = document.querySelector('.upload-filter-btn.active');
@@ -301,7 +330,71 @@
 
         // Select all checkbox
         selectAll.addEventListener('change', function() {
-            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = this.checked);
+            document.querySelectorAll('.row-checkbox').forEach(cb => {
+                if (cb.closest('tr').style.display !== 'none') {
+                    cb.checked = this.checked;
+                    if (this.checked) {
+                        triggerDeleteConfirmation([parseInt(cb.dataset.id)]);
+                    }
+                }
+            });
+        });
+
+        // Individual resource checkboxes
+        document.querySelectorAll('.row-checkbox').forEach(cb => {
+            cb.addEventListener('change', function() {
+                if (this.checked) {
+                    triggerDeleteConfirmation([parseInt(this.dataset.id)]);
+                }
+            });
+        });
+
+        // Dropdown actions delete
+        document.querySelectorAll('.delete-resource-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                triggerDeleteConfirmation([parseInt(this.dataset.id)]);
+            });
+        });
+
+        function triggerDeleteConfirmation(ids) {
+            selectedIds = ids;
+            document.getElementById('deleteModalMessage').textContent = ids.length > 1 
+                ? `Are you sure you want to delete ${ids.length} selected resources?`
+                : "This action cannot be undone. This will permanently delete the selected resource.";
+            deleteModal.show();
+        }
+
+        confirmDeleteBtn.addEventListener('click', async function() {
+            if (selectedIds.length === 0) return;
+
+            const originalText = confirmDeleteBtn.innerHTML;
+            confirmDeleteBtn.disabled = true;
+            confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
+
+            const params = new URLSearchParams();
+            selectedIds.forEach(id => params.append('ids', id));
+
+            try {
+                const response = await fetch('@Url.Action("DeleteResource", "Home")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert(result.message);
+                    deleteModal.hide();
+                }
+            } catch (error) {
+                alert('An error occurred during deletion.');
+                deleteModal.hide();
+            } finally {
+                confirmDeleteBtn.disabled = false;
+                confirmDeleteBtn.innerHTML = originalText;
+            }
         });
     })();
 </script>

@@ -66,50 +66,56 @@
         {
             var lesson = lessons[i];
             var gradientIndex = i % iconGradients.Length;
-        <div class="ll-card mb-3 lesson-item" data-category="@lesson.Category" data-likes="@lesson.LikeCount" data-date="@lesson.CreatedAt.ToString("yyyy-MM-dd")">
-            <div class="ll-card-body">
-                <div class="d-flex gap-3">
-                    <div style="width: 48px; height: 48px; @iconGradients[gradientIndex]; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <i class="bi bi-lightbulb @iconColors[gradientIndex] fs-5"></i>
+        <div class="d-flex gap-3 border-bottom pb-4 mb-4 lesson-item" data-category="@lesson.Category" data-likes="@lesson.LikeCount" data-date="@lesson.CreatedAt.ToString("yyyy-MM-dd")">
+            <div class="ll-discussion-avatar" style="width: 48px; height: 48px; font-size: 1.2rem; flex-shrink: 0; @(string.IsNullOrEmpty(lesson.AuthorColor) ? "" : lesson.AuthorColor)">
+                @lesson.AuthorInitials
+            </div>
+            
+            <div class="flex-fill">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div>
+                        <span class="fw-bold fs-6">@lesson.Author</span>
+                        <span class="small text-muted ms-2">• @((DateTime.Now - lesson.CreatedAt).Days) days ago</span>
                     </div>
-                    <div class="flex-fill">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <h6 class="fw-bold mb-1">@lesson.Title</h6>
-                                <div class="small text-muted">Category: @lesson.Category</div>
-                            </div>
-                        </div>
-                        <p class="text-muted mb-3">@lesson.Content</p>
-                        <div class="d-flex flex-wrap gap-2 mb-3">
-                            @foreach (var tag in lesson.Tags)
-                            {
-                            <span class="ll-tag">@tag</span>
-                            }
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center gap-2">
-                                <div class="ll-discussion-avatar" style="width: 28px; height: 28px; font-size: 0.7rem; @(string.IsNullOrEmpty(lesson.AuthorColor) ? "" : lesson.AuthorColor)">@lesson.AuthorInitials</div>
-                                <span class="small text-muted">@lesson.Author • @((DateTime.Now - lesson.CreatedAt).Days) days ago</span>
-                            </div>
-                            <div class="d-flex gap-2">
-                                @if (User.Identity?.Name == lesson.Author || lesson.Author == "Jester" || lesson.Author == "You") 
-                                {
-                                    <button class="ll-btn ll-btn-outline ll-btn-sm edit-lesson-btn" 
-                                            data-id="@lesson.Id" 
-                                            data-title="@lesson.Title" 
-                                            data-content="@lesson.Content" 
-                                            data-category="@lesson.Category" 
-                                            data-tags="@string.Join(", ", lesson.Tags)">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button class="ll-btn ll-btn-outline ll-btn-sm text-danger delete-lesson-btn" data-id="@lesson.Id">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                }
-                                <button class="ll-btn ll-btn-outline ll-btn-sm like-btn" data-id="@lesson.Id"><i class="bi bi-hand-thumbs-up@(lesson.LikeCount > 0 ? "-fill" : "")"></i> @lesson.LikeCount</button>
-                                <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-chat"></i> @lesson.CommentCount</button>
-                            </div>
-                        </div>
+                    <div class="d-inline-flex gap-2 align-items-center text-muted">
+                        @if (User.Identity?.Name == lesson.Author || lesson.Author == "Jester" || lesson.Author == "You") 
+                        {
+                            <a href="#" class="btn btn-sm btn-link text-muted p-0 edit-lesson-btn" title="Edit"
+                                        data-id="@lesson.Id" 
+                                        data-title="@lesson.Title" 
+                                        data-content="@lesson.Content" 
+                                        data-category="@lesson.Category" 
+                                        data-resource-id="@lesson.ResourceId"
+                                        data-tags="@string.Join(", ", lesson.Tags)">
+                                    <i class="bi bi-pencil fs-6"></i>
+                            </a>
+                            <a href="#" class="btn btn-sm btn-link text-danger p-0 delete-lesson-btn ms-1" title="Delete" data-id="@lesson.Id">
+                                    <i class="bi bi-trash fs-6"></i>
+                            </a>
+                        }
+                    </div>
+                </div>
+                
+                <div class="p-3 mt-2 mb-3 bg-light rounded-3 shadow-sm border">
+                    <h6 class="fw-bold mb-2">
+                        <i class="bi bi-lightbulb-fill text-warning me-2 fs-5 align-middle"></i>@lesson.Title
+                    </h6>
+                    <div class="small mb-2"><span class="text-muted">Learned from:</span> <a href="@Url.Action("ResourceDetail", "Home", new { id = lesson.ResourceId })" class="text-decoration-none fw-medium" style="color: var(--ll-primary);">@lesson.ResourceTitle</a></div>
+                    <div class="small text-muted mb-3"><i class="bi bi-tag text-muted"></i> @lesson.Category</div>
+                    <p class="text-dark mb-0 fs-6" style="white-space: pre-wrap;">@lesson.Content</p>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mt-1">
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var tag in lesson.Tags)
+                        {
+                        <span class="ll-tag">@tag</span>
+                        }
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-sm btn-white border shadow-sm like-btn" data-id="@lesson.Id">
+                            <i class="bi @(lesson.LikeCount > 0 ? "bi-hand-thumbs-up-fill text-primary" : "bi-hand-thumbs-up")"></i> <span class="fw-medium ms-1">@lesson.LikeCount</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -187,6 +193,27 @@
                             <option>Assessment</option>
                         </select>
                     </div>
+                    <div class="ll-form-group position-relative">
+                        <label class="ll-form-label">Related Resource</label>
+                        <input type="hidden" name="ResourceId" id="submitLessonResourceId" required>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" class="form-control border-start-0" id="resourceSearchInput" placeholder="Search and select a resource..." autocomplete="off">
+                        </div>
+                        <div class="list-group position-absolute w-100 d-none shadow-sm" id="resourceDropdown" style="z-index: 1055; max-height: 250px; overflow-y: auto; top: 100%;">
+                            @if (ViewBag.AvailableResources != null)
+                            {
+                                foreach (var res in (IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.AvailableResources)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action resource-option d-flex align-items-center text-start py-2 px-3 border-0 border-bottom" data-value="@res.Value" data-text="@res.Text">
+                                        <i class="bi bi-file-earmark-text me-2 fs-5" style="color: var(--ll-primary);"></i>
+                                        <span class="text-truncate">@res.Text</span>
+                                    </button>
+                                }
+                            }
+                            <div class="list-group-item text-muted small d-none" id="resourceNoResults">No matching resources found.</div>
+                        </div>
+                    </div>
                     <div class="ll-form-group">
                         <label class="ll-form-label">Title</label>
                         <input type="text" class="ll-form-control" name="Title" placeholder="Give your lesson a clear title" required>
@@ -234,6 +261,27 @@
                             <option>Classroom Management</option>
                             <option>Assessment</option>
                         </select>
+                    </div>
+                    <div class="ll-form-group position-relative">
+                        <label class="ll-form-label">Related Resource</label>
+                        <input type="hidden" name="ResourceId" id="editLessonResourceId" required>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" class="form-control border-start-0" id="editResourceSearchInput" placeholder="Search and select a resource..." autocomplete="off">
+                        </div>
+                        <div class="list-group position-absolute w-100 d-none shadow-sm" id="editResourceDropdown" style="z-index: 1055; max-height: 250px; overflow-y: auto; top: 100%;">
+                            @if (ViewBag.AvailableResources != null)
+                            {
+                                foreach (var res in (IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.AvailableResources)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action edit-resource-option d-flex align-items-center text-start py-2 px-3 border-0 border-bottom" data-value="@res.Value" data-text="@res.Text">
+                                        <i class="bi bi-file-earmark-text me-2 fs-5" style="color: var(--ll-primary);"></i>
+                                        <span class="text-truncate">@res.Text</span>
+                                    </button>
+                                }
+                            }
+                            <div class="list-group-item text-muted small d-none" id="editResourceNoResults">No matching resources found.</div>
+                        </div>
                     </div>
                     <div class="ll-form-group">
                         <label class="ll-form-label">Title</label>
@@ -374,10 +422,107 @@
                 document.getElementById('editLessonTitle').value = this.dataset.title;
                 document.getElementById('editLessonContent').value = this.dataset.content;
                 document.getElementById('editLessonCategory').value = this.dataset.category;
+                
+                const resourceId = this.dataset.resourceId;
+                document.getElementById('editLessonResourceId').value = resourceId;
+                let resourceText = "";
+                document.querySelectorAll('.edit-resource-option').forEach(opt => {
+                    if (opt.dataset.value === resourceId) resourceText = opt.dataset.text;
+                });
+                document.getElementById('editResourceSearchInput').value = resourceText;
+                
                 document.getElementById('editLessonTags').value = this.dataset.tags;
                 new bootstrap.Modal(document.getElementById('editLessonModal')).show();
             });
         });
+
+        // Autocomplete JS
+        function setupSearchDropdown(inputId, hiddenId, dropdownId, optionClass, noResultsId) {
+            const input = document.getElementById(inputId);
+            const hidden = document.getElementById(hiddenId);
+            const dropdown = document.getElementById(dropdownId);
+            const options = document.querySelectorAll(optionClass);
+            const noResults = document.getElementById(noResultsId);
+
+            if (!input || !dropdown) return;
+
+            input.addEventListener('input', function() {
+                const term = this.value.toLowerCase();
+                let hasVisible = false;
+
+                options.forEach(opt => {
+                    if (opt.dataset.text.toLowerCase().includes(term)) {
+                        opt.classList.remove('d-none');
+                        hasVisible = true;
+                    } else {
+                        opt.classList.add('d-none');
+                    }
+                });
+
+                if (!hasVisible) {
+                    noResults.classList.remove('d-none');
+                } else {
+                    noResults.classList.add('d-none');
+                }
+
+                if (term === '') {
+                    hidden.value = '';
+                }
+
+                dropdown.classList.remove('d-none');
+            });
+
+            input.addEventListener('focus', function() {
+                const term = this.value.toLowerCase();
+                let hasVisible = false;
+                options.forEach(opt => {
+                    if (opt.dataset.text.toLowerCase().includes(term)) {
+                        opt.classList.remove('d-none');
+                        hasVisible = true;
+                    } else {
+                        opt.classList.add('d-none');
+                    }
+                });
+                
+                if (!hasVisible && term !== '') {
+                    noResults.classList.remove('d-none');
+                } else {
+                    noResults.classList.add('d-none');
+                }
+                dropdown.classList.remove('d-none');
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('d-none');
+                }
+            });
+
+            options.forEach(opt => {
+                opt.addEventListener('click', function() {
+                    input.value = this.dataset.text;
+                    hidden.value = this.dataset.value;
+                    dropdown.classList.add('d-none');
+                });
+            });
+            
+            // Validate form on submit
+            const form = input.closest('form');
+            if(form) {
+                form.addEventListener('submit', function(e) {
+                    if(!hidden.value) {
+                        e.preventDefault();
+                        input.classList.add('is-invalid');
+                        input.focus();
+                    } else {
+                        input.classList.remove('is-invalid');
+                    }
+                });
+            }
+        }
+
+        setupSearchDropdown('resourceSearchInput', 'submitLessonResourceId', 'resourceDropdown', '.resource-option', 'resourceNoResults');
+        setupSearchDropdown('editResourceSearchInput', 'editLessonResourceId', 'editResourceDropdown', '.edit-resource-option', 'editResourceNoResults');
 
         document.querySelectorAll('.delete-lesson-btn').forEach(btn => {
             btn.addEventListener('click', function() {
@@ -387,13 +532,12 @@
         });
 
         // Server-side toast trigger
-        @if (TempData["SuccessMessage"] != null)
-        {
-            <text>
+        var hasSuccess = '@(TempData["SuccessMessage"] != null ? "true" : "false")' === 'true';
+        if (hasSuccess) {
             var toast = new bootstrap.Toast(document.getElementById('lessonToast'));
             toast.show();
-            </text>
         }
+
     })();
 </script>
 }

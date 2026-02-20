@@ -161,10 +161,11 @@
                     <button class="ll-sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
                         <i class="bi bi-list fs-5"></i>
                     </button>
-                    <div class="ll-search-box">
+                    <form class="ll-search-box" action="@Url.Action("Search", "Home")" method="get">
                         <i class="bi bi-search"></i>
-                        <input type="text" placeholder="Search resources, discussions, users..." class="form-control">
-                    </div>
+                        <input type="text" name="q" placeholder="Search resources, discussions, users..." class="form-control">
+                        <button type="submit" class="d-none"></button>
+                    </form>
                 </div>
                 <div class="ll-header-right">
                     <div class="dropdown me-2">
@@ -185,173 +186,28 @@
                     </div>
                     <!-- Notifications Dropdown -->
                     <div class="dropdown">
-                        <button class="ll-header-btn" title="Notifications" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                        <button class="ll-header-btn" title="Notifications" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside" id="notificationBellBtn">
                             <i class="bi bi-bell"></i>
-                            <span class="notification-badge">5</span>
+                            <span class="notification-badge" id="notifBadge" style="display:none;">0</span>
                         </button>
                         <div class="dropdown-menu dropdown-menu-end p-0" style="width: 340px; max-height: 420px; overflow: hidden;">
                             <div class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center">
                                 <h6 class="mb-0 fw-bold">Notifications</h6>
-                                <a href="#" class="small text-primary text-decoration-none">Mark all read</a>
+                                <a href="#" class="small text-primary text-decoration-none" id="markAllReadBtn">Mark all read</a>
                             </div>
-                            <div style="max-height: 320px; overflow-y: auto;">
-                                <a href="#" class="dropdown-item px-3 py-2 border-bottom" style="white-space: normal;">
-                                    <div class="d-flex gap-2">
-                                        <div style="width: 36px; height: 36px; background: #dbeafe; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <i class="bi bi-cloud-arrow-up text-primary small"></i>
-                                        </div>
-                                        <div>
-                                            <div class="small fw-medium">New resource uploaded</div>
-                                            <div class="small text-muted">"Advanced Algebra Notes" was uploaded by Maria Santos</div>
-                                            <div class="small text-primary mt-1"><i class="bi bi-clock me-1"></i>2 mins ago</div>
-                                        </div>
-                                    </div>
-                                </a>
-                                <a href="#" class="dropdown-item px-3 py-2 border-bottom" style="white-space: normal;">
-                                    <div class="d-flex gap-2">
-                                        <div style="width: 36px; height: 36px; background: #d1fae5; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <i class="bi bi-check-circle text-success small"></i>
-                                        </div>
-                                        <div>
-                                            <div class="small fw-medium">Resource approved</div>
-                                            <div class="small text-muted">Your "Science Lab Report Template" has been published</div>
-                                            <div class="small text-primary mt-1"><i class="bi bi-clock me-1"></i>15 mins ago</div>
-                                        </div>
-                                    </div>
-                                </a>
-                                <a href="#" class="dropdown-item px-3 py-2 border-bottom" style="white-space: normal;">
-                                    <div class="d-flex gap-2">
-                                        <div style="width: 36px; height: 36px; background: #fef3c7; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <i class="bi bi-person-plus text-warning small"></i>
-                                        </div>
-                                        <div>
-                                            <div class="small fw-medium">New user request</div>
-                                            <div class="small text-muted">Alex Thompson is requesting Contributor access</div>
-                                            <div class="small text-primary mt-1"><i class="bi bi-clock me-1"></i>45 mins ago</div>
-                                        </div>
-                                    </div>
-                                </a>
-                                <a href="#" class="dropdown-item px-3 py-2 border-bottom" style="white-space: normal;">
-                                    <div class="d-flex gap-2">
-                                        <div style="width: 36px; height: 36px; background: #fef3c7; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <i class="bi bi-chat-dots text-warning small"></i>
-                                        </div>
-                                        <div>
-                                            <div class="small fw-medium">New discussion reply</div>
-                                            <div class="small text-muted">Juan Dela Cruz replied to "Best practices for Math"</div>
-                                            <div class="small text-primary mt-1"><i class="bi bi-clock me-1"></i>1 hour ago</div>
-                                        </div>
-                                    </div>
-                                </a>
-                                <a href="#" class="dropdown-item px-3 py-2 border-bottom" style="white-space: normal;">
-                                    <div class="d-flex gap-2">
-                                        <div style="width: 36px; height: 36px; background: #ede9fe; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <i class="bi bi-star text-purple small" style="color: #7c3aed;"></i>
-                                        </div>
-                                        <div>
-                                            <div class="small fw-medium">New rating received</div>
-                                            <div class="small text-muted">Someone rated "English Grammar Guide" ⭐ 4.5</div>
-                                            <div class="small text-primary mt-1"><i class="bi bi-clock me-1"></i>3 hours ago</div>
-                                        </div>
-                                    </div>
-                                </a>
-                                <a href="#" class="dropdown-item px-3 py-2 border-bottom" style="white-space: normal;">
-                                    <div class="d-flex gap-2">
-                                        <div style="width: 36px; height: 36px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <i class="bi bi-exclamation-triangle text-danger small"></i>
-                                        </div>
-                                        <div>
-                                            <div class="small fw-medium">System Alert</div>
-                                            <div class="small text-muted">Storage quota at 85%. Consider cleaning up old logs.</div>
-                                            <div class="small text-primary mt-1"><i class="bi bi-clock me-1"></i>5 hours ago</div>
-                                        </div>
-                                    </div>
-                                </a>
-                                <a href="#" class="dropdown-item px-3 py-2" style="white-space: normal;">
-                                    <div class="d-flex gap-2">
-                                        <div style="width: 36px; height: 36px; background: #fce7f3; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <i class="bi bi-download text-danger small"></i>
-                                        </div>
-                                        <div>
-                                            <div class="small fw-medium">Download milestone</div>
-                                            <div class="small text-muted">"Filipino Reading Material" reached 100 downloads!</div>
-                                            <div class="small text-primary mt-1"><i class="bi bi-clock me-1"></i>Yesterday</div>
-                                        </div>
-                                    </div>
-                                </a>
+                            <div style="max-height: 320px; overflow-y: auto;" id="notificationList">
+                                <div class="text-center py-4 text-muted">
+                                    <i class="bi bi-bell-slash display-6 d-block mb-2"></i>
+                                    <span class="small">Loading notifications...</span>
+                                </div>
                             </div>
                             <div class="px-3 py-2 border-top text-center">
-                                <a href="#" class="small text-primary text-decoration-none fw-medium">View all notifications</a>
+                                <span class="small text-muted fw-medium" id="notifSummary">No notifications</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Messages Dropdown -->
-                    <div class="dropdown">
-                        <button class="ll-header-btn" title="Messages" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
-                            <i class="bi bi-envelope"></i>
-                            <span class="notification-badge">3</span>
-                        </button>
-                        <div class="dropdown-menu dropdown-menu-end p-0" style="width: 340px; max-height: 440px; overflow: hidden;">
-                            <div class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0 fw-bold">Messages</h6>
-                                <a href="#" class="small text-primary text-decoration-none">Compose</a>
-                            </div>
-                            <div style="max-height: 340px; overflow-y: auto;">
-                                <a href="#" class="dropdown-item px-3 py-2 border-bottom" style="white-space: normal; background: #f8fafc;">
-                                    <div class="d-flex gap-2">
-                                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; flex-shrink: 0; font-size: 0.8rem;">MS</div>
-                                        <div class="flex-fill min-width-0">
-                                            <div class="d-flex justify-content-between">
-                                                <span class="small fw-bold">Maria Santos</span>
-                                                <span class="small text-muted">10m</span>
-                                            </div>
-                                            <div class="small text-muted text-truncate">Hi! Can you review my uploaded resource about Algebra? I need your feedback before...</div>
-                                        </div>
-                                    </div>
-                                </a>
-                                <a href="#" class="dropdown-item px-3 py-2 border-bottom" style="white-space: normal; background: #f8fafc;">
-                                    <div class="d-flex gap-2">
-                                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; flex-shrink: 0; font-size: 0.8rem;">JD</div>
-                                        <div class="flex-fill min-width-0">
-                                            <div class="d-flex justify-content-between">
-                                                <span class="small fw-bold">Juan Dela Cruz</span>
-                                                <span class="small text-muted">1h</span>
-                                            </div>
-                                            <div class="small text-muted text-truncate">The Science module has been updated. Please check the new version when you get a chance.</div>
-                                        </div>
-                                    </div>
-                                </a>
-                                <a href="#" class="dropdown-item px-3 py-2 border-bottom" style="white-space: normal;">
-                                    <div class="d-flex gap-2">
-                                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; flex-shrink: 0; font-size: 0.8rem;">AR</div>
-                                        <div class="flex-fill min-width-0">
-                                            <div class="d-flex justify-content-between">
-                                                <span class="small fw-bold">Ana Reyes</span>
-                                                <span class="small text-muted">3h</span>
-                                            </div>
-                                            <div class="small text-muted text-truncate">Thank you for sharing the Filipino reading materials! The students loved it 🎉</div>
-                                        </div>
-                                    </div>
-                                </a>
-                                <a href="#" class="dropdown-item px-3 py-2 border-bottom" style="white-space: normal;">
-                                    <div class="d-flex gap-2">
-                                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #6366f1, #4f46e5); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; flex-shrink: 0; font-size: 0.8rem;">LT</div>
-                                        <div class="flex-fill min-width-0">
-                                            <div class="d-flex justify-content-between">
-                                                <span class="small fw-bold">Leo Torres</span>
-                                                <span class="small text-muted">Yesterday</span>
-                                            </div>
-                                            <div class="small text-muted text-truncate">Hey, did you see the announcement about the new faculty meeting agenda?</div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="px-3 py-2 border-top text-center">
-                                <a href="#" class="small text-primary text-decoration-none fw-medium">View all messages</a>
-                            </div>
-                        </div>
-                    </div>
+
 
                     <div class="dropdown">
                         <div class="ll-user-dropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -364,7 +220,7 @@
                                 <div class="text-muted small">@userRole</div>
                             </li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#profileModal"><i class="bi bi-person me-2"></i>My Profile</a></li>
+                            <li><a class="dropdown-item" href="@Url.Action("Profile", "Home")"><i class="bi bi-person me-2"></i>My Profile</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form asp-action="Logout" asp-controller="Home" method="post" class="d-inline">
@@ -395,54 +251,7 @@
         </div>
     </div>
 
-    <!-- My Profile Modal -->
-    <div class="modal fade" id="profileModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header border-0">
-                    <h6 class="modal-title fw-bold">My Profile</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body text-center pt-0 pb-4">
-                    <div class="mb-3">
-                        <div class="d-inline-flex align-items-center justify-content-center text-white fw-bold display-5" 
-                             style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #0d6efd, #0a58ca);">
-                            @userInitials
-                        </div>
-                    </div>
-                    <h4 class="fw-bold mb-1">@userEmail.Split('@')[0]</h4>
-                    <p class="text-muted small mb-3">@userEmail</p>
-                    
-                    <div class="d-flex justify-content-center gap-2 mb-4">
-                        <span class="badge bg-warning text-dark border border-warning bg-opacity-10">@userRole</span>
-                        <span class="badge bg-success text-success border border-success bg-opacity-10">Active</span>
-                    </div>
 
-                    <div class="text-start px-3">
-                        <div class="mb-3">
-                            <label class="small text-muted fw-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Name</label>
-                            <div class="fw-medium">@userEmail</div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="small text-muted fw-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Role</label>
-                            <div class="fw-medium">@userRole</div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="small text-muted fw-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Email</label>
-                            <div class="fw-medium">@userEmail</div>
-                        </div>
-                        <div class="mb-0">
-                            <label class="small text-muted fw-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Member Since</label>
-                            <div class="fw-medium">January 2024</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 justify-content-center pb-4">
-                    <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
@@ -499,6 +308,90 @@
                     document.body.style.overflow = '';
                 }
             });
+        })();
+    </script>
+    <script>
+        // ===== Notifications System =====
+        (function() {
+            var badge = document.getElementById('notifBadge');
+            var list = document.getElementById('notificationList');
+            var summary = document.getElementById('notifSummary');
+            var markAllBtn = document.getElementById('markAllReadBtn');
+            var bellBtn = document.getElementById('notificationBellBtn');
+
+            if (!badge || !list) return;
+
+            function loadNotifications() {
+                fetch('/Home/GetNotifications')
+                    .then(r => r.json())
+                    .then(data => {
+                        // Update badge
+                        if (data.unreadCount > 0) {
+                            badge.textContent = data.unreadCount > 99 ? '99+' : data.unreadCount;
+                            badge.style.display = '';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+
+                        // Render notifications
+                        if (data.notifications.length === 0) {
+                            list.innerHTML = '<div class="text-center py-4 text-muted">' +
+                                '<i class="bi bi-bell-slash display-6 d-block mb-2"></i>' +
+                                '<span class="small">No notifications yet</span></div>';
+                            summary.textContent = 'No notifications';
+                            return;
+                        }
+
+                        var html = '';
+                        data.notifications.forEach(function(n) {
+                            var readStyle = n.isRead ? '' : 'background: #f8fafc;';
+                            var unreadDot = n.isRead ? '' : '<span style="width:6px;height:6px;background:#3b82f6;border-radius:50%;flex-shrink:0;margin-top:6px;"></span>';
+                            html += '<a href="' + (n.link || '#') + '" class="dropdown-item px-3 py-2 border-bottom notif-item" data-id="' + n.id + '" style="white-space: normal;' + readStyle + '">' +
+                                '<div class="d-flex gap-2">' +
+                                '<div style="width:36px;height:36px;background:' + n.iconBg + ';border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+                                '<i class="bi ' + n.icon + ' small"></i></div>' +
+                                '<div class="flex-fill">' +
+                                '<div class="small fw-medium d-flex align-items-center gap-2">' + n.title + unreadDot + '</div>' +
+                                '<div class="small text-muted">' + n.message + '</div>' +
+                                '<div class="small text-primary mt-1"><i class="bi bi-clock me-1"></i>' + n.timeAgo + '</div>' +
+                                '</div></div></a>';
+                        });
+                        list.innerHTML = html;
+
+                        summary.textContent = data.unreadCount > 0
+                            ? data.unreadCount + ' unread notification' + (data.unreadCount > 1 ? 's' : '')
+                            : 'All caught up!';
+
+                        // Click handler for individual notifications
+                        list.querySelectorAll('.notif-item').forEach(function(item) {
+                            item.addEventListener('click', function() {
+                                var nid = this.getAttribute('data-id');
+                                fetch('/Home/MarkNotificationRead?id=' + nid, { method: 'POST' });
+                            });
+                        });
+                    })
+                    .catch(function() {
+                        list.innerHTML = '<div class="text-center py-4 text-muted">' +
+                            '<i class="bi bi-bell-slash display-6 d-block mb-2"></i>' +
+                            '<span class="small">No notifications yet</span></div>';
+                        badge.style.display = 'none';
+                    });
+            }
+
+            // Mark all as read
+            if (markAllBtn) {
+                markAllBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    fetch('/Home/MarkAllNotificationsRead', { method: 'POST' })
+                        .then(function() { loadNotifications(); });
+                });
+            }
+
+            // Load on page load
+            loadNotifications();
+
+            // Refresh every 30 seconds
+            setInterval(loadNotifications, 30000);
         })();
     </script>
     @await RenderSectionAsync("Scripts", required: false)

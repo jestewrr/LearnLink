@@ -158,12 +158,7 @@
                 <form asp-action="PostReply" method="post">
                     <input type="hidden" name="discussionId" value="@(discussion?.Id ?? 1)" />
                     <textarea class="ll-form-control mb-3" rows="4" name="content" id="replyTextarea" placeholder="Share your thoughts, experiences, or tips..." required></textarea>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="d-flex gap-2">
-                            <button type="button" class="ll-btn ll-btn-outline ll-btn-sm" title="Add link"><i class="bi bi-link-45deg"></i></button>
-                            <button type="button" class="ll-btn ll-btn-outline ll-btn-sm" title="Add image"><i class="bi bi-image"></i></button>
-                            <button type="button" class="ll-btn ll-btn-outline ll-btn-sm" title="Add code"><i class="bi bi-code"></i></button>
-                        </div>
+                    <div class="d-flex justify-content-end align-items-center">
                         <button type="submit" class="ll-btn ll-btn-primary">
                             <i class="bi bi-send"></i> Post Reply
                         </button>
@@ -293,6 +288,17 @@
 
 @section Scripts {
 <script>
+    function insertMarkdown(markdown) {
+        var textarea = document.getElementById("replyTextarea");
+        if (!textarea) return;
+        var start = textarea.selectionStart;
+        var end = textarea.selectionEnd;
+        var text = textarea.value;
+        textarea.value = (text.substring(0, start) + markdown + text.substring(end, text.length));
+        textarea.selectionStart = textarea.selectionEnd = start + markdown.length;
+        textarea.focus();
+    }
+
     (function() {
         // Like buttons
         document.querySelectorAll('.disc-like-btn, .reply-like-btn').forEach(btn => {
@@ -383,12 +389,10 @@
         }
 
         // Server-side toast trigger
-        @if (TempData["SuccessMessage"] != null)
-        {
-            <text>
+        var hasSuccess = '@(TempData["SuccessMessage"] != null ? "true" : "false")' === 'true';
+        if (hasSuccess) {
             var toast = new bootstrap.Toast(document.getElementById('discToast'));
             toast.show();
-            </text>
         }
     })();
 </script>

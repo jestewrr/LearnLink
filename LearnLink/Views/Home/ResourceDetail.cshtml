@@ -1,34 +1,40 @@
+@inject IConfiguration Configuration
 @{
     ViewData["Title"] = "Resource Detail";
     ViewData["ActivePage"] = "Repository";
 
     var resource = ViewBag.Resource as LearnLink.Models.ResourceViewModel;
+    if (resource == null) return;
     var related = ViewBag.RelatedResources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
+    var fileUrl = ViewBag.FileUrl as string ?? string.Empty;
+    var canPreview = (bool?)(ViewBag.CanPreview ?? false) ?? false;
 
-    string GetThumbnailGradient(string format) => format?.ToUpper() switch
+    string Normal(string f) => f?.TrimStart('.').ToUpper() ?? "";
+
+    string GetThumbnailGradient(string format) => Normal(format) switch
     {
         "PDF" => "background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-        "DOCX" => "background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-        "PPTX" => "background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-        "XLSX" => "background: linear-gradient(135deg, #10b981 0%, #059669 100%)",
-        _ => "background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
+        "DOCX" or "DOC" => "background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+        "PPTX" or "PPT" => "background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+        "XLSX" or "XLS" => "background: linear-gradient(135deg, #10b981 0%, #059669 100%)",
+        _ => "background: linear-gradient(135deg, #8b5cf6) 0%, #7c3aed 100%)"
     };
 
-    string GetThumbnailIcon(string format) => format?.ToUpper() switch
+    string GetThumbnailIcon(string format) => Normal(format) switch
     {
         "PDF" => "bi-file-earmark-pdf",
-        "DOCX" => "bi-file-earmark-word",
-        "PPTX" => "bi-file-earmark-ppt",
-        "XLSX" => "bi-file-earmark-excel",
+        "DOCX" or "DOC" => "bi-file-earmark-word",
+        "PPTX" or "PPT" => "bi-file-earmark-ppt",
+        "XLSX" or "XLS" => "bi-file-earmark-excel",
         _ => "bi-file-earmark"
     };
 
-    string GetFormatLabel(string format) => format?.ToUpper() switch
+    string GetFormatLabel(string format) => Normal(format) switch
     {
         "PDF" => "PDF Document",
-        "DOCX" => "Word Document",
-        "PPTX" => "PowerPoint Presentation",
-        "XLSX" => "Excel Spreadsheet",
+        "DOCX" or "DOC" => "Word Document",
+        "PPTX" or "PPT" => "PowerPoint Presentation",
+        "XLSX" or "XLS" => "Excel Spreadsheet",
         _ => "Document"
     };
 }
@@ -47,6 +53,16 @@
 <div class="row g-4">
     <!-- Main Content Column -->
     <div class="col-lg-8">
+
+        @if (TempData["ErrorMessage"] != null)
+        {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        }
+
         <!-- Meta bar (Scribd-style) -->
         <div class="ll-detail-meta-bar">
             @if (resource.RatingCount > 0)
@@ -88,31 +104,31 @@
 
         <!-- Action Bar -->
         <div class="ll-detail-actions">
-            <button class="ll-detail-action-btn ll-detail-action-like" id="likeBtn" onclick="toggleLike(this)">
-                <i class="bi bi-heart"></i>
-                <span>Like</span>
+            <button class="ll-detail-action-btn ll-detail-action-like @(resource.IsLiked ? "liked" : "")" id="likeBtn" onclick="toggleLike(this, @resource.Id)">
+                <i class="bi @(resource.IsLiked ? "bi-heart-fill" : "bi-heart")"></i>
+                <span>@(resource.IsLiked ? "Liked" : "Like")</span>
             </button>
 
             <div class="ll-detail-action-rating" id="ratingWidget">
                 <span class="ll-detail-rating-label">Rate:</span>
                 @for (int i = 1; i <= 5; i++)
                 {
-                    <i class="bi bi-star ll-detail-star" data-value="@i" onclick="setRating(@i)"></i>
+                    <i class="bi bi-star ll-detail-star" data-value="@i" onclick="setRating(@resource.Id, @i)"></i>
                 }
                 @if (resource.Rating > 0)
                 {
-                    <span class="ll-detail-rating-value">@resource.Rating.ToString("0.0")</span>
+                    <span class="ll-detail-rating-value" id="ratingScore">@resource.Rating.ToString("0.0")</span>
                 }
             </div>
 
-            <button class="ll-detail-action-btn ll-detail-action-download" onclick="simulateDownload()">
+            <button class="ll-detail-action-btn ll-detail-action-download" onclick="downloadResource(@resource.Id)">
                 <i class="bi bi-download"></i>
                 <span>Download</span>
             </button>
 
-            <button class="ll-detail-action-btn ll-detail-action-save" id="saveBtn" onclick="toggleSave(this)">
-                <i class="bi bi-bookmark"></i>
-                <span>Save for later</span>
+            <button class="ll-detail-action-btn ll-detail-action-save @(resource.IsSaved ? "saved" : "")" id="saveBtn" onclick="toggleSave(this, @resource.Id)">
+                <i class="bi @(resource.IsSaved ? "bi-bookmark-fill" : "bi-bookmark")"></i>
+                <span>@(resource.IsSaved ? "Saved" : "Save for later")</span>
             </button>
         </div>
 
@@ -127,14 +143,53 @@
                     <div class="ll-detail-preview-filesize">@resource.FileSize · @resource.FileFormat.ToUpper()</div>
                 </div>
             </div>
-            <div class="ll-detail-preview-body" style="@GetThumbnailGradient(resource.FileFormat)">
-                <i class="bi @GetThumbnailIcon(resource.FileFormat)" style="font-size: 5rem; opacity: 0.3;"></i>
-                <div class="ll-detail-preview-overlay">
-                    <button class="ll-btn ll-btn-primary" onclick="simulateDownload()">
-                        <i class="bi bi-eye"></i> Read now
-                    </button>
+            @{
+                var fmt = Normal(resource.FileFormat);
+                var isOffice = fmt == "DOCX" || fmt == "DOC" || fmt == "PPTX" || fmt == "PPT" || fmt == "XLSX" || fmt == "XLS";
+                var hasFile = canPreview && !string.IsNullOrWhiteSpace(fileUrl);
+                var canUseGoogleViewer = fileUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase);
+                
+                string readUrl = fileUrl;
+                if (isOffice && canUseGoogleViewer) {
+                    readUrl = "https://docs.google.com/viewer?url=" + Uri.EscapeDataString(fileUrl);
+                } else if (isOffice) {
+                    readUrl = Url.Action("DownloadResource", "Home", new { id = resource.Id });
+                }
+            }
+            @if (!hasFile)
+            {
+                <div class="ll-detail-preview-body d-flex flex-column align-items-center justify-content-center" style="background: #f8f9fa; height: 280px;">
+                    <i class="bi bi-cloud-slash" style="font-size: 3rem; color: #adb5bd;"></i>
+                    <p class="text-muted mt-3 mb-0">No file has been attached to this resource yet.</p>
                 </div>
-            </div>
+            }
+            else if (fmt == "MP4")
+            {
+                <div class="ll-detail-preview-body p-0" style="height: 500px; background: #000; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center;">
+                    <video controls style="max-width: 100%; max-height: 100%;">
+                        <source src="@fileUrl" type="video/mp4" />
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+            }
+            else
+            {
+                <div class="ll-detail-preview-body d-flex flex-column align-items-center justify-content-center" style="background: #f8f9fa; min-height: 350px; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                    <div style="@GetThumbnailGradient(resource.FileFormat); width: 90px; height: 110px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+                        <i class="bi @GetThumbnailIcon(resource.FileFormat)" style="font-size: 3.5rem; color: white;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">@resource.Title.@resource.FileFormat.ToLower()</h5>
+                    <p class="text-muted mb-4 text-center px-4" style="max-width: 500px;">Click the button below to open the secure reader in a new tab, or download the resource to your device.</p>
+                    <div class="d-flex flex-wrap justify-content-center gap-3">
+                        <a href="@readUrl" target="_blank" class="ll-btn ll-btn-primary" style="padding: 10px 24px;">
+                            <i class="bi bi-eye me-2"></i>Read Resource
+                        </a>
+                        <button type="button" class="ll-btn ll-btn-outline" onclick="downloadResource(@resource.Id)" style="padding: 10px 24px;">
+                            <i class="bi bi-download me-2"></i>Download
+                        </button>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 
@@ -167,8 +222,8 @@
                         <i class="bi bi-star-fill"></i>
                     </div>
                     <div>
-                        <div class="ll-detail-stat-number">@(resource.Rating > 0 ? resource.Rating.ToString("0.0") : "N/A")</div>
-                        <div class="ll-detail-stat-label">Rating (@resource.RatingCount)</div>
+                        <div class="ll-detail-stat-number" id="ratingStatsValue">@(resource.Rating > 0 ? resource.Rating.ToString("0.0") : "N/A")</div>
+                        <div class="ll-detail-stat-label" id="ratingStatsCount">Rating (@resource.RatingCount)</div>
                     </div>
                 </div>
                 <div class="ll-detail-stat-item">
@@ -176,7 +231,7 @@
                         <i class="bi bi-heart-fill"></i>
                     </div>
                     <div>
-                        <div class="ll-detail-stat-number" id="likeCount">@(resource.RatingCount > 0 ? (resource.RatingCount / 2).ToString() : "0")</div>
+                        <div class="ll-detail-stat-number" id="likeCount">@resource.LikeCount.ToString("N0")</div>
                         <div class="ll-detail-stat-label">Likes</div>
                     </div>
                 </div>
@@ -278,70 +333,137 @@
 @section Scripts {
 <script>
     // Like toggle
-    function toggleLike(btn) {
-        var icon = btn.querySelector('i');
-        var text = btn.querySelector('span');
-        var countEl = document.getElementById('likeCount');
-        var count = parseInt(countEl.textContent.replace(/,/g, ''));
-        if (btn.classList.contains('liked')) {
-            btn.classList.remove('liked');
-            icon.className = 'bi bi-heart';
-            text.textContent = 'Like';
-            countEl.textContent = (count - 1).toLocaleString();
-        } else {
-            btn.classList.add('liked');
-            icon.className = 'bi bi-heart-fill';
-            text.textContent = 'Liked';
-            countEl.textContent = (count + 1).toLocaleString();
-        }
+    async function toggleLike(btn, id) {
+        if (btn.disabled) return;
+        btn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('id', id);
+
+        try {
+            const res = await fetch('@Url.Action("LikeResource", "Home")', { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            if (data.success) {
+                var icon = btn.querySelector('i');
+                var text = btn.querySelector('span');
+                var countEl = document.getElementById('likeCount');
+
+                if (data.isLiked) {
+                    btn.classList.add('liked');
+                    icon.className = 'bi bi-heart-fill';
+                    text.textContent = 'Liked';
+                } else {
+                    btn.classList.remove('liked');
+                    icon.className = 'bi bi-heart';
+                    text.textContent = 'Like';
+                }
+                countEl.textContent = data.count.toLocaleString();
+            } else {
+                alert('Action failed. Please make sure you are logged in.');
+            }
+        } catch(e) { /* ignored */ }
+        btn.disabled = false;
     }
 
     // Star rating
-    function setRating(value) {
+    async function setRating(id, value) {
         var stars = document.querySelectorAll('.ll-detail-star');
-        stars.forEach(function(star, index) {
-            if (index < value) {
-                star.className = 'bi bi-star-fill ll-detail-star active';
-            } else {
-                star.className = 'bi bi-star ll-detail-star';
-            }
-        });
+        // Disable stars temporarily
+        stars.forEach(s => s.style.pointerEvents = 'none');
 
-        // Show feedback
-        var ratingValue = document.querySelector('.ll-detail-rating-value');
-        if (!ratingValue) {
-            ratingValue = document.createElement('span');
-            ratingValue.className = 'll-detail-rating-value';
-            document.getElementById('ratingWidget').appendChild(ratingValue);
-        }
-        ratingValue.textContent = value + '.0';
+        const formData = new FormData();
+        formData.append('id', id);
+        formData.append('rating', value);
+
+        try {
+            const res = await fetch('@Url.Action("RateResource", "Home")', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.success) {
+                // visually update stars
+                stars.forEach(function(star, index) {
+                    if (index < value) {
+                        star.className = 'bi bi-star-fill ll-detail-star active';
+                    } else {
+                        star.className = 'bi bi-star ll-detail-star';
+                    }
+                });
+
+                // Show feedback
+                var ratingValue = document.getElementById('ratingScore');
+                if (!ratingValue) {
+                    ratingValue = document.createElement('span');
+                    ratingValue.className = 'll-detail-rating-value';
+                    ratingValue.id = 'ratingScore';
+                    document.getElementById('ratingWidget').appendChild(ratingValue);
+                }
+                ratingValue.textContent = data.rating;
+
+                // Update right stats card
+                document.getElementById('ratingStatsValue').textContent = data.rating;
+                document.getElementById('ratingStatsCount').textContent = 'Rating (' + data.count + ')';
+            } else {
+                alert('Failed to submit rating.');
+            }
+        } catch(e) { /* ignored */ }
+        
+        // Re-enable stars
+        stars.forEach(s => s.style.pointerEvents = 'auto');
     }
 
-    // Download simulation
-    function simulateDownload() {
+    // Download action — triggers real browser download dialog
+    function downloadResource(id) {
         var dlBtn = document.querySelector('.ll-detail-action-download');
-        var origHTML = dlBtn.innerHTML;
-        dlBtn.innerHTML = '<i class="bi bi-check-circle"></i> <span>Downloaded!</span>';
-        dlBtn.classList.add('downloaded');
-        setTimeout(function() {
-            dlBtn.innerHTML = origHTML;
-            dlBtn.classList.remove('downloaded');
-        }, 2000);
+        if (dlBtn) {
+            var origHTML = dlBtn.innerHTML;
+            dlBtn.innerHTML = '<i class="bi bi-clock"></i> <span>Starting...</span>';
+            dlBtn.disabled = true;
+        }
+
+        window.location.href = '@Url.Action("DownloadResource", "Home")?id=' + id + '&inline=false';
+
+        if (dlBtn) {
+            setTimeout(function() {
+                dlBtn.innerHTML = '<i class="bi bi-check-circle"></i> <span>Downloaded</span>';
+                dlBtn.disabled = false;
+                setTimeout(function() {
+                    dlBtn.innerHTML = origHTML;
+                }, 3000);
+            }, 1200);
+        }
     }
 
     // Save toggle
-    function toggleSave(btn) {
-        var icon = btn.querySelector('i');
-        var text = btn.querySelector('span');
-        if (btn.classList.contains('saved')) {
-            btn.classList.remove('saved');
-            icon.className = 'bi bi-bookmark';
-            text.textContent = 'Save for later';
-        } else {
-            btn.classList.add('saved');
-            icon.className = 'bi bi-bookmark-fill';
-            text.textContent = 'Saved';
-        }
+    async function toggleSave(btn, id) {
+        if (btn.disabled) return;
+        btn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('id', id);
+
+        try {
+            const res = await fetch('@Url.Action("SaveResource", "Home")', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.success) {
+                var icon = btn.querySelector('i');
+                var text = btn.querySelector('span');
+
+                if (data.isSaved) {
+                    btn.classList.add('saved');
+                    icon.className = 'bi bi-bookmark-fill';
+                    text.textContent = 'Saved';
+                } else {
+                    btn.classList.remove('saved');
+                    icon.className = 'bi bi-bookmark';
+                    text.textContent = 'Save for later';
+                }
+            } else {
+                alert('Action failed. Please verify you are logged in.');
+            }
+        } catch(e) { /* ignored */ }
+        btn.disabled = false;
     }
 </script>
 }

@@ -47,7 +47,7 @@
 
         /* ── Hero Banner ── */
         .ps-hero {
-            background: linear-gradient(135deg, var(--ll-primary, #2563eb) 0%, var(--ll-primary-dark, #1e40af) 100%);
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
             color: #fff;
             padding: 2.5rem 0 2rem;
             text-align: center;
@@ -59,27 +59,31 @@
         .ps-search-wrap {
             max-width: 720px;
             margin: 0 auto;
-            position: relative;
+        }
+        .ps-search-wrap form {
+            display: flex;
+            align-items: center;
+            background: #fff;
+            border-radius: 50px;
+            padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
         }
         .ps-search-wrap .search-icon {
-            position: absolute;
-            left: 18px;
-            top: 50%;
-            transform: translateY(-50%);
             color: #94a3b8;
             font-size: 1.15rem;
+            margin-right: 0.75rem;
         }
         .ps-search-wrap input {
-            width: 100%;
+            flex: 1;
             border: none;
-            border-radius: 14px;
-            padding: 1rem 1rem 1rem 3rem;
+            padding: 0.5rem 1rem;
             font-size: 1.05rem;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
             outline: none;
+            color: #1e293b;
         }
-        .ps-search-wrap input:focus {
-            box-shadow: 0 4px 24px rgba(37,99,235,0.22);
+        .ps-search-wrap button {
+            border-radius: 50px;
+            padding: 0.75rem 2rem;
         }
 
         /* ── Filters ── */
@@ -115,19 +119,16 @@
             margin-bottom: 1rem;
         }
 
-        /* Result Card */
         .ps-result-card {
             background: #fff;
             border-radius: 14px;
             padding: 1.25rem 1.5rem;
             margin-bottom: 0.85rem;
             box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-            transition: box-shadow 0.2s, transform 0.15s;
-            cursor: pointer;
+            transition: box-shadow 0.2s;
         }
         .ps-result-card:hover {
             box-shadow: 0 6px 24px rgba(37,99,235,0.10);
-            transform: translateY(-2px);
         }
         .ps-result-icon {
             width: 48px; height: 48px;
@@ -229,8 +230,11 @@
             <p>Browse thousands of educational materials shared by contributors</p>
 
             <div class="ps-search-wrap">
-                <i class="bi bi-search search-icon"></i>
-                <input type="text" id="mainSearchInput" placeholder="Search for resources, topics, subjects..." autofocus />
+                <form onsubmit="event.preventDefault(); window.performSearch();">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" id="mainSearchInput" placeholder="Search for resources, topics, subjects..." autofocus />
+                    <button type="submit" class="btn btn-warning text-dark fw-medium">Search</button>
+                </form>
             </div>
 
             <!-- Filters -->
@@ -339,11 +343,16 @@
             }
 
             let results = resources.filter(r => {
+                const titleStr = r.title || '';
+                const subjectStr = r.subject || '';
+                const descStr = r.description || '';
+                const typeStr = r.resourceType || '';
+                
                 const matchQuery = !query ||
-                    r.title.toLowerCase().includes(query) ||
-                    r.subject.toLowerCase().includes(query) ||
-                    r.description.toLowerCase().includes(query) ||
-                    r.resourceType.toLowerCase().includes(query);
+                    titleStr.toLowerCase().includes(query) ||
+                    subjectStr.toLowerCase().includes(query) ||
+                    descStr.toLowerCase().includes(query) ||
+                    typeStr.toLowerCase().includes(query);
                 const matchSubject = !subject || r.subject === subject;
                 const matchGrade = !grade || r.gradeLevel === grade;
                 const matchType = !type || r.fileFormat === type;
@@ -391,6 +400,7 @@
             `).join('');
         }
 
+                window.performSearch = performSearch;
         searchInput.addEventListener('input', performSearch);
         subjectFilter.addEventListener('change', performSearch);
         gradeFilter.addEventListener('change', performSearch);

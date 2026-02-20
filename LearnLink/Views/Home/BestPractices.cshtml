@@ -5,6 +5,8 @@
     var recommendations = ViewBag.Recommendations as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
     var trending = ViewBag.Trending as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
     var continueReading = ViewBag.ContinueReading as List<LearnLink.Models.ReadingHistoryViewModel> ?? new List<LearnLink.Models.ReadingHistoryViewModel>();
+    var subjects = ViewBag.LearningProgress as IEnumerable<dynamic> ?? new List<dynamic>();
+    var totalProgress = (int)(ViewBag.TotalProgress ?? 0);
 
     string GetGradient(string format) => format?.ToUpper() switch
     {
@@ -23,8 +25,6 @@
         "XLSX" => "bi-file-earmark-excel",
         _ => "bi-file-earmark"
     };
-
-
 }
 
 <div class="ll-best-practices">
@@ -106,33 +106,28 @@
                         <div style="width: 120px; height: 120px; margin: 0 auto; position: relative;">
                             <svg viewBox="0 0 36 36" style="transform: rotate(-90deg);">
                                 <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/>
-                                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#2563eb" stroke-width="3" stroke-dasharray="72, 100"/>
+                                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#2563eb" stroke-width="3" stroke-dasharray="@totalProgress, 100"/>
                             </svg>
                             <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
-                                <div class="fs-4 fw-bold">72%</div>
+                                <div class="fs-4 fw-bold">@(totalProgress)%</div>
                                 <div class="small text-muted">Complete</div>
                             </div>
                         </div>
                     </div>
-                    @{
-                        var subjects = new[] {
-                            ("Mathematics", 85, "primary"),
-                            ("Science", 68, "success"),
-                            ("English", 45, "#f59e0b"),
-                            ("Filipino", 32, "#8b5cf6")
-                        };
-                    }
-                    @foreach (var (subject, pct, color) in subjects)
+                    @foreach (var item in subjects)
                     {
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between small mb-1">
-                            <span>@subject</span>
-                            <span class="fw-medium">@(pct)%</span>
+                        var subjectName = (string)item.Subject;
+                        var pct = (int)item.Percent;
+                        var color = (string)item.Color; // primary, success, etc.
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span>@subjectName</span>
+                                <span class="fw-medium">@(pct)%</span>
+                            </div>
+                            <div class="ll-progress">
+                                <div class="ll-progress-bar @(color == "primary" || color == "success" ? color : "")" style="width: @(pct)%; @(color != "primary" && color != "success" ? $"background: {color};" : "")"></div>
+                            </div>
                         </div>
-                        <div class="ll-progress">
-                            <div class="ll-progress-bar @(color == "primary" || color == "success" ? color : "")" style="width: @(pct)%; @(color != "primary" && color != "success" ? $"background: {color};" : "")"></div>
-                        </div>
-                    </div>
                     }
                 </div>
             </div>
@@ -146,7 +141,7 @@
                     <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline ll-btn-sm">View All</a>
                 </div>
                 <div class="ll-card-body p-0">
-                    <div class="table-responsive">
+                    <div class="table-responsive-xl">
                         <table class="ll-table">
                             <thead>
                                 <tr>
@@ -227,3 +222,4 @@
             </div>
         </div>
     </div>
+</div>

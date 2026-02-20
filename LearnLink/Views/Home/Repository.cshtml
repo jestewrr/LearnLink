@@ -100,14 +100,14 @@
 <!-- Category Filters -->
 <div class="d-flex flex-wrap gap-2 mb-4" id="categoryFilters">
     <button class="ll-btn ll-btn-primary ll-btn-sm category-btn active" data-subject="">All Resources</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="Mathematics">📐 Mathematics</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="Science">🔬 Science</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="English">📖 English</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="Filipino">🇵🇭 Filipino</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="History">🏛️ History</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="MAPEH">🎨 MAPEH</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="TLE">💻 TLE</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="Values Education">🌍 Values Ed</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="Mathematics">Mathematics</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="Science">Science</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="English">English</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="Filipino">Filipino</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="History">History</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="MAPEH">MAPEH</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="TLE">TLE</button>
+    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="Values Education">Values Ed</button>
 </div>
 
 <!-- Results Info -->
@@ -142,7 +142,10 @@
             <div class="ll-resource-card">
                 <div class="ll-resource-thumbnail" style="@GetThumbnailGradient(resource.FileFormat)">
                     <i class="bi @GetThumbnailIcon(resource.FileFormat)"></i>
-                    <span class="ll-resource-type">@resource.FileFormat</span>
+                    @if (!string.IsNullOrEmpty(resource.FileFormat))
+                    {
+                        <span class="ll-resource-type">@resource.FileFormat</span>
+                    }
                 </div>
                 <div class="ll-resource-content">
                     <h5 class="ll-resource-title">@resource.Title</h5>
@@ -201,7 +204,14 @@
                     <td><span class="ll-tag">@resource.Subject</span></td>
                     <td><span class="ll-tag">@resource.GradeLevel</span></td>
                     <td>
-                        <span class="ll-table-format-badge" style="@GetThumbnailGradient(resource.FileFormat)">@resource.FileFormat</span>
+                        @if (!string.IsNullOrEmpty(resource.FileFormat))
+                        {
+                            <span class="ll-table-format-badge" style="@GetThumbnailGradient(resource.FileFormat)">@resource.FileFormat</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
                     </td>
                     <td><i class="bi bi-download text-muted me-1"></i> @resource.DownloadCount.ToString("N0")</td>
                     <td><i class="bi bi-eye text-muted me-1"></i> @resource.ViewCount.ToString("N0")</td>

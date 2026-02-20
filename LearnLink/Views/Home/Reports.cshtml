@@ -9,14 +9,12 @@
     var topResources = ViewBag.TopResources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
     var topContributors = ViewBag.TopContributors as List<LearnLink.Models.UserViewModel> ?? new List<LearnLink.Models.UserViewModel>();
 
-    // Subject distribution data (static for the chart)
-    var subjectDistribution = new[] {
-        new { Name = "Mathematics", Percent = 35, ColorClass = "primary" },
-        new { Name = "Science", Percent = 28, ColorClass = "success" },
-        new { Name = "English", Percent = 20, ColorClass = "" },
-        new { Name = "Filipino", Percent = 12, ColorClass = "info" },
-        new { Name = "Others", Percent = 5, ColorClass = "secondary" }
-    };
+    // Subject Distribution data (Real)
+    var subjectDistribution = ViewBag.SubjectDistribution as IEnumerable<dynamic> ?? new List<dynamic>();
+    
+    // Engagement Trends (Real)
+    var engagementTrends = ViewBag.EngagementTrendCounts as int[] ?? new int[30];
+    var maxTrend = engagementTrends.Any() ? engagementTrends.Max() : 1; // Avoid division by zero
 }
 
 <!-- Page Header -->
@@ -121,19 +119,22 @@
                 <!-- Visual Chart (CSS-based bar chart) -->
                 <div style="height: 300px; position: relative;" class="d-flex align-items-end gap-2 pt-4" id="chartContainer">
                     @{
-                        var heights = new[] { 40, 60, 55, 80, 70, 90, 100, 65, 45, 30 };
-                        var opacities = new[] { "0.25", "0.5", "0.75", "0.5", "1", "0.75", "0.5", "0.25", "0.5", "0.75" };
+                        // Calculate heights relative to max
+                        var count = engagementTrends.Length;
                     }
-                    @for (int i = 0; i < heights.Length; i++)
+                    @for (int i = 0; i < count; i++)
                     {
-                    <div class="flex-fill bg-primary rounded-top chart-bar" style="height: @(heights[i])%; opacity: @(opacities[i]); transition: all 0.3s ease;" title="Day @(i + 1): @(heights[i] * 12) engagements" data-bs-toggle="tooltip"></div>
+                        var val = engagementTrends[i];
+                        var heightPct = (int)((double)val / maxTrend * 100);
+                        heightPct = Math.Max(5, heightPct); // Min height 5%
+                    <div class="flex-fill bg-primary rounded-top chart-bar" style="height: @(heightPct)%; opacity: 0.7; transition: all 0.3s ease;" title="@DateTime.Now.AddDays(-30 + i).ToString("MMM dd"): @val engagements" data-bs-toggle="tooltip"></div>
                     }
                 </div>
                 <div class="d-flex justify-content-between mt-3 text-muted small">
-                    <span>Dec 01</span>
-                    <span>Dec 10</span>
-                    <span>Dec 20</span>
-                    <span>Dec 30</span>
+                    <span>@DateTime.Now.AddDays(-30).ToString("MMM dd")</span>
+                    <span>@DateTime.Now.AddDays(-20).ToString("MMM dd")</span>
+                    <span>@DateTime.Now.AddDays(-10).ToString("MMM dd")</span>
+                    <span>Today</span>
                 </div>
             </div>
         </div>
@@ -145,7 +146,7 @@
                 <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline ll-btn-sm">View Full List</a>
             </div>
             <div class="ll-card-body p-0">
-                <div class="table-responsive">
+                <div class="table-responsive-xl">
                     <table class="ll-table">
                         <thead>
                             <tr>

@@ -54,11 +54,26 @@
                             </div>
 
                             <form asp-action="Register" method="post">
-                                <div class="mb-3">
-                                    <label class="form-label">Full Name</label>
-                                    <div class="ll-auth-input-group">
-                                        <i class="bi bi-person ll-auth-input-icon"></i>
-                                        <input type="text" class="form-control" placeholder="Enter your full name" required>
+                                @if (ViewBag.Error != null)
+                                {
+                                    <div class="alert alert-danger small py-2 mb-3">
+                                        <i class="bi bi-exclamation-circle me-1"></i>@ViewBag.Error
+                                    </div>
+                                }
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">First Name</label>
+                                        <div class="ll-auth-input-group">
+                                            <i class="bi bi-person ll-auth-input-icon"></i>
+                                            <input type="text" name="firstName" class="form-control" placeholder="First name" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Last Name</label>
+                                        <div class="ll-auth-input-group">
+                                            <i class="bi bi-person ll-auth-input-icon"></i>
+                                            <input type="text" name="lastName" class="form-control" placeholder="Last name" required>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -66,7 +81,7 @@
                                     <label class="form-label">Email Address</label>
                                     <div class="ll-auth-input-group">
                                         <i class="bi bi-envelope ll-auth-input-icon"></i>
-                                        <input type="email" class="form-control" placeholder="name@example.com" required>
+                                        <input type="email" name="email" class="form-control" placeholder="name@example.com" required>
                                     </div>
                                 </div>
 
@@ -75,7 +90,7 @@
                                         <label class="form-label">Password</label>
                                         <div class="ll-auth-input-group">
                                             <i class="bi bi-lock ll-auth-input-icon"></i>
-                                            <input type="password" id="regPassword" class="form-control" placeholder="Create password" required>
+                                            <input type="password" name="password" id="regPassword" class="form-control" placeholder="Create password" required>
                                             <button type="button" class="ll-auth-password-toggle" onclick="togglePassword('regPassword', this)">
                                                 <i class="bi bi-eye"></i>
                                             </button>
@@ -85,7 +100,7 @@
                                         <label class="form-label">Confirm Password</label>
                                         <div class="ll-auth-input-group">
                                             <i class="bi bi-lock-fill ll-auth-input-icon"></i>
-                                            <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter password" required>
+                                            <input type="password" name="confirmPassword" id="confirmPassword" class="form-control" placeholder="Re-enter password" required>
                                             <button type="button" class="ll-auth-password-toggle" onclick="togglePassword('confirmPassword', this)">
                                                 <i class="bi bi-eye"></i>
                                             </button>
@@ -95,12 +110,7 @@
 
 
 
-                                <div class="form-check mb-4">
-                                    <input class="form-check-input" type="checkbox" id="agreeTerms" required>
-                                    <label class="form-check-label small" for="agreeTerms" style="text-transform: none; letter-spacing: 0; font-weight: 400;">
-                                        I agree to the <a href="#" class="fw-semibold text-decoration-none" style="color: var(--ll-primary);">Terms of Service</a> and <a href="#" class="fw-semibold text-decoration-none" style="color: var(--ll-primary);">Privacy Policy</a>
-                                    </label>
-                                </div>
+
 
                                 <button type="submit" class="btn ll-auth-btn-accent w-100 py-2 mb-3">
                                     <i class="bi bi-person-plus me-2"></i>Create Account

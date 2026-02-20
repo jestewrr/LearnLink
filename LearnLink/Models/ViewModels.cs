@@ -10,6 +10,7 @@ namespace LearnLink.Models
         public string ResourceType { get; set; } = "";
         public string FileFormat { get; set; } = "";
         public string FileSize { get; set; } = "";
+        public string FilePath { get; set; } = "";
         public string Status { get; set; } = "Published";
         public int ViewCount { get; set; }
         public int DownloadCount { get; set; }
@@ -23,6 +24,10 @@ namespace LearnLink.Models
         public string IconClass { get; set; } = "bi-file-earmark";
         public string IconColor { get; set; } = "text-primary";
         public string IconBg { get; set; } = "#dbeafe";
+        public bool IsLiked { get; set; }
+        public bool IsSaved { get; set; }
+        public int UserRating { get; set; }
+        public int LikeCount { get; set; }
     }
 
     public class LessonViewModel
@@ -40,6 +45,8 @@ namespace LearnLink.Models
         public int LikeCount { get; set; }
         public int CommentCount { get; set; }
         public bool IsLiked { get; set; }
+        public int ResourceId { get; set; }
+        public string ResourceTitle { get; set; } = "";
     }
 
     public class DiscussionViewModel

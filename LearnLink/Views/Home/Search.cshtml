@@ -138,7 +138,16 @@
             }
 
             let results = resources.filter(r => {
-                const matchQuery = !query || r.title.toLowerCase().includes(query) || r.subject.toLowerCase().includes(query) || r.description.toLowerCase().includes(query) || r.resourceType.toLowerCase().includes(query);
+                const titleStr = r.title || '';
+                const subjectStr = r.subject || '';
+                const descStr = r.description || '';
+                const typeStr = r.resourceType || '';
+                
+                const matchQuery = !query ||
+                    titleStr.toLowerCase().includes(query) ||
+                    subjectStr.toLowerCase().includes(query) ||
+                    descStr.toLowerCase().includes(query) ||
+                    typeStr.toLowerCase().includes(query);
                 const matchSubject = !subject || r.subject === subject;
                 const matchGrade = !grade || r.gradeLevel === grade;
                 const matchType = !type || r.fileFormat === type;

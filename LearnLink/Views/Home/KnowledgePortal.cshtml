@@ -105,7 +105,8 @@
                                 data-id="@discussion.Id" 
                                 data-title="@discussion.Title" 
                                 data-content="@discussion.Content" 
-                                data-type="@discussion.Type">
+                                data-type="@discussion.Type"
+                                data-tags="@string.Join(", ", discussion.Tags)">
                             <i class="bi bi-pencil"></i>
                         </button>
                         <button class="ll-btn ll-btn-outline ll-btn-sm text-danger delete-disc-btn" data-id="@discussion.Id">
@@ -149,7 +150,7 @@
                         <label class="ll-form-label">Discussion Type</label>
                         <input type="hidden" name="Type" id="discType" value="Question">
                         <div class="d-flex flex-wrap gap-2">
-                            <button type="button" class="ll-btn ll-btn-outline ll-btn-sm disc-type-btn active" data-value="Question">Question</button>
+                            <button type="button" class="ll-btn ll-btn-primary ll-btn-sm disc-type-btn active" data-value="Question">Question</button>
                             <button type="button" class="ll-btn ll-btn-outline ll-btn-sm disc-type-btn" data-value="Idea">Idea</button>
                             <button type="button" class="ll-btn ll-btn-outline ll-btn-sm disc-type-btn" data-value="Resource">Resource</button>
                             <button type="button" class="ll-btn ll-btn-outline ll-btn-sm disc-type-btn" data-value="Study Group">Study Group</button>
@@ -195,10 +196,22 @@
                             </div>
                         </div>
                     </div>
-                    <div class="ll-form-group">
+                    <div class="ll-form-group mb-1">
                         <label class="ll-form-label">Tags</label>
-                        <input type="text" class="ll-form-control" name="Tags" placeholder="Add tags separated by commas" value="General">
+                        <input type="text" class="ll-form-control" name="Tags" id="newDiscTags" placeholder="Add tags separated by commas" value="General">
                     </div>
+                    @if (ViewBag.PopularTags != null && ((List<string>)ViewBag.PopularTags).Any())
+                    {
+                        <div class="mb-3">
+                            <span class="small text-muted me-2">Popular suggestions:</span>
+                            <div class="d-inline-flex flex-wrap gap-1">
+                                @foreach (var pTag in ViewBag.PopularTags)
+                                {
+                                    <button type="button" class="btn btn-sm btn-light border ll-tag-suggest" style="font-size: 0.75rem" data-target="newDiscTags">@pTag</button>
+                                }
+                            </div>
+                        </div>
+                    }
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
@@ -242,6 +255,22 @@
                         <label class="ll-form-label">Content</label>
                         <textarea class="ll-form-control" rows="6" name="Content" id="editDiscContent" required></textarea>
                     </div>
+                    <div class="ll-form-group mb-1">
+                        <label class="ll-form-label">Tags</label>
+                        <input type="text" class="ll-form-control" name="Tags" id="editDiscTags" placeholder="Add tags separated by commas">
+                    </div>
+                    @if (ViewBag.PopularTags != null && ((List<string>)ViewBag.PopularTags).Any())
+                    {
+                        <div class="mb-3">
+                            <span class="small text-muted me-2">Popular suggestions:</span>
+                            <div class="d-inline-flex flex-wrap gap-1">
+                                @foreach (var pTag in ViewBag.PopularTags)
+                                {
+                                    <button type="button" class="btn btn-sm btn-light border ll-tag-suggest" style="font-size: 0.75rem" data-target="editDiscTags">@pTag</button>
+                                }
+                            </div>
+                        </div>
+                    }
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
@@ -338,8 +367,12 @@
         // Discussion type buttons in modal
         document.querySelectorAll('.disc-type-btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                document.querySelectorAll('.disc-type-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
+                document.querySelectorAll('.disc-type-btn').forEach(b => {
+                    b.classList.remove('active', 'll-btn-primary');
+                    b.classList.add('ll-btn-outline');
+                });
+                this.classList.remove('ll-btn-outline');
+                this.classList.add('active', 'll-btn-primary');
                 document.getElementById("discType").value = this.dataset.value;
             });
         });
@@ -347,8 +380,12 @@
         // Edit Discussion type buttons
         document.querySelectorAll('.edit-disc-type-btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                document.querySelectorAll('.edit-disc-type-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
+                document.querySelectorAll('.edit-disc-type-btn').forEach(b => {
+                    b.classList.remove('active', 'll-btn-primary');
+                    b.classList.add('ll-btn-outline');
+                });
+                this.classList.remove('ll-btn-outline');
+                this.classList.add('active', 'll-btn-primary');
                 document.getElementById("editDiscType").value = this.dataset.value;
             });
         });
@@ -383,6 +420,7 @@
                 document.getElementById('editDiscTitle').value = this.dataset.title;
                 document.getElementById('editDiscContent').value = this.dataset.content;
                 document.getElementById('editDiscType').value = this.dataset.type;
+                document.getElementById('editDiscTags').value = this.dataset.tags || '';
                 
                 // Set active type button
                 document.querySelectorAll('.edit-disc-type-btn').forEach(b => {
@@ -402,13 +440,35 @@
             });
         });
 
+
+
+        // Tag suggestion interactions
+        document.querySelectorAll('.ll-tag-suggest').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const targetId = this.dataset.target;
+                const input = document.getElementById(targetId);
+                if(input) {
+                    const currentVal = input.value.trim();
+                    const tagToAdd = this.textContent.trim();
+                    if(currentVal.length === 0) {
+                        input.value = tagToAdd;
+                    } else {
+                        // Check if it already exists to avoid duplicates roughly
+                        const tagsSplit = currentVal.split(',').map(t => t.trim().toLowerCase());
+                        if(!tagsSplit.includes(tagToAdd.toLowerCase())) {
+                             input.value = currentVal + ', ' + tagToAdd;
+                        }
+                    }
+                    input.focus();
+                }
+            });
+        });
+
         // Server-side toast trigger
-        @if (TempData["SuccessMessage"] != null)
-        {
-            <text>
+        var hasSuccess = '@(TempData["SuccessMessage"] != null ? "true" : "false")' === 'true';
+        if (hasSuccess) {
             var toast = new bootstrap.Toast(document.getElementById('portalToast'));
             toast.show();
-            </text>
         }
     })();
 </script>
