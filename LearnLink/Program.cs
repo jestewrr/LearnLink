@@ -63,9 +63,6 @@ using (var scope = app.Services.CreateScope())
                 BEGIN
                     ALTER TABLE [Resources] ADD [RejectionReason] nvarchar(500) NULL;
                 END
-                
-                -- Fix Quarter column length for 'All Quarters' (Error 2714/TRUNCATED)
-                ALTER TABLE [Resources] ALTER COLUMN [Quarter] nvarchar(50) NOT NULL;
             ");
 
             // Manually ensure the Notifications table exists
@@ -98,6 +95,24 @@ using (var scope = app.Services.CreateScope())
         }
 
         await context.Database.MigrateAsync();
+
+        // Run schema fixes AFTER migration to ensure they override anything in the migration
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(@"
+                -- Fix Quarter column length for 'All Quarters' (Error 2714/TRUNCATED)
+                -- We do this AFTER migration because migration might recreate it as nvarchar(10)
+                ALTER TABLE [Resources] ALTER COLUMN [Quarter] nvarchar(50) NOT NULL;
+                
+                -- Also fix VersionNumber in case it truncates
+                ALTER TABLE [ResourceVersions] ALTER COLUMN [VersionNumber] nvarchar(50) NOT NULL;
+            ");
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogWarning(ex, "Post-migration SQL fix failed.");
+        }
 
         await SeedData.InitializeAsync(services);
     }

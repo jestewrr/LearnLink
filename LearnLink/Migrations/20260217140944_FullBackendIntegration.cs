@@ -201,7 +201,7 @@ namespace LearnLink.Migrations
                     GradeLevel = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
                     FileFormat = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     FileSize = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    Quarter = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                    Quarter = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     ViewCount = table.Column<int>(type: "int", nullable: false),
                     DownloadCount = table.Column<int>(type: "int", nullable: false),
                     Rating = table.Column<double>(type: "float", nullable: false),

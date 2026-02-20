@@ -648,6 +648,33 @@
         // Initialize on page load
         setDefaultDate();
 
+        // ==================== Unsaved Changes Warning ====================
+        let isFormDirty = false;
+        let isSubmitting = false;
+
+        // Track changes in all inputs/selects/textareas
+        uploadForm.querySelectorAll('input, select, textarea').forEach(input => {
+            input.addEventListener('change', () => { isFormDirty = true; });
+            input.addEventListener('input', () => { isFormDirty = true; });
+        });
+
+        // Special case for the dropzone/file input
+        fileInput.addEventListener('change', () => { isFormDirty = true; });
+
+        // Don't warn on submission
+        uploadForm.addEventListener('submit', () => {
+            isSubmitting = true;
+        });
+
+        window.addEventListener('beforeunload', function (e) {
+            if (isFormDirty && !isSubmitting) {
+                const message = 'You have unsaved changes. If you leave now, your resource upload will be lost.';
+                e.preventDefault();
+                e.returnValue = message;
+                return message;
+            }
+        });
+
         renderUploads();
     </script>
 }
