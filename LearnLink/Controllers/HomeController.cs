@@ -1112,15 +1112,27 @@ namespace LearnLink.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // Retrieve Cloudinary secure URL
-            var cloudUrl = BuildCloudFileUrl(resource.FilePath);
-            if (string.IsNullOrEmpty(cloudUrl))
+            // Use proxy fetch to bypass Cloudinary 401 errors directly in browser
+            var (content, resolvedUrl) = await TryFetchCloudFile(resource.FilePath);
+            if (content == null)
             {
                 TempData["ErrorMessage"] = "Error downloading file: unable to access the file from cloud storage.";
                 return RedirectToAction("ResourceDetail", new { id });
             }
             
-            return Redirect(cloudUrl);
+            string contentType = GetContentType(resource.FileFormat);
+            string downloadName = $"{resource.Title}.{resource.FileFormat?.ToLower() ?? "bin"}";
+
+            if (inline) 
+            {
+                Response.Headers.Add("Content-Disposition", new System.Net.Mime.ContentDisposition {
+                    FileName = downloadName,
+                    Inline = true
+                }.ToString());
+                return File(content, contentType);
+            }
+
+            return File(content, "application/octet-stream", downloadName);
         }
 
         [AllowAnonymous]

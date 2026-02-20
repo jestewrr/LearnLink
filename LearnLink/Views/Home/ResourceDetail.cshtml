@@ -148,13 +148,12 @@
                 var isOffice = fmt == "DOCX" || fmt == "DOC" || fmt == "PPTX" || fmt == "PPT" || fmt == "XLSX" || fmt == "XLS";
                 var hasFile = canPreview && !string.IsNullOrWhiteSpace(fileUrl);
                 var canUseGoogleViewer = fileUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase);
+                var proxyUrl = Url.Action("DownloadResource", "Home", new { id = resource.Id, inline = true }) ?? fileUrl;
                 
-                string readUrl = fileUrl;
+                string readUrl = proxyUrl;
                 if (isOffice && canUseGoogleViewer) {
                     readUrl = "https://docs.google.com/viewer?url=" + Uri.EscapeDataString(fileUrl);
-                } else if (isOffice) {
-                    readUrl = Url.Action("DownloadResource", "Home", new { id = resource.Id });
-                }
+                } 
             }
             @if (!hasFile)
             {
@@ -167,7 +166,7 @@
             {
                 <div class="ll-detail-preview-body p-0" style="height: 500px; background: #000; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center;">
                     <video controls style="max-width: 100%; max-height: 100%;">
-                        <source src="@fileUrl" type="video/mp4" />
+                        <source src="@Url.Action("DownloadResource", "Home", new { id = resource.Id, inline = true })" type="video/mp4" />
                         Your browser does not support the video tag.
                     </video>
                 </div>
