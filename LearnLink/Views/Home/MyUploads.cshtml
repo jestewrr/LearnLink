@@ -182,27 +182,21 @@
                                     else if (upload.Status == "Pending")
                                     {
                                         <li><a class="dropdown-item" href="@Url.Action("ResourceDetail", "Home", new { id = upload.Id })"><i class="bi bi-eye me-2"></i>View</a></li>
-                                        @if (User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
-                                        {
                                         <li><a class="dropdown-item" href="@Url.Action("Upload", "Home", new { id = upload.Id })"><i class="bi bi-pencil me-2"></i>Edit</a></li>
                                         <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item text-danger" href="@Url.Action("RejectResource", "Home", new { id = upload.Id })"><i class="bi bi-x-circle me-2"></i>Reject</a></li>
-                                        }
-                                        else
+                                        
+                                        @if (User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
                                         {
-                                        <li><span class="dropdown-item text-muted"><i class="bi bi-hourglass-split me-2"></i>Awaiting Manager Review</span></li>
+                                            <li><a class="dropdown-item text-danger" href="@Url.Action("RejectResource", "Home", new { id = upload.Id })"><i class="bi bi-x-circle me-2"></i>Reject</a></li>
                                         }
                                     }
                                     else
                                     {
                                         <li><a class="dropdown-item" href="@Url.Action("ResourceDetail", "Home", new { id = upload.Id })"><i class="bi bi-eye me-2"></i>View</a></li>
                                         <li><a class="dropdown-item" href="#"><i class="bi bi-bar-chart me-2"></i>Analytics</a></li>
-                                        @if (User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
-                                        {
                                         <li><a class="dropdown-item" href="@Url.Action("Upload", "Home", new { id = upload.Id })"><i class="bi bi-pencil me-2"></i>Edit</a></li>
                                         <li><hr class="dropdown-divider"></li>
                                         <li><a class="dropdown-item text-danger delete-resource-btn" href="javascript:void(0)" data-id="@upload.Id"><i class="bi bi-trash me-2"></i>Delete</a></li>
-                                        }
                                     }
                                 </ul>
                             </div>
@@ -221,9 +215,8 @@
                 {
                     ("Draft", _) => "Continue Editing|Submit for Review|Discard",
                     ("Pending", true) => "View|Edit|Reject",
-                    ("Pending", false) => "View|Awaiting Manager Review",
-                    (_, true) => "View|Edit|Analytics|Delete",
-                    _ => "View|Analytics"
+                    ("Pending", false) => "View|Edit",
+                    (_, _) => "View|Edit|Analytics|Delete"
                 };
             <div class="ll-mobile-card-item upload-row-mobile"
                  data-id="@upload.Id"

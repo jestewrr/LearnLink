@@ -564,7 +564,7 @@ namespace LearnLink.Controllers
                 FirstName = firstName,
                 LastName = lastName,
                 Initials = initials,
-                AvatarColor = "background: linear-gradient(135deg, #6366f1, #4f46e5)", // Default premium color
+                AvatarColor = "background: linear-gradient(135deg, #6366f1, #4f46e5)", 
                 Status = "Active",
                 DateCreated = DateTime.Now
             };
