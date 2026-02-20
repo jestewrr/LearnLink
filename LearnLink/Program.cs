@@ -97,7 +97,7 @@ using (var scope = app.Services.CreateScope())
             logger.LogWarning(ex, "Manual SQL fix failed (this is expected if tables are missing), continuing to MigrateAsync...");
         }
 
-        // await context.Database.MigrateAsync();
+        await context.Database.MigrateAsync();
 
         await SeedData.InitializeAsync(services);
     }
@@ -109,10 +109,11 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
+app.UseDeveloperExceptionPage(); // Temporarily enabled to show detailed errors in production
+
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    // app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
 
