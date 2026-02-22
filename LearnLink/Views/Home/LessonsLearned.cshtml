@@ -45,7 +45,7 @@
             <div class="ll-card-body py-2">
                 <div class="d-flex flex-wrap gap-2 align-items-center">
                     <button class="ll-btn ll-btn-primary ll-btn-sm lesson-sort-btn active" data-sort="">All Lessons</button>
-                    <button class="ll-btn ll-btn-outline ll-btn-sm lesson-sort-btn" data-sort="likes">Top Rated</button>
+                    <button class="ll-btn ll-btn-outline ll-btn-sm lesson-sort-btn" data-sort="likes">Most Liked</button>
                     <button class="ll-btn ll-btn-outline ll-btn-sm lesson-sort-btn" data-sort="recent">Recent</button>
                     <div class="ms-auto">
                         <select class="ll-form-control ll-form-select" style="width: auto;" id="lessonCategoryFilter">
@@ -66,7 +66,7 @@
         {
             var lesson = lessons[i];
             var gradientIndex = i % iconGradients.Length;
-        <div class="d-flex gap-3 border-bottom pb-4 mb-4 lesson-item" data-category="@lesson.Category" data-likes="@lesson.LikeCount" data-date="@lesson.CreatedAt.ToString("yyyy-MM-dd")">
+        <div class="d-flex gap-3 border-bottom pb-4 mb-4 lesson-item" data-category="@lesson.Category" data-likes="@lesson.LikeCount" data-date="@lesson.CreatedAt.ToString("O")" data-index="@i">
             <div class="ll-discussion-avatar" style="width: 48px; height: 48px; font-size: 1.2rem; flex-shrink: 0; @(string.IsNullOrEmpty(lesson.AuthorColor) ? "" : lesson.AuthorColor)">
                 @lesson.AuthorInitials
             </div>
@@ -359,16 +359,29 @@
             });
 
             if (sortBy === 'likes') {
-                arr.sort((a, b) => parseInt(b.dataset.likes) - parseInt(a.dataset.likes));
+                arr.sort((a, b) => {
+                    const likesDiff = parseInt(b.dataset.likes) - parseInt(a.dataset.likes);
+                    if (likesDiff !== 0) return likesDiff;
+                    return new Date(b.dataset.date) - new Date(a.dataset.date);
+                });
             } else if (sortBy === 'recent') {
-                arr.sort((a, b) => b.dataset.date.localeCompare(a.dataset.date));
+                arr.sort((a, b) => new Date(b.dataset.date) - new Date(a.dataset.date));
+            } else {
+                // Default order (All Lessons): Original order by index
+                arr.sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
             }
+            
+            // Empty the list first to avoid duplicate spacing nodes
+            lessonsList.innerHTML = '';
             arr.forEach(item => lessonsList.appendChild(item));
         }
 
         sortBtns.forEach(btn => {
             btn.addEventListener('click', function() {
-                sortBtns.forEach(b => { b.classList.remove('ll-btn-primary', 'active'); b.classList.add('ll-btn-outline'); });
+                sortBtns.forEach(b => { 
+                    b.classList.remove('ll-btn-primary', 'active'); 
+                    b.classList.add('ll-btn-outline'); 
+                });
                 this.classList.remove('ll-btn-outline');
                 this.classList.add('ll-btn-primary', 'active');
                 filterAndSort();
@@ -388,16 +401,23 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            btnEl.innerHTML = '<i class="bi bi-hand-thumbs-up-fill"></i> ' + data.likes;
-                            btnEl.classList.add('liked', 'll-btn-primary');
-                            btnEl.classList.remove('ll-btn-outline');
+                            btnEl.innerHTML = '<i class="bi bi-hand-thumbs-up-fill"></i> <span class="fw-medium ms-1">' + data.likes + '</span>';
+                            // Ensure proper classes and remove outline when liked
+                            if (data.isLiked) {
+                                btnEl.classList.remove('ll-btn-outline', 'btn-white');
+                                btnEl.classList.add('ll-btn-primary', 'text-white');
+                                btnEl.querySelector('i').classList.remove('text-primary'); // Remove inner color since btn is solid
+                            } else {
+                                btnEl.classList.add('btn-white');
+                                btnEl.classList.remove('ll-btn-primary', 'text-white');
+                                btnEl.innerHTML = '<i class="bi bi-hand-thumbs-up"></i> <span class="fw-medium ms-1">' + data.likes + '</span>';
+                            }
                             
-                            // Optional: Show toast
-                            // var toastEl = document.getElementById('lessonToast');
-                            // var toastBody = toastEl.querySelector('.toast-body');
-                            // toastBody.textContent = "You liked this lesson!";
-                            // var toast = new bootstrap.Toast(toastEl);
-                            // toast.show();
+                            // Update the dataset so sorting continues to work dynamically
+                            const lessonItem = btnEl.closest('.lesson-item');
+                            if (lessonItem) {
+                                lessonItem.dataset.likes = data.likes;
+                            }
                         }
                     });
             });
