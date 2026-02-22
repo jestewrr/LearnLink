@@ -74,8 +74,9 @@
                 <h5 class="ll-card-title">Resource Information</h5>
             </div>
             <div class="ll-card-body">
-                <form id="uploadForm" asp-action="UploadResource" method="post" enctype="multipart/form-data">
-                    <input type="hidden" name="submitType" id="submitTypeField" value="Pending" />
+                <form id="uploadForm" asp-action="Upload" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="resourceId" value="@Model?.ResourceId" />
+                    <input type="hidden" name="isDraft" id="isDraftField" value="false" />
                     @if (TempData["ErrorMessage"] != null)
                     {
                     <div class="alert alert-danger" role="alert">
@@ -550,7 +551,10 @@
             const grade = document.getElementById('resourceGrade').value.trim();
             const type = document.getElementById('resourceType').value.trim();
             const desc = document.getElementById('resourceDesc').value.trim();
-            const fileSelected = fileInput.files && fileInput.files.length > 0;
+            
+            // If we are editing an existing model with an uploaded file, the fileInput is not required.
+            const hasExistingFile = document.querySelector('input[name="resourceId"]').value !== "";
+            const fileSelected = (fileInput.files && fileInput.files.length > 0) || hasExistingFile;
 
             if (!subject || !grade || !type || !desc || !fileSelected) {
                 showFormFeedback('Please fill in all required fields and select a file to upload.');
@@ -576,21 +580,21 @@
         });
 
         const uploadForm = document.getElementById('uploadForm');
-        const submitTypeField = document.getElementById('submitTypeField');
+        const isDraftField = document.getElementById('isDraftField');
         const saveDraftBtn = document.getElementById('saveDraftBtn');
         const uploadBtn = document.getElementById('uploadBtn');
 
         saveDraftBtn.addEventListener('click', function() {
-            submitTypeField.value = 'Draft';
+            isDraftField.value = 'true';
         });
 
         uploadBtn.addEventListener('click', function() {
-            submitTypeField.value = 'Pending';
+            isDraftField.value = 'false';
         });
 
         // Handle form submission with validation
         uploadForm.addEventListener('submit', function(e) {
-            const isDraft = submitTypeField.value === 'Draft';
+            const isDraft = isDraftField.value === 'true';
             if (!validateRequiredFields(isDraft)) {
                 e.preventDefault();
             }

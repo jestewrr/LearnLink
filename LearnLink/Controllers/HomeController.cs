@@ -1692,9 +1692,15 @@ namespace LearnLink.Controllers
             if (id.HasValue)
             {
                 resource = await _context.Resources.FirstOrDefaultAsync(r => r.ResourceId == id.Value);
-                if (resource == null || (!User.IsInRole("SuperAdmin") && resource.UserId != currentUser.Id))
+                if (resource == null || (!User.IsInRole("SuperAdmin") && !User.IsInRole("Manager") && resource.UserId != currentUser.Id))
                 {
                     return NotFound();
+                }
+                
+                if (resource.Status == "Published" && !User.IsInRole("SuperAdmin") && !User.IsInRole("Manager"))
+                {
+                    TempData["ErrorMessage"] = "Published resources can no longer be edited. Please contact an administrator if you need to make changes.";
+                    return RedirectToAction("MyUploads");
                 }
             }
 
@@ -1723,9 +1729,15 @@ namespace LearnLink.Controllers
             if (resourceId.HasValue && resourceId.Value > 0)
             {
                 resource = await _context.Resources.FindAsync(resourceId.Value);
-                if (resource == null || (!User.IsInRole("SuperAdmin") && resource.UserId != currentUser.Id))
+                if (resource == null || (!User.IsInRole("SuperAdmin") && !User.IsInRole("Manager") && resource.UserId != currentUser.Id))
                 {
                     return NotFound();
+                }
+                
+                if (resource.Status == "Published" && !User.IsInRole("SuperAdmin") && !User.IsInRole("Manager"))
+                {
+                    TempData["ErrorMessage"] = "Published resources can no longer be edited. Please contact an administrator if you need to make changes.";
+                    return RedirectToAction("MyUploads");
                 }
             }
             else
