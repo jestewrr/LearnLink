@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using CloudinaryDotNet;
-using CloudinaryDotNet.Actions;
 using LearnLink.Data;
 using LearnLink.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -18,20 +16,17 @@ namespace LearnLink.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWebHostEnvironment _environment;
-        private readonly Cloudinary _cloudinary;
 
         public HomeController(
             ApplicationDbContext context,
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
-            IWebHostEnvironment environment,
-            Cloudinary cloudinary)
+            IWebHostEnvironment environment)
         {
             _context = context;
             _signInManager = signInManager;
             _userManager = userManager;
             _environment = environment;
-            _cloudinary = cloudinary;
         }
 
         // ==================== Helpers ====================
@@ -67,154 +62,7 @@ namespace LearnLink.Controllers
             _ => "#e2e8f0"
         };
 
-        private static bool IsAbsoluteHttpUrl(string value)
-            => Uri.TryCreate(value, UriKind.Absolute, out var uri)
-               && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
-        private string BuildCloudFileUrl(string? filePath)
-        {
-            if (string.IsNullOrWhiteSpace(filePath))
-                return string.Empty;
-
-            var normalized = filePath.Trim();
-
-            if (IsAbsoluteHttpUrl(normalized))
-                return normalized;
-
-            return _cloudinary.Api.Url
-                .ResourceType("raw")
-                .Type("upload")
-                .Secure(true)
-                .Signed(true)
-                .BuildUrl(normalized.TrimStart('/'));
-        }
-
-        private List<string> BuildCloudFileUrlCandidates(string? filePath)
-        {
-            var candidates = new List<string>();
-            if (string.IsNullOrWhiteSpace(filePath))
-                return candidates;
-
-            var normalized = filePath.Trim();
-            if (IsAbsoluteHttpUrl(normalized))
-            {
-                candidates.Add(normalized);
-                return candidates;
-            }
-
-            var publicId = normalized.TrimStart('/');
-
-            candidates.Add(_cloudinary.Api.Url
-                .ResourceType("raw")
-                .Type("upload")
-                .Secure(true)
-                .BuildUrl(publicId));
-
-            candidates.Add(_cloudinary.Api.Url
-                .ResourceType("raw")
-                .Type("upload")
-                .Secure(true)
-                .Signed(true)
-                .BuildUrl(publicId));
-
-            candidates.Add(_cloudinary.Api.Url
-                .ResourceType("raw")
-                .Type("authenticated")
-                .Secure(true)
-                .Signed(true)
-                .BuildUrl(publicId));
-
-            return candidates.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        }
-
-        private async Task<(byte[]? Content, string? ResolvedUrl)> TryFetchCloudFile(string? filePath)
-        {
-            var urls = BuildCloudFileUrlCandidates(filePath);
-            if (!urls.Any())
-                return (null, null);
-
-            using var httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
-            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("LearnLink/1.0");
-
-            foreach (var url in urls)
-            {
-                try
-                {
-                    using var response = await httpClient.GetAsync(url);
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Cloud fetch failed: {(int)response.StatusCode} at {url}");
-                        continue;
-                    }
-
-                    var fileBytes = await response.Content.ReadAsByteArrayAsync();
-                    if (fileBytes.Length == 0)
-                        continue;
-
-                    return (fileBytes, url);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Cloud fetch error at {url}: {ex.Message}");
-                }
-            }
-
-            // Fallback: resolve the resource via Cloudinary Admin API, then fetch its secure URL.
-            var fallbackUrl = await ResolveCloudFileUrlViaApi(filePath);
-            if (!string.IsNullOrWhiteSpace(fallbackUrl))
-            {
-                try
-                {
-                    using var response = await httpClient.GetAsync(fallbackUrl);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var bytes = await response.Content.ReadAsByteArrayAsync();
-                        if (bytes.Length > 0)
-                            return (bytes, fallbackUrl);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Cloud fallback fetch error at {fallbackUrl}: {ex.Message}");
-                }
-            }
-
-            return (null, null);
-        }
-
-        private async Task<string?> ResolveCloudFileUrlViaApi(string? filePath)
-        {
-            if (string.IsNullOrWhiteSpace(filePath))
-                return null;
-
-            var normalized = filePath.Trim();
-            if (IsAbsoluteHttpUrl(normalized))
-                return normalized;
-
-            var publicId = normalized.TrimStart('/');
-
-            foreach (var deliveryType in new[] { "upload", "authenticated" })
-            {
-                try
-                {
-                    var resourceResult = await _cloudinary.GetResourceAsync(new GetResourceParams(publicId)
-                    {
-                        ResourceType = CloudinaryDotNet.Actions.ResourceType.Raw,
-                        Type = deliveryType
-                    });
-
-                    var secureUrl = resourceResult?.SecureUrl?.ToString();
-                    if (!string.IsNullOrWhiteSpace(secureUrl))
-                        return secureUrl;
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Cloud API resolve failed for {publicId} ({deliveryType}): {ex.Message}");
-                }
-            }
-
-            return null;
-        }
 
         private ResourceViewModel MapResource(Resource r)
         {
@@ -823,26 +671,25 @@ namespace LearnLink.Controllers
                 }
             }
 
-            string cloudPublicId = string.Empty;
+            string uniqueFileName = string.Empty;
             string extension = string.Empty;
 
             if (file != null && file.Length > 0)
             {
                 extension = Path.GetExtension(file.FileName);
-                var uploadParams = new RawUploadParams
-                {
-                    File = new FileDescription(file.FileName, file.OpenReadStream()),
-                    Folder = "learnlink/resources"
-                };
+                uniqueFileName = Guid.NewGuid().ToString("N") + extension;
 
-                var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-                if (uploadResult.StatusCode != System.Net.HttpStatusCode.OK && uploadResult.StatusCode != System.Net.HttpStatusCode.Created)
+                string uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads");
+                if (!Directory.Exists(uploadsFolder))
                 {
-                    TempData["ErrorMessage"] = "Upload failed. Please try again.";
-                    return RedirectToAction("Upload");
+                    Directory.CreateDirectory(uploadsFolder);
                 }
 
-                cloudPublicId = uploadResult.PublicId;
+                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(fileStream);
+                }
             }
 
             var resource = new Resource
@@ -853,7 +700,7 @@ namespace LearnLink.Controllers
                 GradeLevel = gradeLevel ?? string.Empty,
                 ResourceType = resourceType ?? string.Empty,
                 Quarter = quarter ?? string.Empty,
-                FilePath = string.IsNullOrWhiteSpace(cloudPublicId) ? "" : cloudPublicId,
+                FilePath = string.IsNullOrWhiteSpace(uniqueFileName) ? "" : uniqueFileName,
                 FileFormat = string.IsNullOrWhiteSpace(extension) ? "" : extension.TrimStart('.').ToUpperInvariant(),
                 FileSize = file != null ? $"{file.Length / 1024d / 1024d:0.0} MB" : "",
                 Status = isDraft ? "Draft" : "Pending",
@@ -923,8 +770,8 @@ namespace LearnLink.Controllers
 
             ViewBag.Resource = vm;
 
-            // Cloudinary-only preview/download
-            string cloudUrl = string.Empty;
+            // Local file preview/download
+            string localUrl = string.Empty;
             bool canPreview = false;
 
             if (!string.IsNullOrEmpty(resource.FilePath))
@@ -932,14 +779,12 @@ namespace LearnLink.Controllers
                 // Normalize file format for comparison
                 var fmt = resource.FileFormat?.TrimStart('.').Trim().ToUpperInvariant() ?? "";
                 
-                // Always use the direct Cloudinary URL.
-                cloudUrl = BuildCloudFileUrl(resource.FilePath);
-
+                localUrl = $"/uploads/{resource.FilePath}";
                 canPreview = true;
             }
 
-            ViewBag.CloudUrl = cloudUrl;
-            ViewBag.FileUrl = cloudUrl;
+            ViewBag.CloudUrl = localUrl;
+            ViewBag.FileUrl = localUrl;
             ViewBag.CanPreview = canPreview;
 
             var relatedResources = await _context.Resources
@@ -1051,13 +896,13 @@ namespace LearnLink.Controllers
                 return NotFound();
             }
 
-            var cloudUrl = BuildCloudFileUrl(resource.FilePath);
-            if (string.IsNullOrEmpty(cloudUrl))
+            var localUrl = $"/uploads/{resource.FilePath}";
+            if (string.IsNullOrEmpty(localUrl))
             {
                 return NotFound();
             }
 
-            return Redirect(cloudUrl);
+            return Redirect(localUrl);
         }
 
         private string GetContentType(string fileFormat)
@@ -1115,20 +960,22 @@ namespace LearnLink.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // Use proxy fetch to bypass Cloudinary 401 errors directly in browser
-            var (content, resolvedUrl) = await TryFetchCloudFile(resource.FilePath);
-            if (content == null)
+            // Fetch local file
+            var filepath = Path.Combine(_environment.WebRootPath, "uploads", resource.FilePath);
+            if (!System.IO.File.Exists(filepath))
             {
-                TempData["ErrorMessage"] = "Error downloading file: unable to access the file from cloud storage.";
+                TempData["ErrorMessage"] = "Error downloading file: unable to access the file from local storage.";
                 return RedirectToAction("ResourceDetail", new { id });
             }
+            
+            var content = await System.IO.File.ReadAllBytesAsync(filepath);
             
             string contentType = GetContentType(resource.FileFormat);
             string downloadName = $"{resource.Title}.{resource.FileFormat?.ToLower() ?? "bin"}";
 
             if (inline) 
             {
-                Response.Headers.Add("Content-Disposition", new System.Net.Mime.ContentDisposition {
+                Response.Headers.Append("Content-Disposition", new System.Net.Mime.ContentDisposition {
                     FileName = downloadName,
                     Inline = true
                 }.ToString());
@@ -1759,35 +1606,26 @@ namespace LearnLink.Controllers
             resource.Quarter = quarter ?? "";
             resource.Status = isDraft ? "Draft" : "Pending";
 
-            // Handle file upload — upload to Cloudinary cloud storage
+            // Handle file upload — save local file
             if (file != null && file.Length > 0)
             {
                 var ext = Path.GetExtension(file.FileName).TrimStart('.').ToLower();
                 
-                // Use ONLY a short GUID as PublicId to guarantee it fits within the
-                // 100-character database column limit. The folder "ll" + 32-char GUID = ~35 chars total.
-                var shortId = Guid.NewGuid().ToString("N");  // 32 hex chars, no dashes
+                string uniqueFileName = Guid.NewGuid().ToString("N") + "." + ext;
+                string uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads");
                 
-                using var stream = file.OpenReadStream();
-                var uploadParams = new RawUploadParams
+                if (!Directory.Exists(uploadsFolder))
                 {
-                    File = new FileDescription(file.FileName, stream),
-                    Folder = "ll",
-                    PublicId = shortId,
-                    Overwrite = false
-                };
-
-                var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-
-                if (uploadResult.Error != null)
-                {
-                    TempData["ErrorMessage"] = $"File upload failed: {uploadResult.Error.Message}";
-                    return RedirectToAction("Upload");
+                    Directory.CreateDirectory(uploadsFolder);
                 }
 
-                // PublicId for raw uploads includes the extension, e.g. "ll/abc123.pdf"
-                // This is always well under 100 chars
-                resource.FilePath = uploadResult.PublicId;
+                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(fileStream);
+                }
+               
+                resource.FilePath = uniqueFileName;
                 resource.FileFormat = ext.ToUpper();
                 resource.FileSize = file.Length < 1024 * 1024
                     ? $"{file.Length / 1024.0:F1} KB"
@@ -1894,8 +1732,8 @@ namespace LearnLink.Controllers
                         .Where(r => ids.Contains(r.ResourceId))
                         .ToListAsync();
 
-                // Security check: Only SuperAdmin can delete anyone's resources. 
-                // Others can only delete their own.
+                // Only SuperAdmin can delete anyone's resources. 
+                
                 if (!User.IsInRole("SuperAdmin"))
                 {
                     resourcesToDelete = resourcesToDelete.Where(r => r.UserId == currentUser.Id).ToList();
@@ -1927,14 +1765,10 @@ namespace LearnLink.Controllers
                     if (!string.IsNullOrEmpty(resource.FilePath))
                     {
                         var filePath = resource.FilePath.Trim();
-                        if (!IsAbsoluteHttpUrl(filePath))
+                        var fullPath = Path.Combine(_environment.WebRootPath, "uploads", filePath);
+                        if (System.IO.File.Exists(fullPath))
                         {
-                            await _cloudinary.DestroyAsync(new DeletionParams(filePath)
-                            {
-                                ResourceType = CloudinaryDotNet.Actions.ResourceType.Raw,
-                                Type = "upload",
-                                Invalidate = true
-                            });
+                            System.IO.File.Delete(fullPath);
                         }
                     }
                     _context.Resources.Remove(resource);

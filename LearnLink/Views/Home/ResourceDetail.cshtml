@@ -173,20 +173,37 @@
             }
             else
             {
-                <div class="ll-detail-preview-body d-flex flex-column align-items-center justify-content-center" style="background: #f8f9fa; min-height: 350px; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
-                    <div style="@GetThumbnailGradient(resource.FileFormat); width: 90px; height: 110px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
-                        <i class="bi @GetThumbnailIcon(resource.FileFormat)" style="font-size: 3.5rem; color: white;"></i>
-                    </div>
-                    <h5 class="fw-bold mb-2">@resource.Title.@resource.FileFormat.ToLower()</h5>
-                    <p class="text-muted mb-4 text-center px-4" style="max-width: 500px;">Click the button below to open the secure reader in a new tab, or download the resource to your device.</p>
-                    <div class="d-flex flex-wrap justify-content-center gap-3">
-                        <a href="@readUrl" target="_blank" class="ll-btn ll-btn-primary" style="padding: 10px 24px;">
-                            <i class="bi bi-eye me-2"></i>Read Resource
-                        </a>
-                        <button type="button" class="ll-btn ll-btn-outline" onclick="downloadResource(@resource.Id)" style="padding: 10px 24px;">
-                            <i class="bi bi-download me-2"></i>Download
-                        </button>
-                    </div>
+                <div class="ll-detail-preview-body d-flex flex-column" style="background: #f8f9fa; min-height: 600px; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                    <!-- Embedded Viewer -->
+                    @if (fmt == "PDF")
+                    {
+                        <iframe src="@Url.Action("DownloadResource", "Home", new { id = resource.Id, inline = true })#view=FitH" 
+                                style="width: 100%; height: 600px; border: none; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;" 
+                                title="PDF Viewer">
+                        </iframe>
+                    }
+                    else if (isOffice)
+                    {
+                        <!-- Note: Google Docs Viewer requires a public internet URL. 
+                             It may not work locally unless using ngrok or deployed to the live server. -->
+                        <iframe src="@readUrl&embedded=true" 
+                                style="width: 100%; height: 600px; border: none; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;" 
+                                title="Document Viewer">
+                        </iframe>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-column align-items-center justify-content-center w-100 h-100" style="min-height: 350px;">
+                            <div style="@GetThumbnailGradient(resource.FileFormat); width: 90px; height: 110px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+                                <i class="bi @GetThumbnailIcon(resource.FileFormat)" style="font-size: 3.5rem; color: white;"></i>
+                            </div>
+                            <h5 class="fw-bold mb-2">@resource.Title.@resource.FileFormat.ToLower()</h5>
+                            <p class="text-muted mb-4 text-center px-4" style="max-width: 500px;">This file format cannot be previewed in the browser. Please download the file to view it.</p>
+                            <button type="button" class="ll-btn ll-btn-primary" onclick="downloadResource(@resource.Id)" style="padding: 10px 24px;">
+                                <i class="bi bi-download me-2"></i>Download File
+                            </button>
+                        </div>
+                    }
                 </div>
             }
         </div>

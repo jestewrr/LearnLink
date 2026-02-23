@@ -2,8 +2,6 @@ using LearnLink.Data;
 using LearnLink.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
-using CloudinaryDotNet;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -34,16 +32,6 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 builder.Services.AddRazorPages();
-
-// Register Cloudinary
-var cloudinaryConfig = builder.Configuration.GetSection("Cloudinary");
-var cloudinary = new Cloudinary(new Account(
-    cloudinaryConfig["CloudName"],
-    cloudinaryConfig["ApiKey"],
-    cloudinaryConfig["ApiSecret"]));
-cloudinary.Api.Secure = true;
-builder.Services.AddSingleton(cloudinary);
-
 var app = builder.Build();
 
 // Auto-apply migrations and seed data
