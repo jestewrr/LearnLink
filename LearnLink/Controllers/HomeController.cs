@@ -809,22 +809,18 @@ namespace LearnLink.Controllers
 
             var existingLike = await _context.Likes.FirstOrDefaultAsync(l => l.UserId == currentUser.Id && l.TargetType == "Resource" && l.TargetId == id);
             
-            bool isLiked;
             if (existingLike != null)
             {
-                _context.Likes.Remove(existingLike);
-                isLiked = false;
+                var currentCount = await _context.Likes.CountAsync(l => l.TargetType == "Resource" && l.TargetId == id);
+                return Json(new { success = true, isLiked = true, count = currentCount });
             }
-            else
-            {
-                _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Resource", TargetId = id, CreatedAt = DateTime.Now });
-                isLiked = true;
-                await LogActivity(currentUser.Id, "Like", resource.Title, resource.ResourceId);
-            }
+
+            _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Resource", TargetId = id, CreatedAt = DateTime.Now });
+            await LogActivity(currentUser.Id, "Like", resource.Title, resource.ResourceId);
 
             await _context.SaveChangesAsync();
             var count = await _context.Likes.CountAsync(l => l.TargetType == "Resource" && l.TargetId == id);
-            return Json(new { success = true, isLiked, count });
+            return Json(new { success = true, isLiked = true, count = count });
         }
 
         [HttpPost]
@@ -838,6 +834,14 @@ namespace LearnLink.Controllers
             if (resource == null) return NotFound();
 
             if (rating < 1 || rating > 5) return BadRequest();
+
+            var existingRating = await _context.Likes.FirstOrDefaultAsync(l => l.UserId == currentUser.Id && l.TargetType == "ResourceRating" && l.TargetId == id);
+            if (existingRating != null)
+            {
+                return Json(new { success = false, message = "You have already rated this resource." });
+            }
+
+            _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "ResourceRating", TargetId = id, CreatedAt = DateTime.Now });
             
             double totalPoints = (resource.Rating * resource.RatingCount) + rating;
             resource.RatingCount++;
@@ -941,6 +945,7 @@ namespace LearnLink.Controllers
 
             if (string.IsNullOrEmpty(resource.FilePath))
             {
+                if (inline) return NotFound();
                 TempData["ErrorMessage"] = $"No file is attached to \"{resource.Title}\". The contributor may not have uploaded a file yet.";
                 return RedirectToAction("ResourceDetail", new { id });
             }
@@ -964,6 +969,7 @@ namespace LearnLink.Controllers
             var filepath = Path.Combine(_environment.WebRootPath, "uploads", resource.FilePath);
             if (!System.IO.File.Exists(filepath))
             {
+                if (inline) return NotFound();
                 TempData["ErrorMessage"] = "Error downloading file: unable to access the file from local storage.";
                 return RedirectToAction("ResourceDetail", new { id });
             }
@@ -1142,22 +1148,16 @@ namespace LearnLink.Controllers
             var lesson = await _context.LessonsLearned.FindAsync(id);
             if (lesson == null) return Json(new { success = false });
 
-            bool isLiked;
             if (existing != null)
             {
-                _context.Likes.Remove(existing);
-                lesson.LikeCount = Math.Max(0, lesson.LikeCount - 1);
-                isLiked = false;
-            }
-            else
-            {
-                _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Lesson", TargetId = id });
-                lesson.LikeCount++;
-                isLiked = true;
+                return Json(new { success = true, likes = lesson.LikeCount, isLiked = true });
             }
 
+            _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Lesson", TargetId = id });
+            lesson.LikeCount++;
+
             await _context.SaveChangesAsync();
-            return Json(new { success = true, likes = lesson.LikeCount, isLiked });
+            return Json(new { success = true, likes = lesson.LikeCount, isLiked = true });
         }
 
         // ==================== Reading History & Best Practices ====================
@@ -1399,22 +1399,16 @@ namespace LearnLink.Controllers
             var discussion = await _context.Discussions.FindAsync(id);
             if (discussion == null) return Json(new { success = false });
 
-            bool isLiked;
             if (existing != null)
             {
-                _context.Likes.Remove(existing);
-                discussion.LikeCount = Math.Max(0, discussion.LikeCount - 1);
-                isLiked = false;
-            }
-            else
-            {
-                _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Discussion", TargetId = id });
-                discussion.LikeCount++;
-                isLiked = true;
+                return Json(new { success = true, likes = discussion.LikeCount, isLiked = true });
             }
 
+            _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Discussion", TargetId = id });
+            discussion.LikeCount++;
+
             await _context.SaveChangesAsync();
-            return Json(new { success = true, likes = discussion.LikeCount, isLiked });
+            return Json(new { success = true, likes = discussion.LikeCount, isLiked = true });
         }
 
         [Authorize]
@@ -1469,22 +1463,16 @@ namespace LearnLink.Controllers
             var reply = await _context.DiscussionPosts.FindAsync(id);
             if (reply == null) return Json(new { success = false });
 
-            bool isLiked;
             if (existing != null)
             {
-                _context.Likes.Remove(existing);
-                reply.LikeCount = Math.Max(0, reply.LikeCount - 1);
-                isLiked = false;
-            }
-            else
-            {
-                _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Reply", TargetId = id });
-                reply.LikeCount++;
-                isLiked = true;
+                return Json(new { success = true, likes = reply.LikeCount, isLiked = true });
             }
 
+            _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Reply", TargetId = id });
+            reply.LikeCount++;
+
             await _context.SaveChangesAsync();
-            return Json(new { success = true, likes = reply.LikeCount, isLiked });
+            return Json(new { success = true, likes = reply.LikeCount, isLiked = true });
         }
 
         [Authorize]

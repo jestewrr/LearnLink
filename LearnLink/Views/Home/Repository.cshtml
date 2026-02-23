@@ -4,6 +4,11 @@
 
     var resources = ViewBag.Resources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
 
+    var isAdmin = User.IsInRole("SuperAdmin");
+    var isContributor = User.IsInRole("Contributor");
+    var isManager = User.IsInRole("Manager");
+    var canUpload = isAdmin || isContributor || isManager;
+
     // Map file formats to gradient backgrounds for thumbnails
     string GetThumbnailGradient(string format) => format?.ToUpper() switch
     {
@@ -35,16 +40,15 @@
                 <span>Knowledge Repository</span>
             </div>
         </div>
+        @if (canUpload)
+        {
         <div class="d-flex gap-2">
-            <button class="ll-btn ll-btn-outline" data-bs-toggle="modal" data-bs-target="#filterModal">
-                <i class="bi bi-funnel"></i>
-                Filters
-            </button>
             <a href="@Url.Action("Upload", "Home")" class="ll-btn ll-btn-primary">
                 <i class="bi bi-cloud-arrow-up"></i>
                 Upload Resource
             </a>
         </div>
+        }
     </div>
 </div>
 
@@ -266,62 +270,6 @@
     </ul>
 </nav>
 
-<!-- Filter Modal -->
-<div class="modal fade" id="filterModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Advanced Filters</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Date Range</label>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <input type="date" class="ll-form-control">
-                        </div>
-                        <div class="col-6">
-                            <input type="date" class="ll-form-control">
-                        </div>
-                    </div>
-                </div>
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Contributor</label>
-                    <select class="ll-form-control ll-form-select">
-                        <option value="">All Contributors</option>
-                        <option>Maria Santos</option>
-                        <option>John Reyes</option>
-                        <option>Ana Cruz</option>
-                    </select>
-                </div>
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Minimum Rating</label>
-                    <select class="ll-form-control ll-form-select">
-                        <option value="">Any Rating</option>
-                        <option>4 stars &amp; above</option>
-                        <option>3 stars &amp; above</option>
-                        <option>2 stars &amp; above</option>
-                    </select>
-                </div>
-                <div class="ll-form-group">
-                    <label class="ll-form-label">File Size</label>
-                    <select class="ll-form-control ll-form-select">
-                        <option value="">Any Size</option>
-                        <option>Less than 1 MB</option>
-                        <option>1 MB - 5 MB</option>
-                        <option>5 MB - 10 MB</option>
-                        <option>More than 10 MB</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Reset</button>
-                <button type="button" class="ll-btn ll-btn-primary" data-bs-dismiss="modal">Apply Filters</button>
-            </div>
-        </div>
-    </div>
-</div>
 
 @section Scripts {
 <script>
