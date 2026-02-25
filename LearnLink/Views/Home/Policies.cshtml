@@ -355,11 +355,44 @@
 
     // Simple toast helper (uses existing site toast if available, otherwise falls back to alert)
     function showToast(title, message, type) {
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({ icon: type === 'success' ? 'success' : (type === 'error' ? 'error' : 'info'), title: title, text: message, timer: 3000, showConfirmButton: false });
-        } else {
-            alert(`${title}: ${message}`);
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            toastContainer.style.zIndex = '1090';
+            document.body.appendChild(toastContainer);
         }
+
+        const toastId = 'toast-' + Date.now();
+        const isError = type === 'error';
+        const isWarning = type === 'warning';
+        
+        const headerClass = isError ? 'bg-danger text-white' : (isWarning ? 'bg-warning text-dark' : 'bg-success text-white');
+        const iconClass = isError ? 'bi-exclamation-circle' : (isWarning ? 'bi-exclamation-triangle' : 'bi-check-circle');
+        const btnCloseClass = isWarning ? 'btn-close' : 'btn-close btn-close-white';
+
+        const toastHtml = `
+            <div id="${toastId}" class="toast border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header ${headerClass}">
+                    <i class="bi ${iconClass} me-2"></i>
+                    <strong class="me-auto">${title}</strong>
+                    <button type="button" class="${btnCloseClass}" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        `;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+        const toastEl = document.getElementById(toastId);
+        const bsToast = new bootstrap.Toast(toastEl, { delay: 4000 });
+        bsToast.show();
+        
+        toastEl.addEventListener('hidden.bs.toast', () => {
+            toastEl.remove();
+        });
     }
 </script>
 }

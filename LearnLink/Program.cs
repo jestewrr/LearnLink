@@ -90,6 +90,8 @@ using (var scope = app.Services.CreateScope())
                     ALTER TABLE [Resources] ADD [AllowComments] bit NOT NULL DEFAULT 1;
                 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'AllowRatings')
                     ALTER TABLE [Resources] ADD [AllowRatings] bit NOT NULL DEFAULT 1;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'ModerateComments')
+                    ALTER TABLE [Resources] ADD [ModerateComments] bit NOT NULL DEFAULT 0;
                 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'RequireVersionNotes')
                     ALTER TABLE [Resources] ADD [RequireVersionNotes] bit NOT NULL DEFAULT 0;
             ");

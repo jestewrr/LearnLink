@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "User Details";
     var user = ViewBag.UserDetails as UserViewModel;
+    if (user == null) return;
     var activities = ViewBag.UserActivity as List<ActivityViewModel> ?? new List<ActivityViewModel>();
     var resources = ViewBag.UserResources as List<ResourceViewModel> ?? new List<ResourceViewModel>();
 }
