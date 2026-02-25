@@ -135,6 +135,20 @@ namespace LearnLink.Models
         // Rejection
         [StringLength(500)]
         public string? RejectionReason { get; set; }
+
+        // ---- Policy Settings (per-resource) ----
+        [StringLength(20)]
+        public string AccessLevel { get; set; } = "Registered";  // Public, Registered, Restricted
+
+        [StringLength(30)]
+        public string AccessDuration { get; set; } = "Unlimited";  // Unlimited, 7 Days, 30 Days, 90 Days, Until End of School Year
+
+        public bool AllowDownloads { get; set; } = true;
+        public bool EnableVersionHistory { get; set; } = true;
+        public bool AllowComments { get; set; } = true;
+        public bool AllowRatings { get; set; } = true;
+        public bool ModerateComments { get; set; } = false;
+        public bool RequireVersionNotes { get; set; } = false;
     }
 
     // ==================== Resource Categories ====================
@@ -183,11 +197,20 @@ namespace LearnLink.Models
         [ForeignKey("ResourceId")]
         public Resource? Resource { get; set; }
 
-        [StringLength(10)]
+        [StringLength(50)]
         public string VersionNumber { get; set; } = "";
+
+        [StringLength(1000)]
+        public string? VersionNotes { get; set; }
 
         [StringLength(500)]
         public string FilePath { get; set; } = "";
+
+        [StringLength(10)]
+        public string FileFormat { get; set; } = "";
+
+        [StringLength(20)]
+        public string FileSize { get; set; } = "";
 
         public DateTime DateUpdated { get; set; } = DateTime.Now;
     }

@@ -1,6 +1,7 @@
 @{
     ViewData["Title"] = "Policies & Procedures";
     ViewData["ActivePage"] = "Policies";
+    var myResources = ViewBag.MyResources as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
 }
 
 <!-- Page Header -->
@@ -17,243 +18,348 @@
     </div>
 </div>
 
-<div class="row g-4">
-    <div class="col-lg-8">
-        <!-- Access Control Policies -->
-        <div class="ll-card mb-4">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title"><i class="bi bi-shield-lock me-2 text-primary"></i>Access Control Policies</h5>
-            </div>
-            <div class="ll-card-body">
-                <p class="text-muted mb-4">Configure who can access your uploaded resources and for how long.</p>
-                
-                <div class="border rounded p-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <h6 class="fw-bold mb-1">Default Access Level</h6>
-                            <p class="text-muted small mb-0">Set the default access level for all new uploads</p>
-                        </div>
-                        <select class="ll-form-control ll-form-select" style="width: 200px;">
-                            <option>Public - All users</option>
-                            <option selected>Registered - Logged in users only</option>
-                            <option>Restricted - Selected users only</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="border rounded p-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <h6 class="fw-bold mb-1">Access Duration</h6>
-                            <p class="text-muted small mb-0">Set how long users can access your resources</p>
-                        </div>
-                        <select class="ll-form-control ll-form-select" style="width: 200px;">
-                            <option selected>Unlimited</option>
-                            <option>7 Days</option>
-                            <option>30 Days</option>
-                            <option>90 Days</option>
-                            <option>Until End of School Year</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="border rounded p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="fw-bold mb-1">Allow Downloads</h6>
-                            <p class="text-muted small mb-0">Allow users to download your resources</p>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="allowDownloads" checked style="width: 50px; height: 25px;">
-                        </div>
-                    </div>
-                </div>
+<!-- Resource Selector -->
+<div class="ll-card mb-4">
+    <div class="ll-card-body">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div class="flex-grow-1">
+                <label class="fw-bold mb-2 d-block">
+                    <i class="bi bi-folder2-open me-2 text-primary"></i>Select a Resource to Configure
+                </label>
+                <select id="resourceSelector" class="ll-form-control ll-form-select">
+                    <option value="">-- Choose one of your uploaded files --</option>
+                    @foreach (var r in myResources)
+                    {
+                        <option value="@r.ResourceId">@r.Title (@r.ResourceType)</option>
+                    }
+                </select>
             </div>
         </div>
-
-        <!-- Version Control -->
-        <div class="ll-card mb-4">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title"><i class="bi bi-clock-history me-2 text-success"></i>Version Control</h5>
+        @if (!myResources.Any())
+        {
+            <div class="alert alert-info mt-3 mb-0">
+                <i class="bi bi-info-circle me-2"></i>
+                You have not uploaded any resources yet. <a href="@Url.Action("Upload", "Home")">Upload a resource</a> first to configure its policies.
             </div>
-            <div class="ll-card-body">
-                <p class="text-muted mb-4">Track changes and maintain version history of your educational materials.</p>
-
-                <div class="border rounded p-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="fw-bold mb-1">Enable Version History</h6>
-                            <p class="text-muted small mb-0">Keep track of all changes made to your resources</p>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" checked style="width: 50px; height: 25px;">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="border rounded p-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="fw-bold mb-1">Versions to Keep</h6>
-                            <p class="text-muted small mb-0">Number of previous versions to retain</p>
-                        </div>
-                        <select class="ll-form-control ll-form-select" style="width: 150px;">
-                            <option>Last 3</option>
-                            <option selected>Last 5</option>
-                            <option>Last 10</option>
-                            <option>All Versions</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="border rounded p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="fw-bold mb-1">Require Version Notes</h6>
-                            <p class="text-muted small mb-0">Require notes when uploading new versions</p>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" checked style="width: 50px; height: 25px;">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Content Review -->
-        <div class="ll-card mb-4">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title"><i class="bi bi-check2-circle me-2 text-warning"></i>Content Review Settings</h5>
-            </div>
-            <div class="ll-card-body">
-                <div class="border rounded p-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="fw-bold mb-1">Allow Comments</h6>
-                            <p class="text-muted small mb-0">Allow users to comment on your resources</p>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" checked style="width: 50px; height: 25px;">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="border rounded p-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="fw-bold mb-1">Allow Ratings</h6>
-                            <p class="text-muted small mb-0">Allow users to rate your resources</p>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" checked style="width: 50px; height: 25px;">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="border rounded p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="fw-bold mb-1">Moderate Comments</h6>
-                            <p class="text-muted small mb-0">Review comments before they are published</p>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" style="width: 50px; height: 25px;">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="d-flex gap-2 justify-content-end">
-            <button class="ll-btn ll-btn-outline">Reset to Defaults</button>
-            <button class="ll-btn ll-btn-primary">
-                <i class="bi bi-check-lg"></i>
-                Save Changes
-            </button>
-        </div>
+        }
     </div>
+</div>
 
-    <!-- Sidebar -->
-    <div class="col-lg-4">
-        <!-- Version History for Selected Resource -->
-        <div class="ll-card mb-4">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title">Recent Version History</h5>
+<!-- Policy Configuration Area (hidden until a resource is selected) -->
+<div id="policyArea" style="display: none;">
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <!-- Access Control Policies -->
+            <div class="ll-card mb-4">
+                <div class="ll-card-header">
+                    <h5 class="ll-card-title"><i class="bi bi-shield-lock me-2 text-primary"></i>Access Control Policies</h5>
+                </div>
+                <div class="ll-card-body">
+                    <p class="text-muted mb-4">Configure who can access this resource and for how long.</p>
+
+                    <div class="border rounded p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h6 class="fw-bold mb-1">Default Access Level</h6>
+                                <p class="text-muted small mb-0">Set the access level for this resource</p>
+                            </div>
+                            <select id="policyAccessLevel" class="ll-form-control ll-form-select" style="width: 200px;">
+                                <option value="Public">Public - All users</option>
+                                <option value="Registered">Registered - Logged in users only</option>
+                                <option value="Restricted">Restricted - Selected users only</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="border rounded p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h6 class="fw-bold mb-1">Access Duration</h6>
+                                <p class="text-muted small mb-0">Set how long users can access this resource</p>
+                            </div>
+                            <select id="policyAccessDuration" class="ll-form-control ll-form-select" style="width: 200px;">
+                                <option value="Unlimited">Unlimited</option>
+                                <option value="7 Days">7 Days</option>
+                                <option value="30 Days">30 Days</option>
+                                <option value="90 Days">90 Days</option>
+                                <option value="Until End of School Year">Until End of School Year</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="border rounded p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="fw-bold mb-1">Allow Downloads</h6>
+                                <p class="text-muted small mb-0">Allow users to download this resource</p>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="policyAllowDownloads" checked style="width: 50px; height: 25px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="ll-card-body">
-                <div class="mb-3">
-                    <select class="ll-form-control ll-form-select">
-                        <option>Mathematics Grade 8 Reviewer</option>
-                        <option>English Study Guide</option>
-                        <option>Philippine History Presentation</option>
-                    </select>
+
+            <!-- Version Control -->
+            <div class="ll-card mb-4">
+                <div class="ll-card-header">
+                    <h5 class="ll-card-title"><i class="bi bi-clock-history me-2 text-success"></i>Version Control</h5>
                 </div>
-                
-                <div class="position-relative ps-4">
-                    <div class="position-absolute start-0 top-0 bottom-0" style="width: 2px; background: #e2e8f0; left: 8px;"></div>
-                    
-                    <div class="mb-4 position-relative">
-                        <div class="position-absolute" style="width: 16px; height: 16px; background: #22c55e; border-radius: 50%; left: -22px; top: 2px; border: 3px solid white;"></div>
-                        <div class="fw-bold small">Version 3.0 (Current)</div>
-                        <div class="small text-muted">Dec 15, 2024</div>
-                        <div class="small text-muted">Updated practice problems</div>
+                <div class="ll-card-body">
+                    <p class="text-muted mb-4">Track changes and maintain version history of this resource.</p>
+
+                    <div class="border rounded p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="fw-bold mb-1">Enable Version History</h6>
+                                <p class="text-muted small mb-0">Keep track of all changes made to this resource</p>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="policyEnableVersionHistory" checked style="width: 50px; height: 25px;">
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="mb-4 position-relative">
-                        <div class="position-absolute" style="width: 16px; height: 16px; background: #94a3b8; border-radius: 50%; left: -22px; top: 2px; border: 3px solid white;"></div>
-                        <div class="fw-medium small">Version 2.1</div>
-                        <div class="small text-muted">Dec 10, 2024</div>
-                        <div class="small text-muted">Fixed typos in chapter 3</div>
-                    </div>
-
-                    <div class="mb-4 position-relative">
-                        <div class="position-absolute" style="width: 16px; height: 16px; background: #94a3b8; border-radius: 50%; left: -22px; top: 2px; border: 3px solid white;"></div>
-                        <div class="fw-medium small">Version 2.0</div>
-                        <div class="small text-muted">Dec 5, 2024</div>
-                        <div class="small text-muted">Added new exercises</div>
-                    </div>
-
-                    <div class="position-relative">
-                        <div class="position-absolute" style="width: 16px; height: 16px; background: #94a3b8; border-radius: 50%; left: -22px; top: 2px; border: 3px solid white;"></div>
-                        <div class="fw-medium small">Version 1.0</div>
-                        <div class="small text-muted">Nov 28, 2024</div>
-                        <div class="small text-muted">Initial upload</div>
+                    <div class="border rounded p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="fw-bold mb-1">Require Version Notes</h6>
+                                <p class="text-muted small mb-0">Force authors to explain what changed when uploading updates</p>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="policyRequireVersionNotes" style="width: 50px; height: 25px;">
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <hr class="my-3">
-                <a href="#" class="ll-btn ll-btn-outline ll-btn-sm w-100">View Full History</a>
+            <!-- Content Review -->
+            <div class="ll-card mb-4">
+                <div class="ll-card-header">
+                    <h5 class="ll-card-title"><i class="bi bi-check2-circle me-2 text-warning"></i>Content Review Settings</h5>
+                </div>
+                <div class="ll-card-body">
+                    <div class="border rounded p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="fw-bold mb-1">Allow Comments</h6>
+                                <p class="text-muted small mb-0">Allow users to comment on this resource</p>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="policyAllowComments" checked style="width: 50px; height: 25px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border rounded p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="fw-bold mb-1">Allow Ratings</h6>
+                                <p class="text-muted small mb-0">Allow users to rate this resource</p>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="policyAllowRatings" checked style="width: 50px; height: 25px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border rounded p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="fw-bold mb-1">Moderate Comments</h6>
+                                <p class="text-muted small mb-0">Review comments before they are published</p>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="policyModerateComments" style="width: 50px; height: 25px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 justify-content-end">
+                <button id="btnResetDefaults" class="ll-btn ll-btn-outline">Reset to Defaults</button>
+                <button id="btnSavePolicy" class="ll-btn ll-btn-primary">
+                    <i class="bi bi-check-lg"></i>
+                    Save Changes
+                </button>
             </div>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="ll-card">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title">Quick Actions</h5>
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Selected Resource Info Card -->
+            <div class="ll-card mb-4">
+                <div class="ll-card-header">
+                    <h5 class="ll-card-title"><i class="bi bi-info-circle me-2"></i>Selected Resource</h5>
+                </div>
+                <div class="ll-card-body">
+                    <div id="selectedResourceInfo">
+                        <p class="text-muted small mb-0">Select a resource from the dropdown above to view and configure its policies.</p>
+                    </div>
+                </div>
             </div>
-            <div class="ll-card-body">
-                <a href="#" class="d-flex align-items-center gap-3 p-2 border rounded mb-2 text-decoration-none text-dark">
-                    <i class="bi bi-arrow-clockwise fs-5 text-primary"></i>
-                    <div>
-                        <div class="fw-medium small">Restore Previous Version</div>
-                        <div class="small text-muted">Revert to an older version</div>
-                    </div>
-                </a>
-                <a href="#" class="d-flex align-items-center gap-3 p-2 border rounded mb-2 text-decoration-none text-dark">
-                    <i class="bi bi-file-diff fs-5 text-success"></i>
-                    <div>
-                        <div class="fw-medium small">Compare Versions</div>
-                        <div class="small text-muted">See differences between versions</div>
-                    </div>
-                </a>
-                <a href="#" class="d-flex align-items-center gap-3 p-2 border rounded text-decoration-none text-dark">
-                    <i class="bi bi-download fs-5 text-warning"></i>
-                    <div>
-                        <div class="fw-medium small">Export History</div>
-                        <div class="small text-muted">Download version history report</div>
-                    </div>
-                </a>
+
+            <!-- Quick Actions -->
+            <div class="ll-card">
+                <div class="ll-card-header">
+                    <h5 class="ll-card-title">Quick Actions</h5>
+                </div>
+                <div class="ll-card-body">
+                    <a href="@Url.Action("Upload", "Home")" class="d-flex align-items-center gap-3 p-2 border rounded mb-2 text-decoration-none text-dark">
+                        <i class="bi bi-cloud-arrow-up fs-5 text-primary"></i>
+                        <div>
+                            <div class="fw-medium small">Upload New Resource</div>
+                            <div class="small text-muted">Upload a file and configure its policies</div>
+                        </div>
+                    </a>
+                    <a href="@Url.Action("MyUploads", "Home")" class="d-flex align-items-center gap-3 p-2 border rounded mb-2 text-decoration-none text-dark">
+                        <i class="bi bi-folder2 fs-5 text-success"></i>
+                        <div>
+                            <div class="fw-medium small">My Uploads</div>
+                            <div class="small text-muted">View and manage all your uploaded files</div>
+                        </div>
+                    </a>
+                    <a href="@Url.Action("Repository", "Home")" class="d-flex align-items-center gap-3 p-2 border rounded text-decoration-none text-dark">
+                        <i class="bi bi-collection fs-5 text-warning"></i>
+                        <div>
+                            <div class="fw-medium small">Knowledge Repository</div>
+                            <div class="small text-muted">Browse all shared resources</div>
+                        </div>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    const selector = document.getElementById('resourceSelector');
+    const policyArea = document.getElementById('policyArea');
+    let currentResourceId = null;
+
+    // Elements
+    const elAccessLevel = document.getElementById('policyAccessLevel');
+    const elAccessDuration = document.getElementById('policyAccessDuration');
+    const elAllowDownloads = document.getElementById('policyAllowDownloads');
+    const elEnableVersionHistory = document.getElementById('policyEnableVersionHistory');
+    const elRequireVersionNotes = document.getElementById('policyRequireVersionNotes');
+    const elAllowComments = document.getElementById('policyAllowComments');
+    const elAllowRatings = document.getElementById('policyAllowRatings');
+    const elModerateComments = document.getElementById('policyModerateComments');
+    const elSelectedInfo = document.getElementById('selectedResourceInfo');
+
+    // Load policy when a resource is selected
+    selector.addEventListener('change', async function () {
+        const resourceId = this.value;
+        if (!resourceId) {
+            policyArea.style.display = 'none';
+            currentResourceId = null;
+            return;
+        }
+
+        try {
+            const response = await fetch(`/Home/GetResourcePolicy?id=${resourceId}`);
+            if (!response.ok) {
+                showToast('Error', 'Could not load policy settings for this resource.', 'error');
+                return;
+            }
+
+            const data = await response.json();
+            currentResourceId = data.resourceId;
+
+            // Populate form fields
+            elAccessLevel.value = data.accessLevel || 'Registered';
+            elAccessDuration.value = data.accessDuration || 'Unlimited';
+            elAllowDownloads.checked = data.allowDownloads;
+            elEnableVersionHistory.checked = data.enableVersionHistory;
+            elRequireVersionNotes.checked = data.requireVersionNotes || false;
+            elAllowComments.checked = data.allowComments;
+            elAllowRatings.checked = data.allowRatings;
+            elModerateComments.checked = data.moderateComments;
+
+            // Update sidebar info
+            elSelectedInfo.innerHTML = `
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-file-earmark-text fs-4 text-primary"></i>
+                    <div>
+                        <div class="fw-bold">${data.title}</div>
+                        <div class="small text-muted">Resource ID: ${data.resourceId}</div>
+                    </div>
+                </div>
+                <hr class="my-2">
+                <div class="small text-muted">
+                    Configure access control, version history, and content review settings for this resource. Changes are saved per-file and only affect this specific resource.
+                </div>
+            `;
+
+            // Show the policy area
+            policyArea.style.display = 'block';
+        } catch (err) {
+            console.error(err);
+            showToast('Error', 'An unexpected error occurred.', 'error');
+        }
+    });
+
+    // Save policy settings
+    document.getElementById('btnSavePolicy').addEventListener('click', async function () {
+        if (!currentResourceId) {
+            showToast('Warning', 'Please select a resource first.', 'warning');
+            return;
+        }
+
+        const formData = new URLSearchParams();
+        formData.append('resourceId', currentResourceId);
+        formData.append('accessLevel', elAccessLevel.value);
+        formData.append('accessDuration', elAccessDuration.value);
+        formData.append('allowDownloads', elAllowDownloads.checked);
+        formData.append('enableVersionHistory', elEnableVersionHistory.checked);
+        formData.append('requireVersionNotes', elRequireVersionNotes.checked);
+        formData.append('allowComments', elAllowComments.checked);
+        formData.append('allowRatings', elAllowRatings.checked);
+        formData.append('moderateComments', elModerateComments.checked);
+
+        try {
+            const response = await fetch('/Home/SaveResourcePolicy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                showToast('Success', data.message || 'Policy settings saved!', 'success');
+            } else {
+                showToast('Error', data.message || 'Failed to save policy settings.', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Error', 'An unexpected error occurred while saving.', 'error');
+        }
+    });
+
+    // Reset to defaults
+    document.getElementById('btnResetDefaults').addEventListener('click', function () {
+        elAccessLevel.value = 'Registered';
+        elAccessDuration.value = 'Unlimited';
+        elAllowDownloads.checked = true;
+        elEnableVersionHistory.checked = true;
+        elRequireVersionNotes.checked = false;
+        elAllowComments.checked = true;
+        elAllowRatings.checked = true;
+        elModerateComments.checked = false;
+    });
+
+    // Simple toast helper (uses existing site toast if available, otherwise falls back to alert)
+    function showToast(title, message, type) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ icon: type === 'success' ? 'success' : (type === 'error' ? 'error' : 'info'), title: title, text: message, timer: 3000, showConfirmButton: false });
+        } else {
+            alert(`${title}: ${message}`);
+        }
+    }
+</script>
+}

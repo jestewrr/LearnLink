@@ -112,6 +112,16 @@
                         </div>
                         
                         <input type="file" class="d-none" id="fileInput" name="file">
+                        
+                        @if (Model != null)
+                        {
+                            <div class="mt-3" id="versionNotesContainer" style="display: none;">
+                                <label class="ll-form-label">Version Notes @(Model.RequireVersionNotes ? Html.Raw("<span class=\"text-danger\">*</span>") : null)</label>
+                                <textarea class="ll-form-control" rows="2" id="versionNotes" name="versionNotes" placeholder="What changed in this new version?"></textarea>
+                                <small class="text-muted">Since you are replacing the file, please provide a brief note on what changed.</small>
+                                <input type="hidden" id="requireNotesFlag" value="@(Model.RequireVersionNotes.ToString().ToLower())" />
+                            </div>
+                        }
                     </div>
 
                     <!-- Basic Info -->
@@ -441,6 +451,16 @@
                     </button>
                 </div>
             `;
+            
+            // Show version notes field if editing an existing resource
+            const notesContainer = document.getElementById('versionNotesContainer');
+            if (notesContainer) {
+                notesContainer.style.display = 'block';
+                const requireNotes = document.getElementById('requireNotesFlag').value === 'true';
+                if (requireNotes) {
+                    document.getElementById('versionNotes').required = true;
+                }
+            }
         }
 
         function resetUpload(event) {
@@ -455,6 +475,13 @@
                 </div>
             `;
             fileInput.value = '';
+            
+            // Hide version notes field
+            const notesContainer = document.getElementById('versionNotesContainer');
+            if (notesContainer) {
+                notesContainer.style.display = 'none';
+                document.getElementById('versionNotes').required = false;
+            }
         }
 
         function showFormFeedback(message) {

@@ -293,6 +293,38 @@
             </div>
         </div>
 
+        <!-- Version History Card -->
+        @if (ViewBag.ResourceVersions != null)
+        {
+            var versions = ViewBag.ResourceVersions as IEnumerable<LearnLink.Models.ResourceVersion>;
+            if (versions != null && versions.Any())
+            {
+                <div class="ll-detail-sidebar-card">
+                    <h6 class="ll-detail-sidebar-title">Version History</h6>
+                    <div class="mt-3">
+                        @foreach (var v in versions)
+                        {
+                            <div class="mb-3 pb-3 @(v != versions.Last() ? "border-bottom" : "")">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold text-primary">@v.VersionNumber</span>
+                                    <span class="small text-muted">@v.DateUpdated.ToString("MMM dd, yyyy")</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(v.VersionNotes))
+                                {
+                                    <div class="small bg-light p-2 rounded text-dark mt-2 mb-2" style="border-left: 3px solid #3b82f6;">
+                                        @v.VersionNotes
+                                    </div>
+                                }
+                                <div class="small text-muted">
+                                    <i class="bi @GetThumbnailIcon(v.FileFormat)"></i> @v.FileFormat.ToUpper() · @v.FileSize
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+
         <!-- Tags Card -->
         <div class="ll-detail-sidebar-card">
             <h6 class="ll-detail-sidebar-title">Tags</h6>

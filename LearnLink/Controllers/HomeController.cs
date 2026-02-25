@@ -787,6 +787,19 @@ namespace LearnLink.Controllers
             ViewBag.FileUrl = localUrl;
             ViewBag.CanPreview = canPreview;
 
+            // Pass resource owner's policy flags to the view
+            ViewBag.AllowDownloads = resource.AllowDownloads;
+            ViewBag.AllowComments = resource.AllowComments;
+            ViewBag.AllowRatings = resource.AllowRatings;
+
+            if (resource.EnableVersionHistory)
+            {
+                ViewBag.ResourceVersions = await _context.ResourceVersions
+                    .Where(v => v.ResourceId == resource.ResourceId)
+                    .OrderByDescending(v => v.DateUpdated)
+                    .ToListAsync();
+            }
+
             var relatedResources = await _context.Resources
                 .Include(r => r.User)
                 .Where(r => r.ResourceId != id && r.Subject == resource.Subject && r.Status == "Published")
@@ -941,6 +954,14 @@ namespace LearnLink.Controllers
             {
                 TempData["ErrorMessage"] = "Resource not found.";
                 return RedirectToAction("Repository");
+            }
+
+            // Policy enforcement: block downloads if the owner disabled them (except for the owner itself)
+            if (!resource.AllowDownloads && resource.UserId != currentUser.Id && !User.IsInRole("SuperAdmin"))
+            {
+                if (inline) return NotFound();
+                TempData["ErrorMessage"] = "Downloads are disabled for this resource by the author.";
+                return RedirectToAction("ResourceDetail", new { id });
             }
 
             if (string.IsNullOrEmpty(resource.FilePath))
@@ -1553,7 +1574,7 @@ namespace LearnLink.Controllers
         [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
         [HttpPost]
         public async Task<IActionResult> Upload(int? resourceId, string title, string description, string subject,
-            string gradeLevel, string resourceType, string quarter, IFormFile? file, bool isDraft = false)
+            string gradeLevel, string resourceType, string quarter, IFormFile? file, string? versionNotes = null, bool isDraft = false)
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return RedirectToAction("Login");
@@ -1618,6 +1639,28 @@ namespace LearnLink.Controllers
                 resource.FileSize = file.Length < 1024 * 1024
                     ? $"{file.Length / 1024.0:F1} KB"
                     : $"{file.Length / (1024.0 * 1024.0):F1} MB";
+
+                if (resource.EnableVersionHistory)
+                {
+                    var versionNumber = "V1";
+                    if (!isNew)
+                    {
+                        var previousVersionsCount = await _context.ResourceVersions.CountAsync(v => v.ResourceId == resource.ResourceId);
+                        versionNumber = $"V{previousVersionsCount + 1}";
+                    }
+
+                    var newVersion = new ResourceVersion
+                    {
+                        Resource = resource,
+                        VersionNumber = versionNumber,
+                        VersionNotes = versionNotes,
+                        FilePath = uniqueFileName,
+                        FileFormat = ext.ToUpper(),
+                        FileSize = resource.FileSize,
+                        DateUpdated = DateTime.Now
+                    };
+                    _context.ResourceVersions.Add(newVersion);
+                }
             }
 
             try
@@ -1787,12 +1830,93 @@ namespace LearnLink.Controllers
         [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
         public async Task<IActionResult> Policies()
         {
-            ViewBag.Policies = await _context.Policies
-                .Include(p => p.User)
-                .Include(p => p.Procedures)
-                .OrderByDescending(p => p.DateCreated)
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return RedirectToAction("Login");
+
+            // Load only resources uploaded by the current user
+            var myResources = await _context.Resources
+                .Where(r => r.UserId == currentUser.Id)
+                .OrderByDescending(r => r.DateUploaded)
+                .Select(r => new { r.ResourceId, r.Title, r.ResourceType, r.DateUploaded })
                 .ToListAsync();
+
+            ViewBag.MyResources = myResources;
+
+            // Also load version history for sidebar display
+            ViewBag.ResourceVersions = await _context.ResourceVersions
+                .Include(v => v.Resource)
+                .Where(v => v.Resource != null && v.Resource.UserId == currentUser.Id)
+                .OrderByDescending(v => v.DateUpdated)
+                .Take(10)
+                .ToListAsync();
+
             return View();
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
+        public async Task<IActionResult> GetResourcePolicy(int id)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Unauthorized();
+
+            var resource = await _context.Resources.FirstOrDefaultAsync(r => r.ResourceId == id);
+            if (resource == null) return NotFound();
+
+            // Security: only the owner (or SuperAdmin) can view/edit policies
+            if (resource.UserId != currentUser.Id && !User.IsInRole("SuperAdmin"))
+                return Forbid();
+
+            return Json(new
+            {
+                resourceId = resource.ResourceId,
+                title = resource.Title,
+                accessLevel = resource.AccessLevel,
+                accessDuration = resource.AccessDuration,
+                allowDownloads = resource.AllowDownloads,
+                enableVersionHistory = resource.EnableVersionHistory,
+                requireVersionNotes = resource.RequireVersionNotes,
+                allowComments = resource.AllowComments,
+                allowRatings = resource.AllowRatings,
+                moderateComments = resource.ModerateComments
+            });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
+        public async Task<IActionResult> SaveResourcePolicy(
+            int resourceId,
+            string accessLevel,
+            string accessDuration,
+            bool allowDownloads,
+            bool enableVersionHistory,
+            bool requireVersionNotes,
+            bool allowComments,
+            bool allowRatings,
+            bool moderateComments)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Unauthorized();
+
+            var resource = await _context.Resources.FirstOrDefaultAsync(r => r.ResourceId == resourceId);
+            if (resource == null) return NotFound();
+
+            // Security: only the owner (or SuperAdmin) can edit policies
+            if (resource.UserId != currentUser.Id && !User.IsInRole("SuperAdmin"))
+                return Forbid();
+
+            resource.AccessLevel = accessLevel ?? "Registered";
+            resource.AccessDuration = accessDuration ?? "Unlimited";
+            resource.AllowDownloads = allowDownloads;
+            resource.EnableVersionHistory = enableVersionHistory;
+            resource.RequireVersionNotes = requireVersionNotes;
+            resource.AllowComments = allowComments;
+            resource.AllowRatings = allowRatings;
+            resource.ModerateComments = moderateComments;
+
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, message = "Policy settings saved successfully." });
         }
 
         // ==================== Administration — SuperAdmin ====================

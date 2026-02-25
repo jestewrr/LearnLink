@@ -75,6 +75,36 @@ using (var scope = app.Services.CreateScope())
                     );
                 END
             ");
+
+            // Manually ensure the policy columns exist on the Resources table
+            await context.Database.ExecuteSqlRawAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'AccessLevel')
+                    ALTER TABLE [Resources] ADD [AccessLevel] nvarchar(20) NOT NULL DEFAULT 'Registered';
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'AccessDuration')
+                    ALTER TABLE [Resources] ADD [AccessDuration] nvarchar(30) NOT NULL DEFAULT 'Unlimited';
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'AllowDownloads')
+                    ALTER TABLE [Resources] ADD [AllowDownloads] bit NOT NULL DEFAULT 1;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'EnableVersionHistory')
+                    ALTER TABLE [Resources] ADD [EnableVersionHistory] bit NOT NULL DEFAULT 1;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'AllowComments')
+                    ALTER TABLE [Resources] ADD [AllowComments] bit NOT NULL DEFAULT 1;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'AllowRatings')
+                    ALTER TABLE [Resources] ADD [AllowRatings] bit NOT NULL DEFAULT 1;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'RequireVersionNotes')
+                    ALTER TABLE [Resources] ADD [RequireVersionNotes] bit NOT NULL DEFAULT 0;
+            ");
+
+            // Manually ensure the policy columns exist on the ResourceVersions table
+            await context.Database.ExecuteSqlRawAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ResourceVersions') AND name = 'VersionNotes')
+                    ALTER TABLE [ResourceVersions] ADD [VersionNotes] nvarchar(1000) NULL;
+                
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ResourceVersions') AND name = 'FileFormat')
+                    ALTER TABLE [ResourceVersions] ADD [FileFormat] nvarchar(10) NOT NULL DEFAULT '';
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ResourceVersions') AND name = 'FileSize')
+                    ALTER TABLE [ResourceVersions] ADD [FileSize] nvarchar(20) NOT NULL DEFAULT '';
+            ");
         }
         catch (Exception ex)
         {
