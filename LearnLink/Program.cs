@@ -201,6 +201,12 @@ using (var scope = app.Services.CreateScope())
                     ALTER TABLE [LessonsLearned] ADD [SchoolId] int NULL;
             ");
 
+            // Ensure optional MiddleName column exists on AspNetUsers (fixes deployments with older schemas)
+            await context.Database.ExecuteSqlRawAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AspNetUsers') AND name = 'MiddleName')
+                    ALTER TABLE [AspNetUsers] ADD [MiddleName] nvarchar(100) NULL;
+            ");
+
             // Add indexes and foreign keys for SchoolId columns (safe: checks for existence)
             await context.Database.ExecuteSqlRawAsync(@"
                 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AspNetUsers_SchoolId')
