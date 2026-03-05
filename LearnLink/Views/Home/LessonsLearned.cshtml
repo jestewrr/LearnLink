@@ -220,7 +220,8 @@
                     </div>
                     <div class="ll-form-group">
                         <label class="ll-form-label">Your Insight</label>
-                        <textarea class="ll-form-control" rows="5" name="Content" placeholder="Share what you learned, what worked well, any tips for others..." required></textarea>
+                        <div id="lessonContentEditor" style="min-height: 120px;"></div>
+                        <input type="hidden" name="Content" id="lessonContentHidden" />
                     </div>
                     <div class="ll-form-group">
                         <label class="ll-form-label">Tags</label>
@@ -289,7 +290,8 @@
                     </div>
                     <div class="ll-form-group">
                         <label class="ll-form-label">Your Insight</label>
-                        <textarea class="ll-form-control" rows="5" name="Content" id="editLessonContent" required></textarea>
+                        <div id="editLessonContentEditor" style="min-height: 120px;"></div>
+                        <input type="hidden" name="Content" id="editLessonContent" />
                     </div>
                     <div class="ll-form-group">
                         <label class="ll-form-label">Tags</label>
@@ -342,6 +344,31 @@
 @section Scripts {
 <script>
     (function() {
+        // ===== Quill Rich Text Editors =====
+        const quillToolbar = [
+            [{ 'header': [1, 2, 3, false] }],
+            ['bold', 'italic', 'underline'],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+            ['link'],
+            ['clean']
+        ];
+        const lessonQuill = new Quill('#lessonContentEditor', {
+            theme: 'snow', placeholder: 'Share what you learned, what worked well, any tips for others...', modules: { toolbar: quillToolbar }
+        });
+        const editLessonQuill = new Quill('#editLessonContentEditor', {
+            theme: 'snow', placeholder: 'Share your insight...', modules: { toolbar: quillToolbar }
+        });
+
+        // Sync Quill to hidden inputs on form submit
+        document.getElementById('lessonContentEditor')?.closest('form')?.addEventListener('submit', function() {
+            const html = lessonQuill.root.innerHTML;
+            document.getElementById('lessonContentHidden').value = html === '<p><br></p>' ? '' : html;
+        });
+        document.getElementById('editLessonContentEditor')?.closest('form')?.addEventListener('submit', function() {
+            const html = editLessonQuill.root.innerHTML;
+            document.getElementById('editLessonContent').value = html === '<p><br></p>' ? '' : html;
+        });
+
         const sortBtns = document.querySelectorAll('.lesson-sort-btn');
         const categoryFilter = document.getElementById('lessonCategoryFilter');
         const items = document.querySelectorAll('.lesson-item');
@@ -401,16 +428,14 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            btnEl.innerHTML = '<i class="bi bi-hand-thumbs-up-fill"></i> <span class="fw-medium ms-1">' + data.likes + '</span>';
-                            // Ensure proper classes and remove outline when liked
                             if (data.isLiked) {
+                                btnEl.innerHTML = '<i class="bi bi-hand-thumbs-up-fill"></i> <span class="fw-medium ms-1">' + data.likes + '</span>';
                                 btnEl.classList.remove('ll-btn-outline', 'btn-white');
                                 btnEl.classList.add('ll-btn-primary', 'text-white');
-                                btnEl.querySelector('i').classList.remove('text-primary'); // Remove inner color since btn is solid
                             } else {
+                                btnEl.innerHTML = '<i class="bi bi-hand-thumbs-up"></i> <span class="fw-medium ms-1">' + data.likes + '</span>';
                                 btnEl.classList.add('btn-white');
                                 btnEl.classList.remove('ll-btn-primary', 'text-white');
-                                btnEl.innerHTML = '<i class="bi bi-hand-thumbs-up"></i> <span class="fw-medium ms-1">' + data.likes + '</span>';
                             }
                             
                             // Update the dataset so sorting continues to work dynamically
@@ -440,7 +465,7 @@
             btn.addEventListener('click', function() {
                 document.getElementById('editLessonId').value = this.dataset.id;
                 document.getElementById('editLessonTitle').value = this.dataset.title;
-                document.getElementById('editLessonContent').value = this.dataset.content;
+                editLessonQuill.root.innerHTML = this.dataset.content || '';
                 document.getElementById('editLessonCategory').value = this.dataset.category;
                 
                 const resourceId = this.dataset.resourceId;

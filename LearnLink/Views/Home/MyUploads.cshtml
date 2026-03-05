@@ -8,6 +8,21 @@
     var pendingCount = (int)(ViewBag.PendingCount ?? 0);
     var draftCount = (int)(ViewBag.DraftCount ?? 0);
     var rejectedCount = (int)(ViewBag.RejectedCount ?? 0);
+
+    var yTotalUploads = (int)(ViewBag.YesterdayUploads ?? 0);
+    var yPublished = (int)(ViewBag.YesterdayPublished ?? 0);
+    var yPending = (int)(ViewBag.YesterdayPending ?? 0);
+    var yDrafts = (int)(ViewBag.YesterdayDrafts ?? 0);
+
+    string KpiChange(int current, int yesterday)
+    {
+        var diff = current - yesterday;
+        if (yesterday == 0) return diff > 0 ? $"+{diff} new today" : "No change";
+        var pct = Math.Abs((double)diff / yesterday * 100);
+        var dir = diff >= 0 ? "+" : "-";
+        return $"{dir}{pct:0.#}% vs yesterday";
+    }
+    bool KpiPositive(int current, int yesterday) => current >= yesterday;
 }
 
 <!-- Page Header -->
@@ -40,6 +55,10 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@totalUploads</div>
                 <div class="ll-stat-label">Total Uploads</div>
+                <div class="ll-stat-change @(KpiPositive(totalUploads, yTotalUploads) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive(totalUploads, yTotalUploads) ? "up" : "down")"></i>
+                    @KpiChange(totalUploads, yTotalUploads)
+                </div>
             </div>
         </div>
     </div>
@@ -51,6 +70,10 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@publishedCount</div>
                 <div class="ll-stat-label">Published</div>
+                <div class="ll-stat-change @(KpiPositive(publishedCount, yPublished) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive(publishedCount, yPublished) ? "up" : "down")"></i>
+                    @KpiChange(publishedCount, yPublished)
+                </div>
             </div>
         </div>
     </div>
@@ -62,6 +85,10 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@pendingCount</div>
                 <div class="ll-stat-label">Pending Review</div>
+                <div class="ll-stat-change @(KpiPositive(pendingCount, yPending) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive(pendingCount, yPending) ? "up" : "down")"></i>
+                    @KpiChange(pendingCount, yPending)
+                </div>
             </div>
         </div>
     </div>
@@ -73,30 +100,38 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@draftCount</div>
                 <div class="ll-stat-label">Drafts</div>
+                <div class="ll-stat-change @(KpiPositive(draftCount, yDrafts) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive(draftCount, yDrafts) ? "up" : "down")"></i>
+                    @KpiChange(draftCount, yDrafts)
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+@{
+    var currentSearch = ViewBag.CurrentSearch as string ?? "";
+    var currentStatus = ViewBag.CurrentStatus as string ?? "";
+}
+
 <!-- Filter Tabs -->
 <div class="ll-card mb-4">
     <div class="ll-card-body py-2">
         <div class="d-flex flex-wrap gap-2 align-items-center">
-            <button class="ll-btn ll-btn-primary ll-btn-sm upload-filter-btn active" data-status="">All (@totalUploads)</button>
-            <button class="ll-btn ll-btn-outline ll-btn-sm upload-filter-btn" data-status="Published">Published (@publishedCount)</button>
-            <button class="ll-btn ll-btn-outline ll-btn-sm upload-filter-btn" data-status="Pending">Pending (@pendingCount)</button>
-            <button class="ll-btn ll-btn-outline ll-btn-sm upload-filter-btn" data-status="Draft">Drafts (@draftCount)</button>
-            <button class="ll-btn ll-btn-outline ll-btn-sm upload-filter-btn" data-status="Rejected">Rejected (@rejectedCount)</button>
-            <div class="ms-auto d-flex gap-2">
-                <div class="position-relative">
-                    <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
-                    <input type="text" class="ll-form-control ps-5" id="uploadSearchInput" placeholder="Search my uploads..." style="width: 200px; min-width: 0;">
-                </div>
-                <select class="ll-form-control ll-form-select" id="uploadSortSelect" style="width: auto;">
-                    <option value="recent">Most Recent</option>
-                    <option value="views">Most Views</option>
-                    <option value="downloads">Most Downloads</option>
-                </select>
+            <a href="@Url.Action("MyUploads", "Home")" class="ll-btn @(string.IsNullOrEmpty(currentStatus) ? "ll-btn-primary" : "ll-btn-outline") ll-btn-sm">All (@totalUploads)</a>
+            <a href="@Url.Action("MyUploads", "Home", new { status = "Published" })" class="ll-btn @(currentStatus == "Published" ? "ll-btn-primary" : "ll-btn-outline") ll-btn-sm">Published (@publishedCount)</a>
+            <a href="@Url.Action("MyUploads", "Home", new { status = "Pending" })" class="ll-btn @(currentStatus == "Pending" ? "ll-btn-primary" : "ll-btn-outline") ll-btn-sm">Pending (@pendingCount)</a>
+            <a href="@Url.Action("MyUploads", "Home", new { status = "Draft" })" class="ll-btn @(currentStatus == "Draft" ? "ll-btn-primary" : "ll-btn-outline") ll-btn-sm">Drafts (@draftCount)</a>
+            <a href="@Url.Action("MyUploads", "Home", new { status = "Rejected" })" class="ll-btn @(currentStatus == "Rejected" ? "ll-btn-primary" : "ll-btn-outline") ll-btn-sm">Rejected (@rejectedCount)</a>
+            <div class="ms-auto">
+                <form method="get" action="@Url.Action("MyUploads", "Home")" class="d-flex gap-2">
+                    <input type="hidden" name="status" value="@currentStatus" />
+                    <div class="position-relative">
+                        <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
+                        <input type="text" class="ll-form-control ps-5" name="search" value="@currentSearch" placeholder="Search my uploads..." style="width: 200px; min-width: 0;">
+                    </div>
+                    <button type="submit" class="ll-btn ll-btn-primary ll-btn-sm"><i class="bi bi-search"></i></button>
+                </form>
             </div>
         </div>
     </div>
@@ -246,18 +281,7 @@
             }
         </div>
     </div>
-    <div class="ll-card-body border-top">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="text-muted small" id="uploadsPaginationInfo">Showing @uploads.Count of @totalUploads uploads</div>
-            <nav aria-label="Uploads pagination">
-                <ul class="pagination pagination-sm mb-0">
-                    <li class="page-item disabled"><a class="page-link" href="#"><i class="bi bi-chevron-left"></i></a></li>
-                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                    <li class="page-item"><a class="page-link" href="#"><i class="bi bi-chevron-right"></i></a></li>
-                </ul>
-            </nav>
-        </div>
-    </div>
+    @await Html.PartialAsync("_Pagination")
 </div>
 
 <!-- Delete Confirmation Modal -->
@@ -286,59 +310,24 @@
 @section Scripts {
 <script>
     (function() {
-        const filterBtns = document.querySelectorAll('.upload-filter-btn');
-        const searchInput = document.getElementById('uploadSearchInput');
-        const rows = document.querySelectorAll('.upload-row');
-        const selectAll = document.getElementById('selectAll');
         const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
         const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
         let selectedIds = [];
 
-        function filterUploads() {
-            const activeBtn = document.querySelector('.upload-filter-btn.active');
-            const statusFilter = activeBtn ? activeBtn.dataset.status : '';
-            const query = searchInput.value.toLowerCase();
-            let count = 0;
-
-            rows.forEach(row => {
-                const matchStatus = !statusFilter || row.dataset.status === statusFilter;
-                const matchSearch = !query || row.dataset.title.includes(query);
-                row.style.display = (matchStatus && matchSearch) ? '' : 'none';
-                if (matchStatus && matchSearch) count++;
-            });
-
-            document.getElementById('uploadsPaginationInfo').textContent = 'Showing ' + count + ' of @totalUploads uploads';
-        }
-
-        filterBtns.forEach(btn => {
-            btn.addEventListener('click', function() {
-                filterBtns.forEach(b => { b.classList.remove('ll-btn-primary', 'active'); b.classList.add('ll-btn-outline'); });
-                this.classList.remove('ll-btn-outline');
-                this.classList.add('ll-btn-primary', 'active');
-                filterUploads();
-            });
-        });
-
-        searchInput.addEventListener('input', filterUploads);
-
         // Select all checkbox
-        selectAll.addEventListener('change', function() {
+        document.getElementById('selectAll').addEventListener('change', function() {
+            var ids = [];
             document.querySelectorAll('.row-checkbox').forEach(cb => {
-                if (cb.closest('tr').style.display !== 'none') {
-                    cb.checked = this.checked;
-                    if (this.checked) {
-                        triggerDeleteConfirmation([parseInt(cb.dataset.id)]);
-                    }
-                }
+                cb.checked = this.checked;
+                if (this.checked) ids.push(parseInt(cb.dataset.id));
             });
+            if (ids.length > 0) triggerDeleteConfirmation(ids);
         });
 
         // Individual resource checkboxes
         document.querySelectorAll('.row-checkbox').forEach(cb => {
             cb.addEventListener('change', function() {
-                if (this.checked) {
-                    triggerDeleteConfirmation([parseInt(this.dataset.id)]);
-                }
+                if (this.checked) triggerDeleteConfirmation([parseInt(this.dataset.id)]);
             });
         });
 
@@ -359,35 +348,22 @@
 
         confirmDeleteBtn.addEventListener('click', async function() {
             if (selectedIds.length === 0) return;
-
             const originalText = confirmDeleteBtn.innerHTML;
             confirmDeleteBtn.disabled = true;
             confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
-
             const params = new URLSearchParams();
             selectedIds.forEach(id => params.append('ids', id));
-
             try {
                 const response = await fetch('@Url.Action("DeleteResource", "Home")', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: params
                 });
-
                 const result = await response.json();
-                if (result.success) {
-                    location.reload();
-                } else {
-                    alert(result.message);
-                    deleteModal.hide();
-                }
-            } catch (error) {
-                alert('An error occurred during deletion.');
-                deleteModal.hide();
-            } finally {
-                confirmDeleteBtn.disabled = false;
-                confirmDeleteBtn.innerHTML = originalText;
-            }
+                if (result.success) { location.reload(); }
+                else { alert(result.message); deleteModal.hide(); }
+            } catch (error) { alert('An error occurred during deletion.'); deleteModal.hide(); }
+            finally { confirmDeleteBtn.disabled = false; confirmDeleteBtn.innerHTML = originalText; }
         });
     })();
 </script>

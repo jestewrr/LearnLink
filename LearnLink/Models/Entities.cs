@@ -4,6 +4,79 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LearnLink.Models
 {
+    // ==================== Schools (Multi-Tenant Root) ====================
+
+    public class School
+    {
+        [Key]
+        public int SchoolId { get; set; }
+
+        [Required, StringLength(150)]
+        public string Name { get; set; } = "";
+
+        [Required, StringLength(20)]
+        public string Code { get; set; } = "";  // Unique short code for registration (e.g. "SJHS")
+
+        [StringLength(500)]
+        public string Description { get; set; } = "";
+
+        [StringLength(500)]
+        public string Address { get; set; } = "";
+
+        [StringLength(100)]
+        public string ContactEmail { get; set; } = "";
+
+        [StringLength(500)]
+        public string? LogoPath { get; set; }
+
+        public bool IsActive { get; set; } = true;
+
+        public bool AllowCrossSchoolSharing { get; set; } = false;
+
+        public DateTime DateCreated { get; set; } = DateTime.Now;
+
+        // Navigation
+        public ICollection<ApplicationUser> Users { get; set; } = new List<ApplicationUser>();
+        public ICollection<Department> Departments { get; set; } = new List<Department>();
+        public ICollection<Resource> Resources { get; set; } = new List<Resource>();
+        public ICollection<Discussion> Discussions { get; set; } = new List<Discussion>();
+        public SchoolSettings? Settings { get; set; }
+    }
+
+    // ==================== School Settings (per-school config) ====================
+
+    public class SchoolSettings
+    {
+        [Key]
+        public int Id { get; set; }
+
+        public int SchoolId { get; set; }
+
+        [ForeignKey("SchoolId")]
+        public School? School { get; set; }
+
+        [StringLength(150)]
+        public string InstitutionName { get; set; } = "";
+
+        [StringLength(100)]
+        public string AdminEmail { get; set; } = "";
+
+        [StringLength(50)]
+        public string TimeZone { get; set; } = "Asia/Manila";
+
+        [StringLength(20)]
+        public string DateFormat { get; set; } = "MM/dd/yyyy";
+
+        [StringLength(20)]
+        public string Language { get; set; } = "English";
+
+        // JSON arrays for dynamic configuration (replaces hardcoded dropdown values)
+        public string Subjects { get; set; } = "[\"Mathematics\",\"Science\",\"English\",\"Filipino\",\"Araling Panlipunan\",\"MAPEH\",\"TLE\",\"Values Education\"]";
+        public string GradeLevels { get; set; } = "[\"Grade 7\",\"Grade 8\",\"Grade 9\",\"Grade 10\"]";
+        public string ResourceTypes { get; set; } = "[\"Reviewer/Study Guide\",\"Lesson Plan\",\"Activity Sheet\",\"Assessment/Quiz\",\"Presentation\",\"Video Tutorial\",\"Reading Material\",\"Reference Document\"]";
+        public string Quarters { get; set; } = "[\"1st Quarter\",\"2nd Quarter\",\"3rd Quarter\",\"4th Quarter\",\"All Quarters\"]";
+    }
+
     // ==================== Users (extends Identity) ====================
 
     public class ApplicationUser : IdentityUser
@@ -14,6 +87,9 @@ namespace LearnLink.Models
         [Required, StringLength(25)]
         public string LastName { get; set; } = "";
 
+        [StringLength(25)]
+        public string? MiddleName { get; set; }
+
         [StringLength(20)]
         public string Status { get; set; } = "Active";
 
@@ -23,6 +99,12 @@ namespace LearnLink.Models
 
         [ForeignKey("DepartmentId")]
         public Department? Department { get; set; }
+
+        // ----- Multi-tenancy: School assignment -----
+        public int? SchoolId { get; set; }
+
+        [ForeignKey("SchoolId")]
+        public School? School { get; set; }
 
         // ----- Convenience / UI helpers (not in ERD but needed for views) -----
         [StringLength(5)]
@@ -46,8 +128,6 @@ namespace LearnLink.Models
         public ICollection<UserActivityLog> ActivityLogs { get; set; } = new List<UserActivityLog>();
         public ICollection<BestPractice> BestPractices { get; set; } = new List<BestPractice>();
         public ICollection<Recommendation> Recommendations { get; set; } = new List<Recommendation>();
-        public ICollection<Policy> Policies { get; set; } = new List<Policy>();
-        public ICollection<SystemLog> SystemLogs { get; set; } = new List<SystemLog>();
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 
         // Computed helper
@@ -67,6 +147,12 @@ namespace LearnLink.Models
 
         [StringLength(100)]
         public string Description { get; set; } = "";
+
+        // ----- Multi-tenancy: School assignment -----
+        public int? SchoolId { get; set; }
+
+        [ForeignKey("SchoolId")]
+        public School? School { get; set; }
 
         public ICollection<ApplicationUser> Users { get; set; } = new List<ApplicationUser>();
     }
@@ -95,6 +181,14 @@ namespace LearnLink.Models
 
         [ForeignKey("UserId")]
         public ApplicationUser? User { get; set; }
+
+        // ----- Multi-tenancy: School assignment -----
+        public int? SchoolId { get; set; }
+
+        [ForeignKey("SchoolId")]
+        public School? School { get; set; }
+
+        public bool IsSharedCrossSchool { get; set; } = false;
 
         public DateTime DateUploaded { get; set; } = DateTime.Now;
 
@@ -149,6 +243,11 @@ namespace LearnLink.Models
         public bool AllowRatings { get; set; } = true;
         public bool ModerateComments { get; set; } = false;
         public bool RequireVersionNotes { get; set; } = false;
+
+        public DateTime? AccessExpiresAt { get; set; }  // Custom expiry date for access duration
+
+        // Navigation for restricted access grants
+        public ICollection<ResourceAccessGrant> AccessGrants { get; set; } = new List<ResourceAccessGrant>();
     }
 
     // ==================== Resource Categories ====================
@@ -246,18 +345,17 @@ namespace LearnLink.Models
         public Tag? Tag { get; set; }
     }
 
-    // ==================== Policies ====================
+    // ==================== Resource Comments ====================
 
-    public class Policy
+    public class ResourceComment
     {
         [Key]
-        public int PolicyId { get; set; }
+        public int CommentId { get; set; }
 
-        [Required, StringLength(100)]
-        public string Title { get; set; } = "";
+        public int ResourceId { get; set; }
 
-        [StringLength(500)]
-        public string Description { get; set; } = "";
+        [ForeignKey("ResourceId")]
+        public Resource? Resource { get; set; }
 
         [Required]
         public string UserId { get; set; } = "";
@@ -265,31 +363,21 @@ namespace LearnLink.Models
         [ForeignKey("UserId")]
         public ApplicationUser? User { get; set; }
 
-        public DateTime DateCreated { get; set; } = DateTime.Now;
+        [Required, StringLength(2000)]
+        public string Content { get; set; } = "";
 
-        public ICollection<Procedure> Procedures { get; set; } = new List<Procedure>();
-    }
+        public DateTime DatePosted { get; set; } = DateTime.Now;
 
-    // ==================== Procedures ====================
+        public DateTime? DateUpdated { get; set; }
 
-    public class Procedure
-    {
-        [Key]
-        public int ProcedureId { get; set; }
+        public int? ParentCommentId { get; set; }
 
-        public int PolicyId { get; set; }
+        [ForeignKey("ParentCommentId")]
+        public ResourceComment? ParentComment { get; set; }
 
-        [ForeignKey("PolicyId")]
-        public Policy? Policy { get; set; }
+        public ICollection<ResourceComment> Replies { get; set; } = new List<ResourceComment>();
 
-        [Required, StringLength(100)]
-        public string Title { get; set; } = "";
-
-        [StringLength(500)]
-        public string Description { get; set; } = "";
-
-        [StringLength(10)]
-        public string Version { get; set; } = "";
+        public int LikeCount { get; set; } = 0;
     }
 
     // ==================== Lessons Learned ====================
@@ -309,6 +397,12 @@ namespace LearnLink.Models
 
         [ForeignKey("UserId")]
         public ApplicationUser? User { get; set; }
+
+        // ----- Multi-tenancy: School assignment -----
+        public int? SchoolId { get; set; }
+
+        [ForeignKey("SchoolId")]
+        public School? School { get; set; }
 
         public float Rating { get; set; }
 
@@ -427,6 +521,12 @@ namespace LearnLink.Models
         [ForeignKey("UserId")]
         public ApplicationUser? User { get; set; }
 
+        // ----- Multi-tenancy: School assignment -----
+        public int? SchoolId { get; set; }
+
+        [ForeignKey("SchoolId")]
+        public School? School { get; set; }
+
         public DateTime DateCreated { get; set; } = DateTime.Now;
 
         // ----- Additional fields for existing Knowledge Portal UI -----
@@ -508,25 +608,6 @@ namespace LearnLink.Models
         public string TargetTitle { get; set; } = "";
     }
 
-    // ==================== System Logs ====================
-
-    public class SystemLog
-    {
-        [Key]
-        public int LogId { get; set; }
-
-        [Required]
-        public string UserId { get; set; } = "";
-
-        [ForeignKey("UserId")]
-        public ApplicationUser? User { get; set; }
-
-        [StringLength(100)]
-        public string Action { get; set; } = "";
-
-        public DateTime Timestamp { get; set; } = DateTime.Now;
-    }
-
     // ==================== Likes (per-user tracking, not in ERD but needed for UI) ====================
 
     public class Like
@@ -587,5 +668,60 @@ namespace LearnLink.Models
         public bool IsRead { get; set; } = false;
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+    }
+
+    // ==================== Resource Access Grants (for Restricted access level) ====================
+
+    public class ResourceAccessGrant
+    {
+        [Key]
+        public int GrantId { get; set; }
+
+        public int ResourceId { get; set; }
+
+        [ForeignKey("ResourceId")]
+        public Resource? Resource { get; set; }
+
+        [Required]
+        public string UserId { get; set; } = "";
+
+        [ForeignKey("UserId")]
+        public ApplicationUser? User { get; set; }
+
+        public DateTime GrantedAt { get; set; } = DateTime.Now;
+    }
+
+    // ==================== Announcements ====================
+
+    public class Announcement
+    {
+        [Key]
+        public int AnnouncementId { get; set; }
+
+        [Required, StringLength(200)]
+        public string Title { get; set; } = "";
+
+        [Required]
+        public string Content { get; set; } = "";
+
+        [Required]
+        public string UserId { get; set; } = "";
+
+        [ForeignKey("UserId")]
+        public ApplicationUser? User { get; set; }
+
+        public int SchoolId { get; set; }
+
+        [ForeignKey("SchoolId")]
+        public School? School { get; set; }
+
+        public bool IsPinned { get; set; } = false;
+
+        [StringLength(20)]
+        public string Priority { get; set; } = "Normal";  // Normal, Important, Urgent
+
+        public DateTime? ExpiresAt { get; set; }
+
+        public DateTime DateCreated { get; set; } = DateTime.Now;
     }
 }

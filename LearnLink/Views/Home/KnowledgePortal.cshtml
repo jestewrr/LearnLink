@@ -405,8 +405,13 @@
                     .then(data => {
                          if (data.success) {
                             countEl.textContent = data.likes;
-                            icon.classList.remove('bi-heart');
-                            icon.classList.add('bi-heart-fill', 'text-danger');
+                            if (data.isLiked) {
+                                icon.classList.remove('bi-heart');
+                                icon.classList.add('bi-heart-fill', 'text-danger');
+                            } else {
+                                icon.classList.remove('bi-heart-fill', 'text-danger');
+                                icon.classList.add('bi-heart');
+                            }
                          }
                     });
             });

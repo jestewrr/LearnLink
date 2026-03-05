@@ -1,22 +1,57 @@
+@using System.Text.Json
 @{
-    ViewData["Title"] = "System Settings";
+    ViewData["Title"] = "School Settings";
     ViewData["ActivePage"] = "Settings";
+
+    var settings = ViewBag.SchoolSettingsModel as LearnLink.Models.SchoolSettings;
+    var institutionName = settings?.InstitutionName ?? "LearnLink";
+    var adminEmail = settings?.AdminEmail ?? "";
+    var timeZone = settings?.TimeZone ?? "Asia/Manila";
+    var dateFormat = settings?.DateFormat ?? "MM/dd/yyyy";
+    var language = settings?.Language ?? "English";
+
+    // Parse JSON arrays back to comma-separated strings for the form
+    var subjectsList = ViewBag.Subjects as List<string> ?? new List<string>();
+    var gradesList = ViewBag.GradeLevels as List<string> ?? new List<string>();
+    var typesList = ViewBag.ResourceTypes as List<string> ?? new List<string>();
+    var quartersList = ViewBag.Quarters as List<string> ?? new List<string>();
+
+    var subjectsStr = string.Join(", ", subjectsList);
+    var gradesStr = string.Join(", ", gradesList);
+    var typesStr = string.Join(", ", typesList);
+    var quartersStr = string.Join(", ", quartersList);
 }
 
 <!-- Page Header -->
 <div class="ll-page-header">
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
         <div>
-            <h1 class="ll-page-title">System Settings</h1>
+            <h1 class="ll-page-title">School Settings</h1>
             <div class="ll-breadcrumb">
                 <a href="@Url.Action("Dashboard", "Home")">Home</a>
                 <i class="bi bi-chevron-right small"></i>
-                <span>System Settings</span>
+                <span>Settings</span>
             </div>
         </div>
     </div>
 </div>
 
+@if (TempData["SuccessMessage"] != null)
+{
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-circle me-2"></i>@TempData["ErrorMessage"]
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+}
+
+<form asp-action="SaveSettings" method="post">
 <div class="row g-4">
     <div class="col-12">
         <!-- General Settings -->
@@ -28,48 +63,42 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <div class="ll-form-group">
-                            <label class="ll-form-label">System Name</label>
-                            <input type="text" class="ll-form-control" value="LearnLink">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="ll-form-group">
                             <label class="ll-form-label">Institution Name</label>
-                            <input type="text" class="ll-form-control" value="Sample Junior High School">
+                            <input type="text" name="institutionName" class="ll-form-control" value="@institutionName">
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="ll-form-group">
                             <label class="ll-form-label">Admin Email</label>
-                            <input type="email" class="ll-form-control" value="admin@learnlink.edu">
+                            <input type="email" name="adminEmail" class="ll-form-control" value="@adminEmail">
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="ll-form-group">
                             <label class="ll-form-label">Time Zone</label>
-                            <select class="ll-form-control ll-form-select">
-                                <option selected>Asia/Manila (GMT+8)</option>
-                                <option>Asia/Singapore (GMT+8)</option>
-                                <option>Asia/Tokyo (GMT+9)</option>
+                            <select name="timeZone" class="ll-form-control ll-form-select">
+                                <option value="Asia/Manila" selected="@(timeZone == "Asia/Manila")">Asia/Manila (GMT+8)</option>
+                                <option value="Asia/Singapore" selected="@(timeZone == "Asia/Singapore")">Asia/Singapore (GMT+8)</option>
+                                <option value="Asia/Tokyo" selected="@(timeZone == "Asia/Tokyo")">Asia/Tokyo (GMT+9)</option>
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="ll-form-group">
                             <label class="ll-form-label">Date Format</label>
-                            <select class="ll-form-control ll-form-select">
-                                <option>MM/DD/YYYY</option>
-                                <option selected>DD/MM/YYYY</option>
-                                <option>YYYY-MM-DD</option>
+                            <select name="dateFormat" class="ll-form-control ll-form-select">
+                                <option value="MM/dd/yyyy" selected="@(dateFormat == "MM/dd/yyyy")">MM/DD/YYYY</option>
+                                <option value="dd/MM/yyyy" selected="@(dateFormat == "dd/MM/yyyy")">DD/MM/YYYY</option>
+                                <option value="yyyy-MM-dd" selected="@(dateFormat == "yyyy-MM-dd")">YYYY-MM-DD</option>
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="ll-form-group">
                             <label class="ll-form-label">Default Language</label>
-                            <select class="ll-form-control ll-form-select">
-                                <option selected>English</option>
-                                <option>Filipino</option>
+                            <select name="language" class="ll-form-control ll-form-select">
+                                <option value="English" selected="@(language == "English")">English</option>
+                                <option value="Filipino" selected="@(language == "Filipino")">Filipino</option>
                             </select>
                         </div>
                     </div>
@@ -77,19 +106,54 @@
             </div>
         </div>
 
-        <!-- Appearance removed -->
-
-        <!-- Notifications removed -->
-
-        <!-- Storage removed -->
+        <!-- Academic Configuration -->
+        <div class="ll-card mb-4" id="academic">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title"><i class="bi bi-book me-2"></i>Academic Configuration</h5>
+                <p class="text-muted small mb-0">Define the subjects, grade levels, resource types, and quarters available in this school. These values populate dropdowns across the system.</p>
+            </div>
+            <div class="ll-card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="ll-form-group">
+                            <label class="ll-form-label">Subjects</label>
+                            <textarea name="subjects" class="ll-form-control" rows="3" placeholder="Mathematics, Science, English, Filipino, Araling Panlipunan, MAPEH, TLE, Values Education">@subjectsStr</textarea>
+                            <div class="form-text small">Comma-separated list of subjects.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="ll-form-group">
+                            <label class="ll-form-label">Grade Levels</label>
+                            <textarea name="gradeLevels" class="ll-form-control" rows="3" placeholder="Grade 7, Grade 8, Grade 9, Grade 10, All Grades">@gradesStr</textarea>
+                            <div class="form-text small">Comma-separated list of grade levels.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="ll-form-group">
+                            <label class="ll-form-label">Resource Types</label>
+                            <textarea name="resourceTypes" class="ll-form-control" rows="3" placeholder="Reviewer / Study Guide, Lesson Plan, Activity Sheet, Assessment / Quiz, Presentation, Video Tutorial, Reading Material, Reference Document">@typesStr</textarea>
+                            <div class="form-text small">Comma-separated list of allowed resource types.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="ll-form-group">
+                            <label class="ll-form-label">Quarters</label>
+                            <textarea name="quarters" class="ll-form-control" rows="3" placeholder="1st Quarter, 2nd Quarter, 3rd Quarter, 4th Quarter, All Quarters">@quartersStr</textarea>
+                            <div class="form-text small">Comma-separated list of academic quarters.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Save Button -->
         <div class="d-flex gap-2 justify-content-end">
-            <button class="ll-btn ll-btn-outline">Cancel</button>
-            <button class="ll-btn ll-btn-primary">
+            <a href="@Url.Action("Dashboard", "Home")" class="ll-btn ll-btn-outline">Cancel</a>
+            <button type="submit" class="ll-btn ll-btn-primary">
                 <i class="bi bi-check-lg"></i>
                 Save All Changes
             </button>
         </div>
     </div>
 </div>
+</form>

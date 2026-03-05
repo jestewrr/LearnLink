@@ -375,6 +375,7 @@
             }
 
             resultsList.innerHTML = results.map(r => `
+                <a href="/Home/PublicResourceDetail/${r.id}" class="text-decoration-none">
                 <div class="ps-result-card">
                     <div class="d-flex gap-3">
                         <div class="ps-result-icon" style="background: ${r.iconBg};">
@@ -397,6 +398,7 @@
                         </div>
                     </div>
                 </div>
+                </a>
             `).join('');
         }
 

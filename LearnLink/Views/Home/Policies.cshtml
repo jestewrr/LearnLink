@@ -58,16 +58,21 @@
                     <p class="text-muted mb-4">Configure who can access this resource and for how long.</p>
 
                     <div class="border rounded p-3 mb-3">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
                             <div>
                                 <h6 class="fw-bold mb-1">Default Access Level</h6>
                                 <p class="text-muted small mb-0">Set the access level for this resource</p>
                             </div>
-                            <select id="policyAccessLevel" class="ll-form-control ll-form-select" style="width: 200px;">
-                                <option value="Public">Public - All users</option>
-                                <option value="Registered">Registered - Logged in users only</option>
-                                <option value="Restricted">Restricted - Selected users only</option>
-                            </select>
+                            <div class="d-flex gap-2 align-items-center">
+                                <select id="policyAccessLevel" class="ll-form-control ll-form-select" style="width: 200px;">
+                                    <option value="Public">Public - All users</option>
+                                    <option value="Registered">Registered - Logged in users only</option>
+                                    <option value="Restricted">Restricted - Selected users only</option>
+                                </select>
+                                <button id="btnSelectUsers" class="ll-btn ll-btn-outline" style="display: none;" title="Select specific users">
+                                    <i class="bi bi-people"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -190,18 +195,6 @@
 
         <!-- Sidebar -->
         <div class="col-lg-4">
-            <!-- Selected Resource Info Card -->
-            <div class="ll-card mb-4">
-                <div class="ll-card-header">
-                    <h5 class="ll-card-title"><i class="bi bi-info-circle me-2"></i>Selected Resource</h5>
-                </div>
-                <div class="ll-card-body">
-                    <div id="selectedResourceInfo">
-                        <p class="text-muted small mb-0">Select a resource from the dropdown above to view and configure its policies.</p>
-                    </div>
-                </div>
-            </div>
-
             <!-- Quick Actions -->
             <div class="ll-card">
                 <div class="ll-card-header">
@@ -235,6 +228,36 @@
     </div>
 </div>
 
+<!-- Restricted Users Modal -->
+<div class="modal fade" id="restrictedUsersModal" tabindex="-1" aria-labelledby="restrictedUsersLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="restrictedUsersLabel">
+                    <i class="bi bi-people-fill me-2"></i>Select Users with Access
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">Choose which users should have access to this resource:</p>
+                <div class="mb-3">
+                    <input type="text" id="userSearchInput" class="form-control" placeholder="Search users by name or email...">
+                </div>
+                <div id="userList" style="max-height: 400px; overflow-y: auto;">
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-hourglass-split d-block fs-4 mb-2"></i>
+                        Loading users...
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btnApplyUsers">Apply Selection</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
     const selector = document.getElementById('resourceSelector');
@@ -250,7 +273,93 @@
     const elAllowComments = document.getElementById('policyAllowComments');
     const elAllowRatings = document.getElementById('policyAllowRatings');
     const elModerateComments = document.getElementById('policyModerateComments');
-    const elSelectedInfo = document.getElementById('selectedResourceInfo');
+    const btnSelectUsers = document.getElementById('btnSelectUsers');
+    const restrictedUsersModal = new bootstrap.Modal(document.getElementById('restrictedUsersModal'));
+    const userSearchInput = document.getElementById('userSearchInput');
+    const userList = document.getElementById('userList');
+    const btnApplyUsers = document.getElementById('btnApplyUsers');
+    let allUsers = [];
+    let selectedUserIds = [];
+
+    // Show/hide user selection button based on access level
+    elAccessLevel.addEventListener('change', function() {
+        if (this.value === 'Restricted') {
+            btnSelectUsers.style.display = 'inline-block';
+        } else {
+            btnSelectUsers.style.display = 'none';
+        }
+    });
+
+    // Open restricted users modal
+    btnSelectUsers.addEventListener('click', async function() {
+        if (!allUsers.length) {
+            await loadUsers();
+        }
+        renderUserList(allUsers);
+        restrictedUsersModal.show();
+    });
+
+    // Load users from server
+    async function loadUsers() {
+        try {
+            const response = await fetch('/Home/GetAllUsers');
+            if (response.ok) {
+                allUsers = await response.json();
+            } else {
+                showToast('Error', 'Could not load users list.', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Error', 'Failed to load users.', 'error');
+        }
+    }
+
+    // Render user list with checkboxes
+    function renderUserList(users) {
+        if (!users.length) {
+            userList.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-inbox d-block fs-4 mb-2"></i>No users found</div>';
+            return;
+        }
+        
+        userList.innerHTML = users.map(user => `
+            <div class="form-check p-2 border-bottom">
+                <input class="form-check-input user-checkbox" type="checkbox" id="user_${user.id}" value="${user.id}" ${selectedUserIds.includes(user.id) ? 'checked' : ''}>
+                <label class="form-check-label w-100 cursor-pointer" for="user_${user.id}">
+                    <div class="fw-medium">${escapeHtml(user.fullName || user.userName)}</div>
+                    <div class="small text-muted">${escapeHtml(user.email)}</div>
+                </label>
+            </div>
+        `).join('');
+    }
+
+    // Search/filter users
+    userSearchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        const filtered = allUsers.filter(u => 
+            (u.fullName || u.userName).toLowerCase().includes(query) || 
+            u.email.toLowerCase().includes(query)
+        );
+        renderUserList(filtered);
+    });
+
+    // Apply user selection
+    btnApplyUsers.addEventListener('click', function() {
+        const checkboxes = document.querySelectorAll('.user-checkbox:checked');
+        selectedUserIds = Array.from(checkboxes).map(cb => cb.value);
+        const count = selectedUserIds.length;
+        if (count === 0) {
+            showToast('Warning', 'Please select at least one user.', 'warning');
+            return;
+        }
+        showToast('Success', `${count} user${count !== 1 ? 's' : ''} selected for restricted access.`, 'success');
+        restrictedUsersModal.hide();
+    });
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
 
     // Load policy when a resource is selected
     selector.addEventListener('change', async function () {
@@ -273,6 +382,12 @@
 
             // Populate form fields
             elAccessLevel.value = data.accessLevel || 'Registered';
+            selectedUserIds = data.restrictedUserIds || [];
+            if (data.accessLevel === 'Restricted') {
+                btnSelectUsers.style.display = 'inline-block';
+            } else {
+                btnSelectUsers.style.display = 'none';
+            }
             elAccessDuration.value = data.accessDuration || 'Unlimited';
             elAllowDownloads.checked = data.allowDownloads;
             elEnableVersionHistory.checked = data.enableVersionHistory;
@@ -280,21 +395,6 @@
             elAllowComments.checked = data.allowComments;
             elAllowRatings.checked = data.allowRatings;
             elModerateComments.checked = data.moderateComments;
-
-            // Update sidebar info
-            elSelectedInfo.innerHTML = `
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <i class="bi bi-file-earmark-text fs-4 text-primary"></i>
-                    <div>
-                        <div class="fw-bold">${data.title}</div>
-                        <div class="small text-muted">Resource ID: ${data.resourceId}</div>
-                    </div>
-                </div>
-                <hr class="my-2">
-                <div class="small text-muted">
-                    Configure access control, version history, and content review settings for this resource. Changes are saved per-file and only affect this specific resource.
-                </div>
-            `;
 
             // Show the policy area
             policyArea.style.display = 'block';
@@ -311,6 +411,12 @@
             return;
         }
 
+        // Validate restricted access
+        if (elAccessLevel.value === 'Restricted' && selectedUserIds.length === 0) {
+            showToast('Warning', 'Please select at least one user for restricted access.', 'warning');
+            return;
+        }
+
         const formData = new URLSearchParams();
         formData.append('resourceId', currentResourceId);
         formData.append('accessLevel', elAccessLevel.value);
@@ -321,6 +427,11 @@
         formData.append('allowComments', elAllowComments.checked);
         formData.append('allowRatings', elAllowRatings.checked);
         formData.append('moderateComments', elModerateComments.checked);
+        
+        // Add restricted user IDs
+        selectedUserIds.forEach(userId => {
+            formData.append('restrictedUserIds', userId);
+        });
 
         try {
             const response = await fetch('/Home/SaveResourcePolicy', {

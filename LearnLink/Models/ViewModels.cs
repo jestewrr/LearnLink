@@ -28,6 +28,8 @@ namespace LearnLink.Models
         public bool IsSaved { get; set; }
         public int UserRating { get; set; }
         public int LikeCount { get; set; }
+        public List<string> Tags { get; set; } = new();
+        public List<string> Categories { get; set; } = new();
     }
 
     public class LessonViewModel
@@ -149,5 +151,100 @@ namespace LearnLink.Models
         public int ActiveUsers { get; set; }
         public int TotalDownloads { get; set; }
         public int ActiveDiscussions { get; set; }
+
+        // Yesterday comparison
+        public int YesterdayResources { get; set; }
+        public int YesterdayDownloads { get; set; }
+        public int YesterdayActiveUsers { get; set; }
+        public int YesterdayDiscussions { get; set; }
+    }
+
+    /// <summary>
+    /// Holds a current value and its yesterday counterpart for KPI comparison.
+    /// </summary>
+    public class KpiChange
+    {
+        public int Current { get; set; }
+        public int Yesterday { get; set; }
+        public int Difference => Current - Yesterday;
+        public bool IsPositive => Difference >= 0;
+        public string ChangeText
+        {
+            get
+            {
+                if (Yesterday == 0) return Difference > 0 ? $"+{Difference} new today" : "No change";
+                var pct = Math.Abs((double)Difference / Yesterday * 100);
+                var dir = IsPositive ? "+" : "-";
+                return $"{dir}{pct:0.#}% vs yesterday";
+            }
+        }
+    }
+
+    // ==================== Student Dashboard ====================
+
+    public class StudentDashboardViewModel
+    {
+        // KPI stats
+        public int ResourcesRead { get; set; }
+        public int ResourcesCompleted { get; set; }
+        public int LessonsSubmitted { get; set; }
+        public int DiscussionsParticipated { get; set; }
+        public int CompletionPercent { get; set; }
+        public int Bookmarks { get; set; }
+
+        // Subject progress for chart
+        public List<SubjectProgressItem> SubjectProgress { get; set; } = new();
+
+        // Recent activity
+        public List<ReadingHistoryViewModel> RecentReading { get; set; } = new();
+        public List<ResourceViewModel> RecommendedResources { get; set; } = new();
+        public List<ActivityViewModel> RecentActivity { get; set; } = new();
+
+        // Streaks
+        public int CurrentStreak { get; set; }
+        public int BestStreak { get; set; }
+
+        // Announcements pinned
+        public List<AnnouncementViewModel> PinnedAnnouncements { get; set; } = new();
+    }
+
+    public class SubjectProgressItem
+    {
+        public string Subject { get; set; } = "";
+        public int Total { get; set; }
+        public int Completed { get; set; }
+        public int Percent => Total > 0 ? (int)Math.Round((double)Completed / Total * 100) : 0;
+        public string Color { get; set; } = "#4361ee";
+    }
+
+    // ==================== Announcements ====================
+
+    public class AnnouncementViewModel
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = "";
+        public string Content { get; set; } = "";
+        public string Author { get; set; } = "";
+        public string AuthorInitials { get; set; } = "";
+        public string AuthorColor { get; set; } = "";
+        public string AuthorRole { get; set; } = "";
+        public bool IsPinned { get; set; }
+        public string Priority { get; set; } = "Normal";
+        public DateTime? ExpiresAt { get; set; }
+        public DateTime DateCreated { get; set; }
+        public bool IsOwner { get; set; }
+        public bool CanManage { get; set; }
+        public string PriorityBadgeClass => Priority switch
+        {
+            "Urgent" => "ll-badge-danger",
+            "Important" => "ll-badge-warning",
+            _ => "ll-badge-info"
+        };
+        public string PriorityIcon => Priority switch
+        {
+            "Urgent" => "bi-exclamation-triangle-fill",
+            "Important" => "bi-exclamation-circle-fill",
+            _ => "bi-info-circle-fill"
+        };
     }
 }
