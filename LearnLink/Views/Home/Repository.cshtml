@@ -3,20 +3,29 @@
     ViewData["ActivePage"] = "Repository";
 
     var resources = ViewBag.Resources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
+    var subjects = new List<string> { "Mathematics", "Science", "English", "Filipino", "Araling Panlipunan", "History", "MAPEH", "TLE", "Values Education" };
+    var gradeLevels = new List<string> { "Grade 7", "Grade 8", "Grade 9", "Grade 10", "All Grades" };
+    var fileTypes = new List<string> { "PDF", "DOCX", "PPTX", "XLSX" };
+
+    var currentSearch = (string)(ViewBag.CurrentSearch ?? "");
+    var currentSubject = (string)(ViewBag.CurrentSubject ?? "");
+    var currentGrade = (string)(ViewBag.CurrentGrade ?? "");
+    var currentType = (string)(ViewBag.CurrentType ?? "");
+    var currentSort = (string)(ViewBag.CurrentSort ?? "recent");
+    var browseMode = (bool)(ViewBag.BrowseMode ?? false);
 
     var isAdmin = User.IsInRole("SuperAdmin");
     var isContributor = User.IsInRole("Contributor");
     var isManager = User.IsInRole("Manager");
     var canUpload = isAdmin || isContributor || isManager;
 
-    // Map file formats to gradient backgrounds for thumbnails
     string GetThumbnailGradient(string format) => format?.ToUpper() switch
     {
-        "PDF" => "background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-        "DOCX" => "background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-        "PPTX" => "background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-        "XLSX" => "background: linear-gradient(135deg, #10b981 0%, #059669 100%)",
-        _ => "background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
+        "PDF" => "background: linear-gradient(145deg, #ef4444 0%, #b91c1c 100%)",
+        "DOCX" => "background: linear-gradient(145deg, #3b82f6 0%, #1d4ed8 100%)",
+        "PPTX" => "background: linear-gradient(145deg, #f59e0b 0%, #b45309 100%)",
+        "XLSX" => "background: linear-gradient(145deg, #10b981 0%, #047857 100%)",
+        _ => "background: linear-gradient(145deg, #64748b 0%, #374151 100%)"
     };
 
     string GetThumbnailIcon(string format) => format?.ToUpper() switch
@@ -27,375 +36,767 @@
         "XLSX" => "bi-file-earmark-excel",
         _ => "bi-file-earmark"
     };
+
+    string GetSubjectIcon(string subj) => subj switch
+    {
+        "Mathematics" => "bi-calculator",
+        "Science" => "bi-eyedropper",
+        "English" => "bi-book",
+        "Filipino" => "bi-chat-quote",
+        "Araling Panlipunan" => "bi-globe-americas",
+        "History" => "bi-hourglass-split",
+        "MAPEH" => "bi-palette",
+        "TLE" => "bi-tools",
+        "Values Education" => "bi-heart",
+        _ => "bi-collection"
+    };
+
+    int GetRatingPercent(double rating) => rating > 0 ? (int)Math.Round((rating / 5.0) * 100) : 0;
+
+    var totalResourceCount = (int)(ViewBag.TotalResourceCount ?? 0);
 }
 
 <!-- Page Header -->
 <div class="ll-page-header">
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
         <div>
-            <h1 class="ll-page-title">Knowledge Repository</h1>
+            <h1 class="ll-page-title">
+                <i class="bi bi-collection me-2" style="color: var(--ll-primary);"></i>Knowledge Repository
+            </h1>
             <div class="ll-breadcrumb">
                 <a href="@Url.Action("Dashboard", "Home")">Home</a>
                 <i class="bi bi-chevron-right small"></i>
                 <span>Knowledge Repository</span>
+                @if (totalResourceCount > 0)
+                {
+                <span class="ms-2 badge rounded-pill" style="background: var(--ll-primary); font-size: .7rem;">@totalResourceCount.ToString("N0") resources</span>
+                }
             </div>
         </div>
         @if (canUpload)
         {
-        <div class="d-flex gap-2">
-            <a href="@Url.Action("Upload", "Home")" class="ll-btn ll-btn-primary">
-                <i class="bi bi-cloud-arrow-up"></i>
-                Upload Resource
+        <a href="@Url.Action("Upload", "Home")" class="ll-btn ll-btn-primary">
+            <i class="bi bi-cloud-arrow-up"></i> Upload Resource
+        </a>
+        }
+    </div>
+</div>
+
+<!-- Search Bar (compact) -->
+<div class="ll-repo-search-bar mb-4">
+    <form id="repoFilterForm" method="get" action="@Url.Action("Repository", "Home")">
+        <div class="d-flex align-items-center flex-wrap" style="gap: 0;">
+            <div class="ll-repo-search-input flex-grow-1">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" value="@currentSearch" placeholder="Search resources by title, subject, keyword..." autocomplete="off">
+            </div>
+            <select class="ll-repo-filter-select" name="subject">
+                <option value="">All Subjects</option>
+                @foreach (var subj in subjects)
+                {
+                    if (currentSubject == subj)
+                    {
+                        <option value="@subj" selected="selected">@subj</option>
+                    }
+                    else
+                    {
+                        <option value="@subj">@subj</option>
+                    }
+                }
+            </select>
+            <select class="ll-repo-filter-select d-none d-md-block" name="grade">
+                <option value="">All Grades</option>
+                @foreach (var g in gradeLevels)
+                {
+                    if (currentGrade == g)
+                    {
+                        <option value="@g" selected="selected">@g</option>
+                    }
+                    else
+                    {
+                        <option value="@g">@g</option>
+                    }
+                }
+            </select>
+            <select class="ll-repo-filter-select d-none d-lg-block" name="type">
+                <option value="">All Formats</option>
+                @foreach (var ft in fileTypes)
+                {
+                    if (currentType == ft)
+                    {
+                        <option value="@ft" selected="selected">@ft</option>
+                    }
+                    else
+                    {
+                        <option value="@ft">@ft</option>
+                    }
+                }
+            </select>
+            <button type="submit" class="ll-btn ll-btn-primary">
+                <i class="bi bi-search"></i> Search
+            </button>
+            @if (!string.IsNullOrEmpty(currentSearch) || !string.IsNullOrEmpty(currentSubject) || !string.IsNullOrEmpty(currentGrade) || !string.IsNullOrEmpty(currentType))
+            {
+            <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline" title="Clear filters">
+                <i class="bi bi-x-lg"></i>
+            </a>
+            }
+        </div>
+        <input type="hidden" name="sort" id="sortInput" value="@currentSort" />
+    </form>
+</div>
+
+<!-- Subject Quick-Filter Pills -->
+<div class="ll-repo-pills mb-4">
+    <a href="@Url.Action("Repository", "Home")"
+       class="ll-repo-pill @(string.IsNullOrEmpty(currentSubject) && string.IsNullOrEmpty(currentSearch) ? "active" : "")">
+        <i class="bi bi-grid-3x3-gap"></i> Browse All
+    </a>
+    @foreach (var subj in subjects)
+    {
+        <a href="@Url.Action("Repository", "Home", new { subject = subj })"
+           class="ll-repo-pill @(currentSubject == subj ? "active" : "")">
+            <i class="bi @GetSubjectIcon(subj)"></i> @subj
+        </a>
+    }
+</div>
+
+@if (browseMode)
+{
+    <!-- ═══════════════  BROWSE MODE: Scribd-style carousels  ═══════════════ -->
+
+    var recentResources = ViewBag.RecentResources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
+    var subjectGroups = ViewBag.SubjectGroups as List<dynamic> ?? new List<dynamic>();
+    var knnRecommendations = ViewBag.KnnRecommendations as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
+
+    <!-- KNN Recommended for You Carousel -->
+    @if (knnRecommendations.Any())
+    {
+    <div class="ll-repo-section">
+        <div class="ll-repo-section-header">
+            <div class="ll-repo-section-title">
+                <i class="bi bi-stars"></i>
+                <h2>Recommended for You</h2>
+                <span class="ll-repo-knn-badge">AI-Powered</span>
+            </div>
+        </div>
+        <div class="ll-repo-carousel-wrap">
+            <button class="ll-repo-carousel-arrow ll-repo-arrow-left" aria-label="Scroll left"><i class="bi bi-chevron-left"></i></button>
+            <div class="ll-repo-carousel">
+                @foreach (var r in knnRecommendations)
+                {
+                    var pct = GetRatingPercent(r.Rating);
+                    <a href="javascript:void(0)" class="ll-repo-card" onclick="openPreviewModal(@r.Id)">
+                        <div class="ll-repo-card-thumb" style="@GetThumbnailGradient(r.FileFormat)">
+                            <i class="bi @GetThumbnailIcon(r.FileFormat)"></i>
+                            <span class="ll-repo-card-format">@r.FileFormat</span>
+                            <span class="ll-repo-card-page-fold"></span>
+                        </div>
+                        <div class="ll-repo-card-body">
+                            <h3 class="ll-repo-card-title">@r.Title</h3>
+                            <p class="ll-repo-card-author">Added by @r.Uploader</p>
+                            @if (r.Rating > 0)
+                            {
+                            <div class="ll-repo-card-rating">
+                                <div class="ll-repo-rating-bar">
+                                    <div class="ll-repo-rating-fill" style="width: @(pct)%"></div>
+                                </div>
+                                <span class="ll-repo-rating-text">@(pct)% (@r.RatingCount)</span>
+                            </div>
+                            }
+                            else
+                            {
+                            <div class="ll-repo-card-rating">
+                                <span class="ll-repo-rating-text text-muted">No ratings yet</span>
+                            </div>
+                            }
+                        </div>
+                    </a>
+                }
+            </div>
+            <button class="ll-repo-carousel-arrow ll-repo-arrow-right" aria-label="Scroll right"><i class="bi bi-chevron-right"></i></button>
+        </div>
+    </div>
+    }
+
+    <!-- Recently Added Carousel -->
+    @if (recentResources.Any())
+    {
+    <div class="ll-repo-section">
+        <div class="ll-repo-section-header">
+            <div class="ll-repo-section-title">
+                <i class="bi bi-clock-history"></i>
+                <h2>Recently Added</h2>
+            </div>
+            <a href="@Url.Action("Repository", "Home", new { sort = "recent", subject = "", search = "a" })" class="ll-repo-view-more">
+                View More <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+        <div class="ll-repo-carousel-wrap">
+            <button class="ll-repo-carousel-arrow ll-repo-arrow-left" aria-label="Scroll left"><i class="bi bi-chevron-left"></i></button>
+            <div class="ll-repo-carousel">
+                @foreach (var r in recentResources)
+                {
+                    var pct = GetRatingPercent(r.Rating);
+                    <a href="javascript:void(0)" class="ll-repo-card" onclick="openPreviewModal(@r.Id)">
+                        <div class="ll-repo-card-thumb" style="@GetThumbnailGradient(r.FileFormat)">
+                            <i class="bi @GetThumbnailIcon(r.FileFormat)"></i>
+                            <span class="ll-repo-card-format">@r.FileFormat</span>
+                            <span class="ll-repo-card-page-fold"></span>
+                        </div>
+                        <div class="ll-repo-card-body">
+                            <h3 class="ll-repo-card-title">@r.Title</h3>
+                            <p class="ll-repo-card-author">Added by @r.Uploader</p>
+                            @if (r.Rating > 0)
+                            {
+                            <div class="ll-repo-card-rating">
+                                <div class="ll-repo-rating-bar">
+                                    <div class="ll-repo-rating-fill" style="width: @(pct)%"></div>
+                                </div>
+                                <span class="ll-repo-rating-text">@(pct)% (@r.RatingCount)</span>
+                            </div>
+                            }
+                            else
+                            {
+                            <div class="ll-repo-card-rating">
+                                <span class="ll-repo-rating-text text-muted">No ratings yet</span>
+                            </div>
+                            }
+                        </div>
+                    </a>
+                }
+            </div>
+            <button class="ll-repo-carousel-arrow ll-repo-arrow-right" aria-label="Scroll right"><i class="bi bi-chevron-right"></i></button>
+        </div>
+    </div>
+    }
+
+    <!-- Subject Carousels -->
+    @foreach (var group in subjectGroups)
+    {
+        string groupSubject = group.Subject;
+        var groupResources = group.Resources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
+        if (!groupResources.Any()) { continue; }
+
+    <div class="ll-repo-section">
+        <div class="ll-repo-section-header">
+            <div class="ll-repo-section-title">
+                <i class="bi @GetSubjectIcon(groupSubject)"></i>
+                <h2>Trending in @groupSubject</h2>
+            </div>
+            <a href="@Url.Action("Repository", "Home", new { subject = groupSubject })" class="ll-repo-view-more">
+                View More <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+        <div class="ll-repo-carousel-wrap">
+            <button class="ll-repo-carousel-arrow ll-repo-arrow-left" aria-label="Scroll left"><i class="bi bi-chevron-left"></i></button>
+            <div class="ll-repo-carousel">
+                @foreach (var r in groupResources)
+                {
+                    var pct = GetRatingPercent(r.Rating);
+                    <a href="javascript:void(0)" class="ll-repo-card" onclick="openPreviewModal(@r.Id)">
+                        <div class="ll-repo-card-thumb" style="@GetThumbnailGradient(r.FileFormat)">
+                            <i class="bi @GetThumbnailIcon(r.FileFormat)"></i>
+                            <span class="ll-repo-card-format">@r.FileFormat</span>
+                            <span class="ll-repo-card-page-fold"></span>
+                        </div>
+                        <div class="ll-repo-card-body">
+                            <h3 class="ll-repo-card-title">@r.Title</h3>
+                            <p class="ll-repo-card-author">Added by @r.Uploader</p>
+                            @if (r.Rating > 0)
+                            {
+                            <div class="ll-repo-card-rating">
+                                <div class="ll-repo-rating-bar">
+                                    <div class="ll-repo-rating-fill" style="width: @(pct)%"></div>
+                                </div>
+                                <span class="ll-repo-rating-text">@(pct)% (@r.RatingCount)</span>
+                            </div>
+                            }
+                            else
+                            {
+                            <div class="ll-repo-card-rating">
+                                <span class="ll-repo-rating-text text-muted">No ratings yet</span>
+                            </div>
+                            }
+                        </div>
+                    </a>
+                }
+            </div>
+            <button class="ll-repo-carousel-arrow ll-repo-arrow-right" aria-label="Scroll right"><i class="bi bi-chevron-right"></i></button>
+        </div>
+    </div>
+    }
+
+    @if (!recentResources.Any() && !subjectGroups.Any())
+    {
+    <div class="text-center py-5">
+        <i class="bi bi-collection display-3 text-muted d-block mb-3"></i>
+        <h5 class="text-muted">No resources available yet</h5>
+        <p class="text-muted mb-3">Be the first to contribute a resource to the repository.</p>
+        @if (canUpload)
+        {
+        <a href="@Url.Action("Upload", "Home")" class="ll-btn ll-btn-primary"><i class="bi bi-cloud-arrow-up"></i> Upload Resource</a>
+        }
+    </div>
+    }
+}
+else
+{
+    <!-- ═══════════════  FILTER MODE: Grid / List with pagination  ═══════════════ -->
+
+    <!-- Results Info + Sort + View Toggle -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+        <p class="text-muted mb-0">
+            @if (ViewBag.Pagination != null)
+            {
+                var p = ViewBag.Pagination;
+                <text>Showing <strong>@resources.Count</strong> of <strong>@((int)p.TotalCount)</strong> resources</text>
+            }
+        </p>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="text-muted small d-none d-sm-inline">Sort:</span>
+            <select class="ll-form-control ll-form-select" style="width: auto; min-width: 150px;" id="sortSelect"
+                    onchange="document.getElementById('sortInput').value=this.value;document.getElementById('repoFilterForm').submit();">
+                @{ var sortOptions = new[] { ("recent","Most Recent"), ("popular","Most Popular"), ("downloads","Most Downloaded"), ("rating","Highest Rated"), ("title","Title A-Z") }; }
+                @foreach (var (val, label) in sortOptions)
+                {
+                    if (currentSort == val)
+                    {
+                        <option value="@val" selected="selected">@label</option>
+                    }
+                    else
+                    {
+                        <option value="@val">@label</option>
+                    }
+                }
+            </select>
+            <div class="btn-group">
+                <button class="ll-btn ll-btn-outline ll-btn-sm active" title="Grid View" id="gridViewBtn"><i class="bi bi-grid-3x3-gap"></i></button>
+                <button class="ll-btn ll-btn-outline ll-btn-sm" title="List View" id="listViewBtn"><i class="bi bi-list-ul"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Grid -->
+    <div class="row g-4 mb-4" id="resourceGrid">
+        @if (!resources.Any())
+        {
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="bi bi-search display-3 text-muted d-block mb-3"></i>
+                <h5 class="text-muted">No resources found</h5>
+                <p class="text-muted mb-3">Try adjusting your search or filter criteria.</p>
+                <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline">Clear all filters</a>
+            </div>
+        </div>
+        }
+        @foreach (var resource in resources)
+        {
+        <div class="col-sm-6 col-lg-4 col-xl-3 col-xxl-2 resource-item">
+            <a href="javascript:void(0)" class="ll-resource-card-link" onclick="openPreviewModal(@resource.Id)">
+                <div class="ll-resource-card">
+                    <div class="ll-resource-thumbnail" style="@GetThumbnailGradient(resource.FileFormat)">
+                        <i class="bi @GetThumbnailIcon(resource.FileFormat)"></i>
+                        @if (!string.IsNullOrEmpty(resource.FileFormat))
+                        {
+                        <span class="ll-resource-type">@resource.FileFormat</span>
+                        }
+                    </div>
+                    <div class="ll-resource-content">
+                        <h5 class="ll-resource-title">@resource.Title</h5>
+                        <p class="text-muted small mb-2">Added by @resource.Uploader</p>
+                        <div class="ll-resource-meta">
+                            <span><i class="bi bi-download"></i> @resource.DownloadCount.ToString("N0")</span>
+                            <span><i class="bi bi-eye"></i> @resource.ViewCount.ToString("N0")</span>
+                            @if (resource.Rating > 0)
+                            {
+                            <span><i class="bi bi-star-fill text-warning"></i> @resource.Rating.ToString("0.0")</span>
+                            }
+                        </div>
+                        <div class="ll-resource-tags">
+                            <span class="ll-tag">@resource.Subject</span>
+                            <span class="ll-tag">@resource.GradeLevel</span>
+                        </div>
+                    </div>
+                </div>
             </a>
         </div>
         }
     </div>
-</div>
 
-<!-- Search and Filter Bar -->
-<div class="ll-card mb-4" id="repoFilters">
-    <div class="ll-card-body">
-        <div class="row g-3 align-items-center">
-            <div class="col-lg-5">
-                <div class="position-relative">
-                    <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
-                    <input type="text" class="ll-form-control ps-5" id="repoSearchInput" placeholder="Search resources by title, subject, or keyword...">
-                </div>
-            </div>
-            <div class="col-lg-2">
-                <select class="ll-form-control ll-form-select" id="subjectFilter">
-                    <option value="">All Subjects</option>
-                    <option>Mathematics</option>
-                    <option>Science</option>
-                    <option>English</option>
-                    <option>Filipino</option>
-                    <option>History</option>
-                    <option>MAPEH</option>
-                    <option>TLE</option>
-                </select>
-            </div>
-            <div class="col-lg-2">
-                <select class="ll-form-control ll-form-select" id="gradeFilter">
-                    <option value="">All Grades</option>
-                    <option>Grade 7</option>
-                    <option>Grade 8</option>
-                    <option>Grade 9</option>
-                    <option>Grade 10</option>
-                </select>
-            </div>
-            <div class="col-lg-2">
-                <select class="ll-form-control ll-form-select" id="typeFilter">
-                    <option value="">All Types</option>
-                    <option>PDF</option>
-                    <option>DOCX</option>
-                    <option>PPTX</option>
-                    <option>XLSX</option>
-                </select>
-            </div>
-            <div class="col-lg-1">
-                <button class="ll-btn ll-btn-primary w-100" id="searchBtn">
-                    <i class="bi bi-search"></i>
+    <!-- Resource Table (List View) -->
+    <div class="ll-card mb-4 d-none" id="resourceTable">
+        <div class="table-responsive">
+            <table class="ll-table w-100">
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">Title</th>
+                        <th>Subject</th>
+                        <th>Grade</th>
+                        <th>Format</th>
+                        <th>Downloads</th>
+                        <th>Views</th>
+                        <th>Rating</th>
+                        <th>Date</th>
+                        <th style="width: 60px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var resource in resources)
+                    {
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="ll-table-format-icon" style="@GetThumbnailGradient(resource.FileFormat)">
+                                    <i class="bi @GetThumbnailIcon(resource.FileFormat)"></i>
+                                </div>
+                                <div>
+                                    <a href="javascript:void(0)" class="ll-table-title-link" onclick="openPreviewModal(@resource.Id)">@resource.Title</a>
+                                    <div class="ll-table-uploader">by @resource.Uploader</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="ll-tag">@resource.Subject</span></td>
+                        <td><span class="ll-tag">@resource.GradeLevel</span></td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(resource.FileFormat))
+                            {
+                            <span class="ll-table-format-badge" style="@GetThumbnailGradient(resource.FileFormat)">@resource.FileFormat</span>
+                            }
+                        </td>
+                        <td><i class="bi bi-download text-muted me-1"></i> @resource.DownloadCount.ToString("N0")</td>
+                        <td><i class="bi bi-eye text-muted me-1"></i> @resource.ViewCount.ToString("N0")</td>
+                        <td>
+                            @if (resource.Rating > 0)
+                            {
+                            <i class="bi bi-star-fill text-warning me-1"></i> @resource.Rating.ToString("0.0")
+                            }
+                            else
+                            {
+                            <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td class="text-muted">@resource.CreatedAt.ToString("MMM dd")</td>
+                        <td>
+                            <a href="javascript:void(0)" class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" title="View" onclick="openPreviewModal(@resource.Id)">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    @await Html.PartialAsync("_Pagination")
+}
+
+<!-- ═══════════ RESOURCE PREVIEW MODAL (Scribd-style) ═══════════ -->
+<div class="ll-preview-overlay" id="previewOverlay" style="display:none;">
+    <div class="ll-preview-modal">
+        <!-- Close button -->
+        <button class="ll-preview-close" onclick="closePreviewModal()" title="Close"><i class="bi bi-x-lg"></i></button>
+
+        <!-- Preview strip placeholder -->
+        <div class="ll-preview-strip" id="previewStrip"></div>
+
+        <!-- Content area -->
+        <div class="ll-preview-content">
+            <!-- Stats bar -->
+            <div class="ll-scribd-stats-bar" id="previewStats"></div>
+
+            <!-- Title -->
+            <h1 class="ll-scribd-title" id="previewTitle"></h1>
+
+            <!-- Uploader -->
+            <div class="ll-scribd-uploader" id="previewUploader"></div>
+
+            <!-- Tags -->
+            <div class="ll-scribd-tags" id="previewTags"></div>
+
+            <!-- Description -->
+            <div class="ll-scribd-description ll-scribd-desc-full" id="previewDesc"></div>
+
+            <!-- Action Buttons -->
+            <div class="ll-scribd-actions">
+                <a href="#" class="ll-scribd-read-btn" id="previewReadBtn" style="text-decoration:none;">
+                    <i class="bi bi-book me-2"></i>Read now
+                </a>
+                <button class="ll-scribd-save-btn" id="previewSaveBtn" onclick="previewToggleSave()">
+                    <i class="bi bi-bookmark"></i>
+                    <span>Save for later</span>
                 </button>
             </div>
+
+            <!-- File Info -->
+            <div class="ll-scribd-file-info" id="previewFileInfo"></div>
         </div>
     </div>
 </div>
-
-<!-- Category Filters -->
-<div class="d-flex flex-wrap gap-2 mb-4" id="categoryFilters">
-    <button class="ll-btn ll-btn-primary ll-btn-sm category-btn active" data-subject="">All Resources</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="Mathematics">Mathematics</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="Science">Science</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="English">English</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="Filipino">Filipino</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="History">History</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="MAPEH">MAPEH</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="TLE">TLE</button>
-    <button class="ll-btn ll-btn-outline ll-btn-sm category-btn" data-subject="Values Education">Values Ed</button>
-</div>
-
-<!-- Results Info -->
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-    <p class="text-muted mb-0" id="resultsInfo">Showing <strong>@resources.Count</strong> resources</p>
-    <div class="d-flex align-items-center gap-2 flex-wrap">
-        <span class="text-muted small d-none d-sm-inline">Sort by:</span>
-        <select class="ll-form-control ll-form-select" style="width: auto;" id="sortSelect">
-            <option value="recent">Most Recent</option>
-            <option value="popular">Most Popular</option>
-            <option value="downloads">Most Downloaded</option>
-            <option value="rating">Highest Rated</option>
-            <option value="title">Title A-Z</option>
-        </select>
-        <div class="btn-group">
-            <button class="ll-btn ll-btn-outline ll-btn-sm active" title="Grid View" id="gridViewBtn">
-                <i class="bi bi-grid-3x3-gap"></i>
-            </button>
-            <button class="ll-btn ll-btn-outline ll-btn-sm" title="List View" id="listViewBtn">
-                <i class="bi bi-list-ul"></i>
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Resource Grid -->
-<div class="row g-4 mb-4" id="resourceGrid">
-    @foreach (var resource in resources)
-    {
-    <div class="col-sm-6 col-lg-4 col-xl-3 resource-item" data-subject="@resource.Subject" data-grade="@resource.GradeLevel" data-type="@resource.FileFormat" data-title="@resource.Title.ToLower()" data-views="@resource.ViewCount" data-downloads="@resource.DownloadCount" data-rating="@resource.Rating" data-date="@resource.CreatedAt.ToString("yyyy-MM-dd")">
-        <a href="@Url.Action("ResourceDetail", "Home", new { id = resource.Id })" class="ll-resource-card-link">
-            <div class="ll-resource-card">
-                <div class="ll-resource-thumbnail" style="@GetThumbnailGradient(resource.FileFormat)">
-                    <i class="bi @GetThumbnailIcon(resource.FileFormat)"></i>
-                    @if (!string.IsNullOrEmpty(resource.FileFormat))
-                    {
-                        <span class="ll-resource-type">@resource.FileFormat</span>
-                    }
-                </div>
-                <div class="ll-resource-content">
-                    <h5 class="ll-resource-title">@resource.Title</h5>
-                    <div class="ll-resource-meta">
-                        <span><i class="bi bi-download"></i> @resource.DownloadCount.ToString("N0")</span>
-                        <span><i class="bi bi-eye"></i> @resource.ViewCount.ToString("N0")</span>
-                        @if (resource.Rating > 0)
-                        {
-                        <span><i class="bi bi-star-fill text-warning"></i> @resource.Rating.ToString("0.0")</span>
-                        }
-                    </div>
-                    <div class="ll-resource-tags">
-                        <span class="ll-tag">@resource.Subject</span>
-                        <span class="ll-tag">@resource.GradeLevel</span>
-                        <span class="ll-tag">@resource.ResourceType</span>
-                    </div>
-                </div>
-            </div>
-        </a>
-    </div>
-    }
-</div>
-
-<!-- Resource Table (List View) -->
-<div class="ll-card mb-4 d-none" id="resourceTable">
-    <div class="table-responsive">
-        <table class="ll-table w-100">
-            <thead>
-                <tr>
-                    <th style="width: 30%;">Title</th>
-                    <th>Subject</th>
-                    <th>Grade</th>
-                    <th>Format</th>
-                    <th>Downloads</th>
-                    <th>Views</th>
-                    <th>Rating</th>
-                    <th>Date</th>
-                    <th style="width: 80px;">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var resource in resources)
-                {
-                <tr class="resource-table-row" data-subject="@resource.Subject" data-grade="@resource.GradeLevel" data-type="@resource.FileFormat" data-title="@resource.Title.ToLower()" data-views="@resource.ViewCount" data-downloads="@resource.DownloadCount" data-rating="@resource.Rating" data-date="@resource.CreatedAt.ToString("yyyy-MM-dd")">
-                    <td>
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="ll-table-format-icon" style="@GetThumbnailGradient(resource.FileFormat)">
-                                <i class="bi @GetThumbnailIcon(resource.FileFormat)"></i>
-                            </div>
-                            <div>
-                                <a href="@Url.Action("ResourceDetail", "Home", new { id = resource.Id })" class="ll-table-title-link">@resource.Title</a>
-                                <div class="ll-table-uploader">by @resource.Uploader</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td><span class="ll-tag">@resource.Subject</span></td>
-                    <td><span class="ll-tag">@resource.GradeLevel</span></td>
-                    <td>
-                        @if (!string.IsNullOrEmpty(resource.FileFormat))
-                        {
-                            <span class="ll-table-format-badge" style="@GetThumbnailGradient(resource.FileFormat)">@resource.FileFormat</span>
-                        }
-                        else
-                        {
-                            <span class="text-muted">—</span>
-                        }
-                    </td>
-                    <td><i class="bi bi-download text-muted me-1"></i> @resource.DownloadCount.ToString("N0")</td>
-                    <td><i class="bi bi-eye text-muted me-1"></i> @resource.ViewCount.ToString("N0")</td>
-                    <td>
-                        @if (resource.Rating > 0)
-                        {
-                        <span><i class="bi bi-star-fill text-warning me-1"></i> @resource.Rating.ToString("0.0")</span>
-                        }
-                        else
-                        {
-                        <span class="text-muted">—</span>
-                        }
-                    </td>
-                    <td class="text-muted">@resource.CreatedAt.ToString("MMM dd, yyyy")</td>
-                    <td>
-                        <div class="dropdown">
-                            <button class="ll-btn ll-btn-outline ll-btn-sm ll-btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-three-dots-vertical"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="@Url.Action("ResourceDetail", "Home", new { id = resource.Id })"><i class="bi bi-eye me-2"></i>View</a></li>
-                                <li><a class="dropdown-item" href="#"><i class="bi bi-download me-2"></i>Download</a></li>
-                                <li><a class="dropdown-item" href="#"><i class="bi bi-bookmark me-2"></i>Save for later</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="#"><i class="bi bi-share me-2"></i>Share</a></li>
-                            </ul>
-                        </div>
-                    </td>
-                </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- No Results Message -->
-<div class="text-center py-5 d-none" id="noResults">
-    <i class="bi bi-search fs-1 text-muted"></i>
-    <h5 class="mt-3">No resources found</h5>
-    <p class="text-muted">Try adjusting your search or filter criteria.</p>
-</div>
-
-<!-- Pagination -->
-<nav aria-label="Resource pagination">
-    <ul class="pagination justify-content-center">
-        <li class="page-item disabled">
-            <a class="page-link" href="#" tabindex="-1"><i class="bi bi-chevron-left"></i></a>
-        </li>
-        <li class="page-item active"><a class="page-link" href="#">1</a></li>
-        <li class="page-item"><a class="page-link" href="#"><i class="bi bi-chevron-right"></i></a>
-        </li>
-    </ul>
-</nav>
-
 
 @section Scripts {
 <script>
-    (function() {
-        const searchInput = document.getElementById('repoSearchInput');
-        const subjectFilter = document.getElementById('subjectFilter');
-        const gradeFilter = document.getElementById('gradeFilter');
-        const typeFilter = document.getElementById('typeFilter');
-        const sortSelect = document.getElementById('sortSelect');
-        const resourceItems = document.querySelectorAll('.resource-item');
-        const tableRows = document.querySelectorAll('.resource-table-row');
-        const noResults = document.getElementById('noResults');
-        const resourceGrid = document.getElementById('resourceGrid');
-        const resourceTable = document.getElementById('resourceTable');
-        const resultsInfo = document.getElementById('resultsInfo');
-        const categoryBtns = document.querySelectorAll('.category-btn');
-        let isTableView = false;
+(function() {
+    // ── Grid/List Toggle (filter mode only) ──
+    var gridBtn = document.getElementById('gridViewBtn');
+    var listBtn = document.getElementById('listViewBtn');
+    var grid = document.getElementById('resourceGrid');
+    var table = document.getElementById('resourceTable');
+    if (gridBtn && listBtn && grid && table) {
+        gridBtn.addEventListener('click', function() { this.classList.add('active'); listBtn.classList.remove('active'); grid.classList.remove('d-none'); table.classList.add('d-none'); });
+        listBtn.addEventListener('click', function() { this.classList.add('active'); gridBtn.classList.remove('active'); grid.classList.add('d-none'); table.classList.remove('d-none'); });
+    }
 
-        function filterResources() {
-            const query = searchInput.value.toLowerCase();
-            const subject = subjectFilter.value;
-            const grade = gradeFilter.value;
-            const type = typeFilter.value;
-            let visibleCount = 0;
+    // ── Carousel Scrolling ──
+    document.querySelectorAll('.ll-repo-carousel-wrap').forEach(function(wrap) {
+        var carousel = wrap.querySelector('.ll-repo-carousel');
+        var leftBtn = wrap.querySelector('.ll-repo-arrow-left');
+        var rightBtn = wrap.querySelector('.ll-repo-arrow-right');
+        var scrollAmount = 0;
 
-            // Filter grid cards
-            resourceItems.forEach(item => {
-                const matchSearch = !query || item.dataset.title.includes(query) || item.dataset.subject.toLowerCase().includes(query);
-                const matchSubject = !subject || item.dataset.subject === subject;
-                const matchGrade = !grade || item.dataset.grade === grade;
-                const matchType = !type || item.dataset.type === type;
+        function getScrollStep() {
+            var card = carousel.querySelector('.ll-repo-card');
+            return card ? card.offsetWidth + 16 : 220;
+        }
 
-                if (matchSearch && matchSubject && matchGrade && matchType) {
-                    item.classList.remove('d-none');
-                    visibleCount++;
-                } else {
-                    item.classList.add('d-none');
-                }
-            });
+        function updateArrows() {
+            var sl = carousel.scrollLeft, sw = carousel.scrollWidth, cw = carousel.clientWidth;
+            leftBtn.style.opacity = sl <= 5 ? '0' : '1';
+            leftBtn.style.pointerEvents = sl <= 5 ? 'none' : 'auto';
+            rightBtn.style.opacity = (sl + cw >= sw - 5) ? '0' : '1';
+            rightBtn.style.pointerEvents = (sl + cw >= sw - 5) ? 'none' : 'auto';
+        }
 
-            // Filter table rows
-            tableRows.forEach(row => {
-                const matchSearch = !query || row.dataset.title.includes(query) || row.dataset.subject.toLowerCase().includes(query);
-                const matchSubject = !subject || row.dataset.subject === subject;
-                const matchGrade = !grade || row.dataset.grade === grade;
-                const matchType = !type || row.dataset.type === type;
+        leftBtn.addEventListener('click', function() {
+            carousel.scrollBy({ left: -getScrollStep() * 3, behavior: 'smooth' });
+        });
+        rightBtn.addEventListener('click', function() {
+            carousel.scrollBy({ left: getScrollStep() * 3, behavior: 'smooth' });
+        });
 
-                if (matchSearch && matchSubject && matchGrade && matchType) {
-                    row.classList.remove('d-none');
-                } else {
-                    row.classList.add('d-none');
-                }
-            });
+        carousel.addEventListener('scroll', updateArrows);
+        updateArrows();
 
-            noResults.classList.toggle('d-none', visibleCount > 0);
-            if (isTableView) {
-                resourceGrid.classList.add('d-none');
-                resourceTable.classList.toggle('d-none', visibleCount === 0);
+        // Re-check after images/content load
+        window.addEventListener('load', updateArrows);
+        new ResizeObserver(updateArrows).observe(carousel);
+    });
+})();
+
+// ═══════════ Preview Modal Logic ═══════════
+var _previewId = 0;
+
+function getGradient(fmt) {
+    fmt = (fmt || '').toUpperCase();
+    switch(fmt) {
+        case 'PDF': return 'background:linear-gradient(135deg,#ef4444,#dc2626)';
+        case 'DOCX': case 'DOC': return 'background:linear-gradient(135deg,#3b82f6,#2563eb)';
+        case 'PPTX': case 'PPT': return 'background:linear-gradient(135deg,#f59e0b,#d97706)';
+        case 'XLSX': case 'XLS': return 'background:linear-gradient(135deg,#10b981,#059669)';
+        default: return 'background:linear-gradient(135deg,#64748b,#374151)';
+    }
+}
+
+function getIcon(fmt) {
+    fmt = (fmt || '').toUpperCase();
+    switch(fmt) {
+        case 'PDF': return 'bi-file-earmark-pdf';
+        case 'DOCX': case 'DOC': return 'bi-file-earmark-word';
+        case 'PPTX': case 'PPT': return 'bi-file-earmark-ppt';
+        case 'XLSX': case 'XLS': return 'bi-file-earmark-excel';
+        default: return 'bi-file-earmark';
+    }
+}
+
+async function openPreviewModal(id) {
+    _previewId = id;
+    var overlay = document.getElementById('previewOverlay');
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    // Show loading state
+    document.getElementById('previewTitle').textContent = 'Loading...';
+    document.getElementById('previewStats').innerHTML = '';
+    document.getElementById('previewUploader').innerHTML = '';
+    document.getElementById('previewTags').innerHTML = '';
+    document.getElementById('previewDesc').innerHTML = '';
+    document.getElementById('previewStrip').innerHTML = '';
+    document.getElementById('previewFileInfo').innerHTML = '';
+
+    try {
+        var res = await fetch('@Url.Action("ResourcePreviewApi", "Home")?id=' + id);
+        if (!res.ok) throw new Error('Not found');
+        var d = await res.json();
+
+        // Page strip
+        var stripHtml = '';
+        for (var p = 0; p < 6; p++) {
+            var grad = getGradient(d.fileFormat);
+            var ico = getIcon(d.fileFormat);
+            stripHtml += '<div class="ll-scribd-page-thumb ll-scribd-page-doc">';
+            stripHtml += '<div class="ll-scribd-page-accent" style="' + grad + '"></div>';
+            if (p === 0) {
+                stripHtml += '<div class="ll-scribd-page-title-preview"><div class="ll-scribd-page-badge" style="' + grad + '"><i class="bi ' + ico + '"></i></div><span class="ll-scribd-page-title-text">' + escHtml(d.title) + '</span></div>';
             } else {
-                resourceTable.classList.add('d-none');
-                resourceGrid.classList.toggle('d-none', visibleCount === 0);
+                stripHtml += '<div class="ll-scribd-page-lines">';
+                for (var ln = 0; ln < 4 + (p % 3); ln++) {
+                    stripHtml += '<div class="ll-scribd-line" style="width:' + (55 + (p * ln * 9) % 40) + '%"></div>';
+                }
+                stripHtml += '</div>';
             }
-            resultsInfo.innerHTML = 'Showing <strong>' + visibleCount + '</strong> resources';
+            stripHtml += '<span class="ll-scribd-page-num">' + (p + 1) + '</span></div>';
+        }
+        document.getElementById('previewStrip').innerHTML = stripHtml;
+
+        // Stats
+        var statsHtml = '';
+        if (d.ratingCount > 0) {
+            statsHtml += '<span class="ll-scribd-stat"><i class="bi bi-hand-thumbs-up-fill"></i> ' + d.ratingPct + '% (' + d.ratingCount + ')</span><span class="ll-scribd-dot">&middot;</span>';
+        }
+        statsHtml += '<span class="ll-scribd-stat">' + escHtml(d.formatLabel) + '</span><span class="ll-scribd-dot">&middot;</span>';
+        statsHtml += '<span class="ll-scribd-stat">' + d.viewCount.toLocaleString() + ' views</span>';
+        document.getElementById('previewStats').innerHTML = statsHtml;
+
+        // Title
+        document.getElementById('previewTitle').textContent = d.title;
+
+        // Uploader
+        document.getElementById('previewUploader').innerHTML = 'Uploaded by <strong>' + escHtml(d.uploader) + '</strong>';
+
+        // Tags
+        var tagsHtml = '<span class="ll-scribd-tag">' + escHtml(d.subject) + '</span>';
+        tagsHtml += '<span class="ll-scribd-tag">' + escHtml(d.gradeLevel) + '</span>';
+        if (d.quarter) tagsHtml += '<span class="ll-scribd-tag">' + escHtml(d.quarter) + '</span>';
+        tagsHtml += '<span class="ll-scribd-tag">' + escHtml(d.resourceType) + '</span>';
+        (d.categories || []).forEach(function(c) { tagsHtml += '<span class="ll-scribd-tag ll-scribd-tag-cat"><i class="bi bi-folder me-1"></i>' + escHtml(c) + '</span>'; });
+        (d.tags || []).forEach(function(t) { tagsHtml += '<span class="ll-scribd-tag ll-scribd-tag-hash"><i class="bi bi-hash"></i>' + escHtml(t) + '</span>'; });
+        document.getElementById('previewTags').innerHTML = tagsHtml;
+
+        // Description
+        document.getElementById('previewDesc').innerHTML = d.description || '<em class="text-muted">No description available.</em>';
+
+        // Read now link
+        document.getElementById('previewReadBtn').href = d.detailUrl;
+
+        // Save button state
+        var saveBtn = document.getElementById('previewSaveBtn');
+        if (d.isSaved) {
+            saveBtn.classList.add('active');
+            saveBtn.querySelector('i').className = 'bi bi-bookmark-fill';
+            saveBtn.querySelector('span').textContent = 'Saved';
+        } else {
+            saveBtn.classList.remove('active');
+            saveBtn.querySelector('i').className = 'bi bi-bookmark';
+            saveBtn.querySelector('span').textContent = 'Save for later';
         }
 
-        function sortResources() {
-            const sorted = Array.from(resourceItems).sort((a, b) => {
-                switch (sortSelect.value) {
-                    case 'popular': return parseInt(b.dataset.views) - parseInt(a.dataset.views);
-                    case 'downloads': return parseInt(b.dataset.downloads) - parseInt(a.dataset.downloads);
-                    case 'rating': return parseFloat(b.dataset.rating) - parseFloat(a.dataset.rating);
-                    case 'title': return a.dataset.title.localeCompare(b.dataset.title);
-                    default: return b.dataset.date.localeCompare(a.dataset.date);
-                }
-            });
-            sorted.forEach(item => resourceGrid.appendChild(item));
+        // File info
+        var infoHtml = '<div class="ll-scribd-file-row"><span>Format</span><span>' + escHtml(d.formatLabel) + '</span></div>';
+        infoHtml += '<div class="ll-scribd-file-row"><span>File Size</span><span>' + escHtml(d.fileSize) + '</span></div>';
+        infoHtml += '<div class="ll-scribd-file-row"><span>Downloads</span><span>' + d.downloadCount.toLocaleString() + '</span></div>';
+        infoHtml += '<div class="ll-scribd-file-row"><span>Uploaded</span><span>' + escHtml(d.createdAt) + '</span></div>';
+        document.getElementById('previewFileInfo').innerHTML = infoHtml;
 
-            // Sort table rows too
-            const tbody = resourceTable.querySelector('tbody');
-            const sortedRows = Array.from(tableRows).sort((a, b) => {
-                switch (sortSelect.value) {
-                    case 'popular': return parseInt(b.dataset.views) - parseInt(a.dataset.views);
-                    case 'downloads': return parseInt(b.dataset.downloads) - parseInt(a.dataset.downloads);
-                    case 'rating': return parseFloat(b.dataset.rating) - parseFloat(a.dataset.rating);
-                    case 'title': return a.dataset.title.localeCompare(b.dataset.title);
-                    default: return b.dataset.date.localeCompare(a.dataset.date);
-                }
-            });
-            sortedRows.forEach(row => tbody.appendChild(row));
+        // Animate in
+        setTimeout(function() { overlay.querySelector('.ll-preview-modal').classList.add('ll-preview-visible'); }, 10);
+    } catch(e) {
+        // Fallback: navigate directly
+        window.location.href = '@Url.Action("ResourceDetail", "Home")/' + id;
+    }
+}
+
+function closePreviewModal() {
+    var overlay = document.getElementById('previewOverlay');
+    var modal = overlay.querySelector('.ll-preview-modal');
+    modal.classList.remove('ll-preview-visible');
+    setTimeout(function() {
+        overlay.style.display = 'none';
+        document.body.style.overflow = '';
+    }, 250);
+}
+
+// Close on overlay click
+document.getElementById('previewOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closePreviewModal();
+});
+
+// Close on Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.getElementById('previewOverlay').style.display !== 'none') {
+        closePreviewModal();
+    }
+});
+
+async function previewToggleSave() {
+    if (!_previewId) return;
+    var btn = document.getElementById('previewSaveBtn');
+    btn.disabled = true;
+    try {
+        var formData = new FormData();
+        formData.append('id', _previewId);
+        var res = await fetch('@Url.Action("SaveResource", "Home")', { method: 'POST', body: formData });
+        var data = await res.json();
+        if (data.success) {
+            if (data.isSaved) {
+                btn.classList.add('active');
+                btn.querySelector('i').className = 'bi bi-bookmark-fill';
+                btn.querySelector('span').textContent = 'Saved';
+            } else {
+                btn.classList.remove('active');
+                btn.querySelector('i').className = 'bi bi-bookmark';
+                btn.querySelector('span').textContent = 'Save for later';
+            }
         }
+    } catch(e) { /* ignored */ }
+    btn.disabled = false;
+}
 
-        // Event listeners
-        searchInput.addEventListener('input', filterResources);
-        subjectFilter.addEventListener('change', filterResources);
-        gradeFilter.addEventListener('change', filterResources);
-        typeFilter.addEventListener('change', filterResources);
-        sortSelect.addEventListener('change', () => { sortResources(); filterResources(); });
+function escHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
 
-        // Category button clicks
-        categoryBtns.forEach(btn => {
-            btn.addEventListener('click', function() {
-                categoryBtns.forEach(b => { b.classList.remove('ll-btn-primary', 'active'); b.classList.add('ll-btn-outline'); });
-                this.classList.remove('ll-btn-outline');
-                this.classList.add('ll-btn-primary', 'active');
-                subjectFilter.value = this.dataset.subject;
-                filterResources();
+// ═══════════ Auto-Search on Type ═══════════
+(function() {
+    var form = document.getElementById('repoFilterForm');
+    var searchInput = form ? form.querySelector('input[name="search"]') : null;
+    var filterSelects = form ? form.querySelectorAll('select[name="subject"], select[name="grade"], select[name="type"]') : null;
+    var searchSubmitBtn = form ? form.querySelector('button[type="submit"]') : null;
+    var searchTimeout = null;
+
+    if (!searchInput || !form) return;
+
+    // Debounced search submission
+    function triggerAutoSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+            form.submit();
+        }, 400); // Wait 400ms after user stops typing
+    }
+
+    // Listen to search input
+    searchInput.addEventListener('input', function() {
+        // Only auto-search if there's actual text (at least 1 char) or if field is empty
+        triggerAutoSearch();
+    });
+
+    // Listen to filter select changes
+    if (filterSelects && filterSelects.length > 0) {
+        filterSelects.forEach(function(select) {
+            select.addEventListener('change', function() {
+                form.submit(); // Submit immediately on filter change
             });
         });
+    }
 
-        // Grid/List view toggle
-        document.getElementById('gridViewBtn').addEventListener('click', function() {
-            isTableView = false;
-            this.classList.add('active');
-            document.getElementById('listViewBtn').classList.remove('active');
-            resourceGrid.classList.remove('d-none');
-            resourceTable.classList.add('d-none');
-            filterResources();
-        });
-        document.getElementById('listViewBtn').addEventListener('click', function() {
-            isTableView = true;
-            this.classList.add('active');
-            document.getElementById('gridViewBtn').classList.remove('active');
-            resourceGrid.classList.add('d-none');
-            resourceTable.classList.remove('d-none');
-            filterResources();
-        });
-    })();
+    // Visual feedback: show form is in "auto-search" mode
+    if (searchSubmitBtn) {
+        searchSubmitBtn.title = 'Auto-search enabled: results update as you type';
+        searchSubmitBtn.style.opacity = '0.7';
+    }
+})();
 </script>
 }

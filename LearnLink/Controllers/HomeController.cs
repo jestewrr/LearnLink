@@ -1,11 +1,14 @@
 using System.Diagnostics;
+using System.Security.Claims;
 using LearnLink.Data;
 using LearnLink.Models;
+using LearnLink.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using Resource = LearnLink.Models.Resource;
 
 namespace LearnLink.Controllers
@@ -16,17 +19,26 @@ namespace LearnLink.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWebHostEnvironment _environment;
+        private readonly ISchoolContext _schoolContext;
+        private readonly IRecommendationService _recommendationService;
+        private readonly bool _googleAuthEnabled;
 
         public HomeController(
             ApplicationDbContext context,
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            ISchoolContext schoolContext,
+            GoogleAuthFlag googleAuth,
+            IRecommendationService recommendationService)
         {
             _context = context;
             _signInManager = signInManager;
             _userManager = userManager;
             _environment = environment;
+            _schoolContext = schoolContext;
+            _googleAuthEnabled = googleAuth.IsEnabled;
+            _recommendationService = recommendationService;
         }
 
         // ==================== Helpers ====================
@@ -34,13 +46,68 @@ namespace LearnLink.Controllers
         private async Task<ApplicationUser?> GetCurrentUserAsync()
             => await _userManager.GetUserAsync(User);
 
+        /// <summary>
+        /// Returns the effective school ID for the current user session.
+        /// SuperAdmin sees all if no school is switched; otherwise returns the switched/user school.
+        /// </summary>
+        private int? GetEffectiveSchoolId()
+            => _schoolContext.CurrentSchoolId;
+
+        /// <summary>
+        /// Verifies that the target user belongs to the same school as the current user.
+        /// SuperAdmin bypasses this check when viewing all schools.
+        /// </summary>
+        private bool IsSameSchool(ApplicationUser targetUser)
+        {
+            if (_schoolContext.IsPlatformAdmin && _schoolContext.CurrentSchoolId == null)
+                return true; // Platform admin viewing all schools
+            return targetUser.SchoolId == _schoolContext.CurrentSchoolId;
+        }
+
+        /// <summary>
+        /// Loads the dynamic school settings (subjects, grades, etc.) for the current school context.
+        /// Falls back to defaults if no settings are found.
+        /// </summary>
+        private async Task LoadSchoolSettingsToViewBag()
+        {
+            var schoolId = GetEffectiveSchoolId();
+            SchoolSettings? settings = null;
+
+            if (schoolId.HasValue)
+            {
+                settings = await _context.SchoolSettings
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(s => s.SchoolId == schoolId.Value);
+            }
+
+            ViewBag.SchoolSubjects = settings != null
+                ? JsonSerializer.Deserialize<List<string>>(settings.Subjects) ?? new List<string>()
+                : new List<string> { "Mathematics", "Science", "English", "Filipino", "Araling Panlipunan", "MAPEH", "TLE", "Values Education" };
+
+            ViewBag.SchoolGradeLevels = settings != null
+                ? JsonSerializer.Deserialize<List<string>>(settings.GradeLevels) ?? new List<string>()
+                : new List<string> { "Grade 7", "Grade 8", "Grade 9", "Grade 10" };
+
+            ViewBag.SchoolResourceTypes = settings != null
+                ? JsonSerializer.Deserialize<List<string>>(settings.ResourceTypes) ?? new List<string>()
+                : new List<string> { "Reviewer/Study Guide", "Lesson Plan", "Activity Sheet", "Assessment/Quiz", "Presentation", "Video Tutorial", "Reading Material", "Reference Document" };
+
+            ViewBag.SchoolQuarters = settings != null
+                ? JsonSerializer.Deserialize<List<string>>(settings.Quarters) ?? new List<string>()
+                : new List<string> { "1st Quarter", "2nd Quarter", "3rd Quarter", "4th Quarter", "All Quarters" };
+
+            // School context info for layout
+            ViewBag.CurrentSchoolId = schoolId;
+            ViewBag.CurrentSchoolName = _schoolContext.CurrentSchoolName;
+            ViewBag.IsPlatformAdmin = _schoolContext.IsPlatformAdmin;
+        }
+
         private static string GetIconClass(string format) => format?.ToUpper() switch
         {
             "PDF" => "bi-file-earmark-pdf",
             "DOCX" or "DOC" => "bi-file-earmark-word",
             "PPTX" or "PPT" => "bi-file-earmark-ppt",
             "XLSX" or "XLS" => "bi-file-earmark-excel",
-            "MP4" or "AVI" or "MOV" => "bi-play-circle",
             _ => "bi-file-earmark"
         };
         private static string GetIconColor(string format) => format?.ToUpper() switch
@@ -49,7 +116,6 @@ namespace LearnLink.Controllers
             "DOCX" or "DOC" => "text-primary",
             "PPTX" or "PPT" => "text-warning",
             "XLSX" or "XLS" => "text-success",
-            "MP4" or "AVI" or "MOV" => "text-success",
             _ => "text-muted"
         };
         private static string GetIconBg(string format) => format?.ToUpper() switch
@@ -58,7 +124,6 @@ namespace LearnLink.Controllers
             "DOCX" or "DOC" => "#dbeafe",
             "PPTX" or "PPT" => "#fef3c7",
             "XLSX" or "XLS" => "#dcfce7",
-            "MP4" or "AVI" or "MOV" => "#dcfce7",
             _ => "#e2e8f0"
         };
 
@@ -345,6 +410,7 @@ namespace LearnLink.Controllers
         {
             if (_signInManager.IsSignedIn(User))
                 return RedirectToAction("Dashboard");
+            ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
             return View();
         }
 
@@ -371,9 +437,25 @@ namespace LearnLink.Controllers
                 return View();
             }
 
+            // Check if user's school is active (skip for platform admins with no school)
+            if (user.SchoolId.HasValue)
+            {
+                var school = await _context.Schools.FindAsync(user.SchoolId.Value);
+                if (school != null && !school.IsActive)
+                {
+                    ViewBag.Error = "Your school account is currently inactive. Please contact the platform administrator.";
+                    return View();
+                }
+            }
+
             var result = await _signInManager.PasswordSignInAsync(user, password, rememberMe, false);
             if (result.Succeeded)
             {
+                // Reload the user entity because PasswordSignInAsync may have updated the database
+                // and incremented the ConcurrencyStamp, which causes a DbUpdateConcurrencyException
+                // if we try to update the stale tracked entity.
+                await _context.Entry(user).ReloadAsync();
+
                 // Mark user as active on login
                 user.Status = "Active";
                 await _userManager.UpdateAsync(user);
@@ -388,21 +470,46 @@ namespace LearnLink.Controllers
             return View();
         }
 
-        public IActionResult Register() => View();
+        public async Task<IActionResult> Register()
+        {
+            // Load available schools for the dropdown/info
+            var schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
+            ViewBag.Schools = schools;
+            ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
+            return View();
+        }
 
         [HttpPost]
-        public async Task<IActionResult> Register(string firstName, string lastName, string email, string password, string confirmPassword)
+        public async Task<IActionResult> Register(string firstName, string middleName, string lastName, string email, string password, string confirmPassword, string schoolCode, string gradeOrPosition)
         {
             if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName) ||
                 string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
             {
                 ViewBag.Error = "All fields are required.";
+                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
                 return View();
             }
 
             if (password != confirmPassword)
             {
                 ViewBag.Error = "Passwords do not match.";
+                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
+                return View();
+            }
+
+            if (string.IsNullOrWhiteSpace(schoolCode))
+            {
+                ViewBag.Error = "Please enter your school code.";
+                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
+                return View();
+            }
+
+            // Validate school code
+            var school = await _context.Schools.FirstOrDefaultAsync(s => s.Code == schoolCode.Trim().ToUpper() && s.IsActive);
+            if (school == null)
+            {
+                ViewBag.Error = "Invalid school code. Please check with your school administrator for the correct code.";
+                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
                 return View();
             }
 
@@ -412,12 +519,15 @@ namespace LearnLink.Controllers
             {
                 UserName = email,
                 Email = email,
-                FirstName = firstName,
-                LastName = lastName,
+                FirstName = firstName.Trim(),
+                MiddleName = string.IsNullOrWhiteSpace(middleName) ? null : middleName.Trim(),
+                LastName = lastName.Trim(),
                 Initials = initials,
+                GradeOrPosition = gradeOrPosition?.Trim() ?? "",
                 AvatarColor = "background: linear-gradient(135deg, #6366f1, #4f46e5)", 
                 Status = "Active",
-                DateCreated = DateTime.Now
+                DateCreated = DateTime.Now,
+                SchoolId = school.SchoolId
             };
 
             var result = await _userManager.CreateAsync(user, password);
@@ -439,6 +549,295 @@ namespace LearnLink.Controllers
             }
 
             ViewBag.Error = string.Join(" ", result.Errors.Select(e => e.Description));
+            return View();
+        }
+
+        // ==================== Google Authentication ====================
+
+        /// <summary>
+        /// Initiates Google Sign-In flow. The returnUrl controls where the user
+        /// lands after completing the profile (Login vs Register).
+        /// </summary>
+        [HttpPost]
+        public IActionResult GoogleLogin(string returnUrl = "/Home/Register")
+        {
+            var redirectUrl = Url.Action("GoogleCallback", "Home", new { returnUrl });
+            var properties = _signInManager.ConfigureExternalAuthenticationProperties("Google", redirectUrl);
+            return new ChallengeResult("Google", properties);
+        }
+
+        /// <summary>
+        /// Google redirects here after the user consents. We check if the Google
+        /// account already has a linked user:
+        ///  - YES → sign them in directly
+        ///  - NO  → redirect to CompleteProfile so they fill in missing details
+        /// </summary>
+        public async Task<IActionResult> GoogleCallback(string? returnUrl)
+        {
+            var info = await _signInManager.GetExternalLoginInfoAsync();
+            if (info == null)
+            {
+                TempData["ErrorMessage"] = "Google sign-in failed. Please try again.";
+                return RedirectToAction("Login");
+            }
+
+            // Try to sign in with existing external login link
+            var signInResult = await _signInManager.ExternalLoginSignInAsync(
+                info.LoginProvider, info.ProviderKey, isPersistent: false);
+
+            if (signInResult.Succeeded)
+            {
+                // Existing user — sign in and redirect
+                var existingUser = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+                if (existingUser != null)
+                {
+                    await _context.Entry(existingUser).ReloadAsync();
+                    existingUser.Status = "Active";
+                    await _userManager.UpdateAsync(existingUser);
+                    await LogActivity(existingUser.Id, "Login", "Google Sign-In");
+
+                    return await _userManager.IsInRoleAsync(existingUser, "Student")
+                        ? RedirectToAction("Repository")
+                        : RedirectToAction("Dashboard");
+                }
+            }
+
+            // New Google user — check if email already exists
+            var email = info.Principal.FindFirstValue(System.Security.Claims.ClaimTypes.Email) ?? "";
+            var googleFirstName = info.Principal.FindFirstValue(System.Security.Claims.ClaimTypes.GivenName) ?? "";
+            var googleLastName = info.Principal.FindFirstValue(System.Security.Claims.ClaimTypes.Surname) ?? "";
+
+            // If a user with this email already exists, require password confirmation before linking
+            var userByEmail = await _userManager.FindByEmailAsync(email);
+            if (userByEmail != null)
+            {
+                // Check if suspended
+                if (userByEmail.Status == "Suspended")
+                {
+                    TempData["ErrorMessage"] = "Your account has been suspended. Please contact the administrator.";
+                    return RedirectToAction("Login");
+                }
+
+                // Store Google info and redirect to password confirmation page
+                TempData["LinkGoogleEmail"] = email;
+                TempData["LinkGoogleProviderKey"] = info.ProviderKey;
+                TempData["LinkGoogleLoginProvider"] = info.LoginProvider;
+                return RedirectToAction("ConfirmLinkGoogle");
+            }
+
+            // Brand-new user — redirect to CompleteProfile to fill in remaining info
+            // Store Google info in TempData so CompleteProfile can pre-fill
+            TempData["GoogleEmail"] = email;
+            TempData["GoogleFirstName"] = googleFirstName;
+            TempData["GoogleLastName"] = googleLastName;
+            TempData["GoogleProviderKey"] = info.ProviderKey;
+            TempData["GoogleLoginProvider"] = info.LoginProvider;
+
+            return RedirectToAction("CompleteProfile");
+        }
+
+        // ==================== Google Account Linking (Password Confirmation) ====================
+
+        /// <summary>
+        /// Shows a password confirmation form when a Google sign-in matches an
+        /// existing email that was registered manually.
+        /// </summary>
+        public IActionResult ConfirmLinkGoogle()
+        {
+            if (TempData.Peek("LinkGoogleEmail") == null)
+                return RedirectToAction("Login");
+
+            ViewBag.LinkEmail = TempData.Peek("LinkGoogleEmail");
+            return View();
+        }
+
+        /// <summary>
+        /// Verifies the user's existing password, then links the Google login
+        /// to their account and signs them in.
+        /// </summary>
+        [HttpPost]
+        public async Task<IActionResult> ConfirmLinkGoogle(string password)
+        {
+            var email = TempData["LinkGoogleEmail"]?.ToString();
+            var providerKey = TempData["LinkGoogleProviderKey"]?.ToString();
+            var loginProvider = TempData["LinkGoogleLoginProvider"]?.ToString();
+
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(providerKey) || string.IsNullOrEmpty(loginProvider))
+            {
+                TempData["ErrorMessage"] = "Session expired. Please try signing in with Google again.";
+                return RedirectToAction("Login");
+            }
+
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                TempData["ErrorMessage"] = "Account not found.";
+                return RedirectToAction("Login");
+            }
+
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                ViewBag.Error = "Please enter your password.";
+                ViewBag.LinkEmail = email;
+                // Re-store TempData for the next attempt
+                TempData["LinkGoogleEmail"] = email;
+                TempData["LinkGoogleProviderKey"] = providerKey;
+                TempData["LinkGoogleLoginProvider"] = loginProvider;
+                return View();
+            }
+
+            // Verify password
+            var passwordCheck = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: false);
+            if (!passwordCheck.Succeeded)
+            {
+                ViewBag.Error = "Incorrect password. Please try again.";
+                ViewBag.LinkEmail = email;
+                TempData["LinkGoogleEmail"] = email;
+                TempData["LinkGoogleProviderKey"] = providerKey;
+                TempData["LinkGoogleLoginProvider"] = loginProvider;
+                return View();
+            }
+
+            // Link Google login and sign in
+            var loginInfo = new UserLoginInfo(loginProvider, providerKey, "Google");
+            await _userManager.AddLoginAsync(user, loginInfo);
+            await _signInManager.SignInAsync(user, isPersistent: false);
+
+            user.Status = "Active";
+            await _userManager.UpdateAsync(user);
+            await LogActivity(user.Id, "Login", "Google Sign-In (linked)");
+
+            TempData["SuccessMessage"] = "Google account linked successfully!";
+            return await _userManager.IsInRoleAsync(user, "Student")
+                ? RedirectToAction("Repository")
+                : RedirectToAction("Dashboard");
+        }
+
+        /// <summary>
+        /// Shows the "Complete your profile" form after Google Sign-In for a new user.
+        /// </summary>
+        public async Task<IActionResult> CompleteProfile()
+        {
+            // If no Google data present, redirect to Register
+            if (TempData.Peek("GoogleEmail") == null)
+                return RedirectToAction("Register");
+
+            ViewBag.GoogleEmail = TempData.Peek("GoogleEmail");
+            ViewBag.GoogleFirstName = TempData.Peek("GoogleFirstName");
+            ViewBag.GoogleLastName = TempData.Peek("GoogleLastName");
+            ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
+            return View();
+        }
+
+        /// <summary>
+        /// Handles the CompleteProfile form submission: creates the user account,
+        /// links the Google login, assigns Student role, and signs them in.
+        /// </summary>
+        [HttpPost]
+        public async Task<IActionResult> CompleteProfile(
+            string firstName, string middleName, string lastName,
+            string email, string password, string confirmPassword,
+            string schoolCode, string gradeOrPosition)
+        {
+            var googleProviderKey = TempData["GoogleProviderKey"]?.ToString();
+            var googleLoginProvider = TempData["GoogleLoginProvider"]?.ToString();
+
+            if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName) ||
+                string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+            {
+                ViewBag.Error = "All fields are required.";
+                ViewBag.GoogleEmail = email;
+                ViewBag.GoogleFirstName = firstName;
+                ViewBag.GoogleLastName = lastName;
+                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
+                // Re-store Google tokens for next POST
+                TempData["GoogleProviderKey"] = googleProviderKey;
+                TempData["GoogleLoginProvider"] = googleLoginProvider;
+                return View();
+            }
+
+            if (password != confirmPassword)
+            {
+                ViewBag.Error = "Passwords do not match.";
+                ViewBag.GoogleEmail = email;
+                ViewBag.GoogleFirstName = firstName;
+                ViewBag.GoogleLastName = lastName;
+                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
+                TempData["GoogleProviderKey"] = googleProviderKey;
+                TempData["GoogleLoginProvider"] = googleLoginProvider;
+                return View();
+            }
+
+            if (string.IsNullOrWhiteSpace(schoolCode))
+            {
+                ViewBag.Error = "Please enter your school code.";
+                ViewBag.GoogleEmail = email;
+                ViewBag.GoogleFirstName = firstName;
+                ViewBag.GoogleLastName = lastName;
+                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
+                TempData["GoogleProviderKey"] = googleProviderKey;
+                TempData["GoogleLoginProvider"] = googleLoginProvider;
+                return View();
+            }
+
+            var school = await _context.Schools.FirstOrDefaultAsync(s => s.Code == schoolCode.Trim().ToUpper() && s.IsActive);
+            if (school == null)
+            {
+                ViewBag.Error = "Invalid school code. Please check with your school administrator.";
+                ViewBag.GoogleEmail = email;
+                ViewBag.GoogleFirstName = firstName;
+                ViewBag.GoogleLastName = lastName;
+                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
+                TempData["GoogleProviderKey"] = googleProviderKey;
+                TempData["GoogleLoginProvider"] = googleLoginProvider;
+                return View();
+            }
+
+            var initials = (firstName.Substring(0, 1) + lastName.Substring(0, 1)).ToUpper();
+
+            var user = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true,
+                FirstName = firstName.Trim(),
+                MiddleName = string.IsNullOrWhiteSpace(middleName) ? null : middleName.Trim(),
+                LastName = lastName.Trim(),
+                Initials = initials,
+                GradeOrPosition = gradeOrPosition?.Trim() ?? "",
+                AvatarColor = "background: linear-gradient(135deg, #6366f1, #4f46e5)",
+                Status = "Active",
+                DateCreated = DateTime.Now,
+                SchoolId = school.SchoolId
+            };
+
+            var result = await _userManager.CreateAsync(user, password);
+            if (result.Succeeded)
+            {
+                // Link Google login if provider info is available
+                if (!string.IsNullOrEmpty(googleProviderKey) && !string.IsNullOrEmpty(googleLoginProvider))
+                {
+                    var loginInfo = new Microsoft.AspNetCore.Identity.UserLoginInfo(
+                        googleLoginProvider, googleProviderKey, "Google");
+                    await _userManager.AddLoginAsync(user, loginInfo);
+                }
+
+                await _userManager.AddToRoleAsync(user, "Student");
+                await LogActivity(user.Id, "Register", "Google Sign-Up");
+
+                if (_signInManager.IsSignedIn(User))
+                    await _signInManager.SignOutAsync();
+
+                await _signInManager.SignInAsync(user, isPersistent: false);
+                TempData["SuccessMessage"] = "Account created successfully! Welcome to LearnLink.";
+                return RedirectToAction("Repository");
+            }
+
+            ViewBag.Error = string.Join(" ", result.Errors.Select(e => e.Description));
+            ViewBag.GoogleEmail = email;
+            ViewBag.GoogleFirstName = firstName;
+            ViewBag.GoogleLastName = lastName;
+            ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
             return View();
         }
 
@@ -554,18 +953,39 @@ namespace LearnLink.Controllers
         [Authorize]
         public async Task<IActionResult> Dashboard()
         {
-            if (User.IsInRole("Contributor") || User.IsInRole("Student"))
+            if (User.IsInRole("Student"))
+                return RedirectToAction("StudentDashboard");
+            if (User.IsInRole("Contributor"))
                 return RedirectToAction("Repository");
 
+            await LoadSchoolSettingsToViewBag();
+            var schoolId = GetEffectiveSchoolId();
+
+            // Resources are auto-filtered by global query filter
             var resources = await _context.Resources.Include(r => r.User).ToListAsync();
-            var users = await _userManager.Users.ToListAsync();
+
+            // Users need manual filtering since UserManager doesn't use global filters
+            var allUsers = await _userManager.Users.ToListAsync();
+            var users = schoolId.HasValue
+                ? allUsers.Where(u => u.SchoolId == schoolId.Value).ToList()
+                : allUsers;
+
+            // Yesterday snapshots for KPI comparison
+            var yesterday = DateTime.Now.Date; // start of today = end of yesterday
+            var yesterdayResources = resources.Where(r => r.DateUploaded < yesterday).ToList();
+            var yesterdayUsers = users.Where(u => u.DateCreated < yesterday).ToList();
+            var yesterdayDiscussionCount = await _context.Discussions.CountAsync(d => d.DateCreated < yesterday);
 
             ViewBag.Stats = new DashboardStatsViewModel
             {
                 TotalResources = resources.Count,
                 ActiveUsers = users.Count(u => u.Status == "Active"),
                 TotalDownloads = resources.Sum(r => r.DownloadCount),
-                ActiveDiscussions = await _context.Discussions.CountAsync()
+                ActiveDiscussions = await _context.Discussions.CountAsync(),
+                YesterdayResources = yesterdayResources.Count,
+                YesterdayActiveUsers = yesterdayUsers.Count(u => u.Status == "Active"),
+                YesterdayDownloads = yesterdayResources.Sum(r => r.DownloadCount),
+                YesterdayDiscussions = yesterdayDiscussionCount
             };
             ViewBag.RecentResources = resources.Where(r => r.Status == "Published").OrderByDescending(r => r.DateUploaded).Take(5).Select(MapResource).ToList();
             ViewBag.PendingApprovals = resources.Where(r => r.Status == "Pending").OrderBy(r => r.DateUploaded).Select(MapResource).ToList();
@@ -629,16 +1049,388 @@ namespace LearnLink.Controllers
             return dt.ToString("MMM dd, yyyy");
         }
 
-        [Authorize]
-        public async Task<IActionResult> Repository()
+        // ==================== Student Analytics Dashboard ====================
+
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> StudentDashboard()
         {
-            var query = _context.Resources.Include(r => r.User).AsQueryable();
+            await LoadSchoolSettingsToViewBag();
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return RedirectToAction("Login");
+            var userId = currentUser.Id;
 
-            query = query.Where(r => r.Status == "Published");
+            // Reading history
+            var readingHistory = await _context.ReadingHistories
+                .Include(rh => rh.Resource).ThenInclude(r => r!.User)
+                .Where(rh => rh.UserId == userId)
+                .ToListAsync();
 
-            var resources = await query.OrderByDescending(r => r.DateUploaded).ToListAsync();
-            ViewBag.Resources = resources.Select(MapResource).ToList();
+            var resourcesRead = readingHistory.Count;
+            var resourcesCompleted = readingHistory.Count(rh => rh.ProgressStatus == "Completed");
+            var bookmarks = readingHistory.Count(rh => rh.IsBookmarked);
+            var completionPercent = resourcesRead > 0 ? (int)Math.Round((double)resourcesCompleted / resourcesRead * 100) : 0;
+
+            // Lessons submitted
+            var lessonsSubmitted = await _context.LessonsLearned.CountAsync(l => l.UserId == userId);
+
+            // Discussions participated (authored or replied)
+            var discussionAuthored = await _context.Discussions.CountAsync(d => d.UserId == userId);
+            var discussionReplied = await _context.DiscussionPosts.Where(dp => dp.UserId == userId).Select(dp => dp.DiscussionId).Distinct().CountAsync();
+            var discussionsParticipated = discussionAuthored + discussionReplied;
+
+            // Subject progress
+            var subjectColors = new[] { "#4361ee", "#7209b7", "#f72585", "#4cc9f0", "#06d6a0", "#ffd166", "#ef476f", "#118ab2" };
+            var subjectProgress = readingHistory
+                .Where(rh => rh.Resource != null)
+                .GroupBy(rh => rh.Resource!.Subject)
+                .Select((g, i) => new SubjectProgressItem
+                {
+                    Subject = g.Key,
+                    Total = g.Count(),
+                    Completed = g.Count(rh => rh.ProgressStatus == "Completed"),
+                    Color = subjectColors[i % subjectColors.Length]
+                })
+                .OrderByDescending(s => s.Percent)
+                .ToList();
+
+            // Recent reading
+            var recentReading = readingHistory
+                .OrderByDescending(rh => rh.LastAccessed)
+                .Take(5)
+                .Select(rh => new ReadingHistoryViewModel
+                {
+                    ResourceId = rh.ResourceId,
+                    ResourceTitle = rh.Resource?.Title ?? "",
+                    ResourceAuthor = rh.Resource?.User?.FullName ?? "Unknown",
+                    ResourceSubject = rh.Resource?.Subject ?? "",
+                    ResourceGrade = rh.Resource?.GradeLevel ?? "",
+                    ResourceFormat = rh.Resource?.FileFormat ?? "",
+                    Title = rh.Resource?.Title ?? "",
+                    Subject = rh.Resource?.Subject ?? "",
+                    Author = rh.Resource?.User?.FullName ?? "Unknown",
+                    FileFormat = rh.Resource?.FileFormat ?? "",
+                    IconClass = GetIconClass(rh.Resource?.FileFormat ?? ""),
+                    IconColor = GetIconColor(rh.Resource?.FileFormat ?? ""),
+                    IconBg = GetIconBg(rh.Resource?.FileFormat ?? ""),
+                    Progress = rh.ProgressPercent,
+                    ProgressPercent = rh.ProgressPercent,
+                    LastPosition = rh.LastPosition ?? "",
+                    ViewedAt = rh.LastAccessed,
+                    LastAccessedDate = rh.LastAccessed,
+                    CompletedDate = rh.CompletedDate,
+                    IsCompleted = rh.ProgressStatus == "Completed",
+                    IsBookmarked = rh.IsBookmarked,
+                    Status = rh.ProgressStatus
+                })
+                .ToList();
+
+            // Recommended resources — KNN personalized recommendations
+            var readResourceIds = readingHistory.Select(rh => rh.ResourceId).ToHashSet();
+            var recommended = new List<Resource>();
+            try
+            {
+                var recIds = await _recommendationService.GetPersonalizedRecommendationsAsync(userId, 8, GetEffectiveSchoolId());
+                if (recIds.Any())
+                {
+                    var recResources = await _context.Resources
+                        .Include(r => r.User)
+                        .Where(r => recIds.Contains(r.ResourceId) && r.Status == "Published" && !readResourceIds.Contains(r.ResourceId))
+                        .ToListAsync();
+                    // Preserve KNN ranking order
+                    recommended = recIds
+                        .Select(rid => recResources.FirstOrDefault(r => r.ResourceId == rid))
+                        .Where(r => r != null)
+                        .Cast<Resource>()
+                        .ToList();
+                }
+            }
+            catch { /* fallback below */ }
+
+            // Fallback: popular resources if KNN returns nothing
+            if (!recommended.Any())
+            {
+                recommended = await _context.Resources
+                    .Include(r => r.User)
+                    .Where(r => r.Status == "Published" && !readResourceIds.Contains(r.ResourceId))
+                    .OrderByDescending(r => r.DownloadCount + r.ViewCount)
+                    .Take(6)
+                    .ToListAsync();
+            }
+
+            // Streaks (consecutive days with reading activity)
+            var activityDates = readingHistory
+                .Select(rh => rh.LastAccessed.Date)
+                .Distinct()
+                .OrderByDescending(d => d)
+                .ToList();
+
+            int currentStreak = 0, bestStreak = 0, streak = 0;
+            for (int i = 0; i < activityDates.Count; i++)
+            {
+                if (i == 0)
+                {
+                    // Count today/yesterday as start
+                    if ((DateTime.Now.Date - activityDates[i]).TotalDays <= 1)
+                        streak = 1;
+                    else
+                        break;
+                }
+                else if ((activityDates[i - 1] - activityDates[i]).TotalDays == 1)
+                {
+                    streak++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            currentStreak = streak;
+            // Best streak
+            streak = 1;
+            bestStreak = activityDates.Count > 0 ? 1 : 0;
+            for (int i = 1; i < activityDates.Count; i++)
+            {
+                if ((activityDates[i - 1] - activityDates[i]).TotalDays == 1)
+                {
+                    streak++;
+                    bestStreak = Math.Max(bestStreak, streak);
+                }
+                else
+                {
+                    streak = 1;
+                }
+            }
+
+            // Recent activity log
+            var activities = await _context.UserActivityLogs
+                .Include(a => a.User)
+                .Where(a => a.UserId == userId)
+                .OrderByDescending(a => a.ActivityDate)
+                .Take(10)
+                .ToListAsync();
+
+            var recentActivity = activities.Select(a => new ActivityViewModel
+            {
+                User = a.User?.FullName ?? "Unknown",
+                UserInitials = a.User?.Initials ?? "?",
+                UserColor = a.User?.AvatarColor ?? "",
+                Action = a.ActivityType.ToLower() switch
+                {
+                    "upload" => "uploaded",
+                    "comment" => "commented on",
+                    "download" => "downloaded",
+                    "view" => "viewed",
+                    "discussion" => "started discussion",
+                    _ => a.ActivityType
+                },
+                Target = a.TargetTitle,
+                TimeAgo = GetTimeAgo(a.ActivityDate),
+                IconClass = a.ActivityType.ToLower() switch
+                {
+                    "upload" => "bi-cloud-arrow-up",
+                    "comment" => "bi-chat-dots",
+                    "download" => "bi-download",
+                    "view" => "bi-eye",
+                    "discussion" => "bi-chat-square-text",
+                    _ => "bi-activity"
+                },
+                IconColor = a.ActivityType.ToLower() switch
+                {
+                    "upload" => "text-primary",
+                    "comment" => "text-success",
+                    "download" => "text-info",
+                    "view" => "text-secondary",
+                    "discussion" => "text-danger",
+                    _ => "text-muted"
+                }
+            }).ToList();
+
+            // Pinned announcements
+            var schoolId = GetEffectiveSchoolId();
+            var pinnedAnnouncements = await _context.Announcements
+                .Include(a => a.User)
+                .Where(a => a.IsPinned && (a.ExpiresAt == null || a.ExpiresAt > DateTime.Now))
+                .Where(a => !schoolId.HasValue || a.SchoolId == schoolId.Value)
+                .OrderByDescending(a => a.Priority == "Urgent" ? 3 : a.Priority == "Important" ? 2 : 1)
+                .ThenByDescending(a => a.DateCreated)
+                .Take(3)
+                .Select(a => new AnnouncementViewModel
+                {
+                    Id = a.AnnouncementId,
+                    Title = a.Title,
+                    Content = a.Content,
+                    Author = a.User != null ? a.User.FullName : "Unknown",
+                    AuthorInitials = a.User != null ? a.User.Initials : "?",
+                    AuthorColor = a.User != null ? a.User.AvatarColor : "",
+                    IsPinned = a.IsPinned,
+                    Priority = a.Priority,
+                    DateCreated = a.DateCreated
+                })
+                .ToListAsync();
+
+            var model = new StudentDashboardViewModel
+            {
+                ResourcesRead = resourcesRead,
+                ResourcesCompleted = resourcesCompleted,
+                LessonsSubmitted = lessonsSubmitted,
+                DiscussionsParticipated = discussionsParticipated,
+                CompletionPercent = completionPercent,
+                Bookmarks = bookmarks,
+                SubjectProgress = subjectProgress,
+                RecentReading = recentReading,
+                RecommendedResources = recommended.Select(MapResource).ToList(),
+                RecentActivity = recentActivity,
+                CurrentStreak = currentStreak,
+                BestStreak = bestStreak,
+                PinnedAnnouncements = pinnedAnnouncements
+            };
+
+            return View(model);
+        }
+
+        [Authorize]
+        public async Task<IActionResult> Repository(string? search, string? subject, string? grade, string? type, string? sort, int page = 1, int pageSize = 12)
+        {
+            await LoadSchoolSettingsToViewBag();
+            var currentUser = await GetCurrentUserAsync();
+            var baseQuery = _context.Resources.Include(r => r.User).Where(r => r.Status == "Published").AsQueryable();
+
+            // Filter out expired resources
+            baseQuery = baseQuery.Where(r => r.AccessDuration != "Custom" || r.AccessExpiresAt == null || r.AccessExpiresAt > DateTime.Now);
+
+            // Filter by access level for non-admin users
+            if (currentUser != null && !User.IsInRole("SuperAdmin") && !User.IsInRole("Manager"))
+            {
+                // Show: Public, Registered, and Restricted (only if granted)
+                var userId = currentUser.Id;
+                var grantedResourceIds = _context.ResourceAccessGrants
+                    .Where(g => g.UserId == userId)
+                    .Select(g => g.ResourceId);
+
+                baseQuery = baseQuery.Where(r =>
+                    r.UserId == userId ||
+                    r.AccessLevel == "Public" ||
+                    r.AccessLevel == "Registered" ||
+                    (r.AccessLevel == "Restricted" && grantedResourceIds.Contains(r.ResourceId))
+                );
+            }
+
+            bool isFiltered = !string.IsNullOrWhiteSpace(search) || !string.IsNullOrWhiteSpace(subject) ||
+                              !string.IsNullOrWhiteSpace(grade) || !string.IsNullOrWhiteSpace(type);
+
+            // ── Browse Mode (no filters): Group by subject for carousels ──
+            if (!isFiltered)
+            {
+                // KNN personalized recommendations row
+                var knnRecommended = new List<ResourceViewModel>();
+                var currentUserForRec = await GetCurrentUserAsync();
+                if (currentUserForRec != null)
+                {
+                    try
+                    {
+                        var recIds = await _recommendationService.GetPersonalizedRecommendationsAsync(currentUserForRec.Id, 12, GetEffectiveSchoolId());
+                        if (recIds.Any())
+                        {
+                            var recResources = await baseQuery
+                                .Where(r => recIds.Contains(r.ResourceId))
+                                .ToListAsync();
+                            knnRecommended = recIds
+                                .Select(rid => recResources.FirstOrDefault(r => r.ResourceId == rid))
+                                .Where(r => r != null)
+                                .Select(r => MapResource(r!))
+                                .ToList();
+                        }
+                    }
+                    catch { /* fallback to empty */ }
+                }
+                ViewBag.KnnRecommendations = knnRecommended;
+
+                var allSubjects = new List<string> { "Mathematics", "Science", "English", "Filipino", "Araling Panlipunan", "History", "MAPEH", "TLE", "Values Education" };
+                var subjectGroups = new List<dynamic>();
+                foreach (var subj in allSubjects)
+                {
+                    var subjectResources = await baseQuery
+                        .Where(r => r.Subject == subj)
+                        .OrderByDescending(r => r.ViewCount + r.DownloadCount)
+                        .Take(12)
+                        .ToListAsync();
+                    if (subjectResources.Any())
+                    {
+                        subjectGroups.Add(new { Subject = subj, Resources = subjectResources.Select(MapResource).ToList() });
+                    }
+                }
+                ViewBag.BrowseMode = true;
+                ViewBag.SubjectGroups = subjectGroups;
+
+                // Also provide recently added (all subjects) for a top carousel
+                var recentResources = await baseQuery
+                    .OrderByDescending(r => r.DateUploaded)
+                    .Take(12)
+                    .ToListAsync();
+                ViewBag.RecentResources = recentResources.Select(MapResource).ToList();
+            }
+            else
+            {
+                ViewBag.BrowseMode = false;
+            }
+
+            // ── Filtered/Paginated query (always computed for filter mode or as fallback) ──
+            var query = baseQuery;
+
+            // Server-side filters
+            if (!string.IsNullOrWhiteSpace(search))
+                query = query.Where(r => r.Title.Contains(search) || r.Description.Contains(search) || r.Subject.Contains(search));
+            if (!string.IsNullOrWhiteSpace(subject))
+                query = query.Where(r => r.Subject == subject);
+            if (!string.IsNullOrWhiteSpace(grade))
+                query = query.Where(r => r.GradeLevel == grade);
+            if (!string.IsNullOrWhiteSpace(type))
+                query = query.Where(r => r.FileFormat == type);
+
+            // Sort
+            query = sort switch
+            {
+                "popular" => query.OrderByDescending(r => r.ViewCount),
+                "downloads" => query.OrderByDescending(r => r.DownloadCount),
+                "rating" => query.OrderByDescending(r => r.Rating),
+                "title" => query.OrderBy(r => r.Title),
+                _ => query.OrderByDescending(r => r.DateUploaded)
+            };
+
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            ViewBag.Resources = items.Select(MapResource).ToList();
+            ViewBag.CurrentSearch = search ?? "";
+            ViewBag.CurrentSubject = subject ?? "";
+            ViewBag.CurrentGrade = grade ?? "";
+            ViewBag.CurrentType = type ?? "";
+            ViewBag.CurrentSort = sort ?? "recent";
+            ViewBag.TotalResourceCount = await baseQuery.CountAsync();
+            ViewBag.Pagination = new {
+                PageIndex = page,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                TotalCount = totalCount,
+                PageSize = pageSize,
+                HasPreviousPage = page > 1,
+                HasNextPage = page < (int)Math.Ceiling(totalCount / (double)pageSize),
+                StartPage = Math.Max(1, page - 2),
+                EndPage = Math.Min((int)Math.Ceiling(totalCount / (double)pageSize), page + 2),
+                BaseUrl = Url.Action("Repository", "Home"),
+                QueryParams = BuildQueryString(search, subject, grade, type, sort)
+            };
             return View();
+        }
+
+        private string BuildQueryString(string? search, string? subject, string? grade, string? type, string? sort)
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(search)) parts.Add($"search={Uri.EscapeDataString(search)}");
+            if (!string.IsNullOrWhiteSpace(subject)) parts.Add($"subject={Uri.EscapeDataString(subject)}");
+            if (!string.IsNullOrWhiteSpace(grade)) parts.Add($"grade={Uri.EscapeDataString(grade)}");
+            if (!string.IsNullOrWhiteSpace(type)) parts.Add($"type={Uri.EscapeDataString(type)}");
+            if (!string.IsNullOrWhiteSpace(sort)) parts.Add($"sort={Uri.EscapeDataString(sort)}");
+            return parts.Count > 0 ? "?" + string.Join("&", parts) : "";
         }
 
         [HttpPost]
@@ -705,6 +1497,7 @@ namespace LearnLink.Controllers
                 FileSize = file != null ? $"{file.Length / 1024d / 1024d:0.0} MB" : "",
                 Status = isDraft ? "Draft" : "Pending",
                 UserId = currentUser.Id,
+                SchoolId = currentUser.SchoolId,
                 DateUploaded = DateTime.Now
             };
 
@@ -725,10 +1518,48 @@ namespace LearnLink.Controllers
             if (resource == null)
                 return RedirectToAction("Repository");
 
+            var currentUser = await GetCurrentUserAsync();
+
+            // ---- Access Control Enforcement ----
+            bool isOwner = currentUser != null && resource.UserId == currentUser.Id;
+            bool isAdmin = User.IsInRole("SuperAdmin") || User.IsInRole("Manager");
+
+            if (!isOwner && !isAdmin)
+            {
+                // Check access duration expiry
+                if (resource.AccessDuration == "Custom" && resource.AccessExpiresAt.HasValue && resource.AccessExpiresAt.Value < DateTime.Now)
+                {
+                    TempData["ErrorMessage"] = "This resource is no longer accessible. The access period has expired.";
+                    return RedirectToAction("Repository");
+                }
+
+                // Enforce access level
+                if (resource.AccessLevel == "Restricted")
+                {
+                    if (currentUser == null)
+                    {
+                        return RedirectToAction("Login");
+                    }
+                    var hasGrant = await _context.ResourceAccessGrants
+                        .AnyAsync(g => g.ResourceId == id && g.UserId == currentUser.Id);
+                    if (!hasGrant)
+                    {
+                        TempData["ErrorMessage"] = "You do not have permission to access this resource. It is restricted to selected users only.";
+                        return RedirectToAction("Repository");
+                    }
+                }
+                else if (resource.AccessLevel == "Registered")
+                {
+                    if (currentUser == null)
+                    {
+                        return RedirectToAction("Login");
+                    }
+                }
+                // "Public" — allow everyone (handled by [Authorize], but also see PublicResourceDetail below)
+            }
+
             // Increment view count
             resource.ViewCount++;
-            
-            var currentUser = await GetCurrentUserAsync();
             if (currentUser != null)
             {
                 var viewLog = new UserActivityLog
@@ -745,12 +1576,18 @@ namespace LearnLink.Controllers
                 var history = await _context.ReadingHistories.FirstOrDefaultAsync(h => h.UserId == currentUser.Id && h.ResourceId == resource.ResourceId);
                 if (history != null) {
                     history.LastAccessed = DateTime.Now;
+                    // Bump progress to at least 10% when viewing
+                    if (history.ProgressPercent < 10)
+                        history.ProgressPercent = 10;
+                    if (history.ProgressStatus != "Completed")
+                        history.ProgressStatus = "In Progress";
                 } else {
                     _context.ReadingHistories.Add(new ReadingHistory {
                         UserId = currentUser.Id,
                         ResourceId = resource.ResourceId,
                         LastAccessed = DateTime.Now,
-                        ProgressStatus = "In Progress"
+                        ProgressStatus = "In Progress",
+                        ProgressPercent = 10
                     });
                 }
             }
@@ -768,7 +1605,21 @@ namespace LearnLink.Controllers
             // Map LikeCount
             vm.LikeCount = await _context.Likes.CountAsync(l => l.TargetType == "Resource" && l.TargetId == resource.ResourceId);
 
+            // Load tags and categories for this resource
+            vm.Tags = await _context.ResourceTags
+                .Where(rt => rt.ResourceId == resource.ResourceId)
+                .Include(rt => rt.Tag)
+                .Select(rt => rt.Tag!.TagName)
+                .ToListAsync();
+
+            vm.Categories = await _context.ResourceCategoryMaps
+                .Where(m => m.ResourceId == resource.ResourceId)
+                .Include(m => m.Category)
+                .Select(m => m.Category!.CategoryName)
+                .ToListAsync();
+
             ViewBag.Resource = vm;
+            ViewBag.CurrentUserId = currentUser?.Id;
 
             // Local file preview/download
             string localUrl = string.Empty;
@@ -792,6 +1643,17 @@ namespace LearnLink.Controllers
             ViewBag.AllowComments = resource.AllowComments;
             ViewBag.AllowRatings = resource.AllowRatings;
 
+            // Load comments
+            if (resource.AllowComments)
+            {
+                ViewBag.Comments = await _context.ResourceComments
+                    .Where(c => c.ResourceId == resource.ResourceId && c.ParentCommentId == null)
+                    .Include(c => c.User)
+                    .Include(c => c.Replies).ThenInclude(r => r.User)
+                    .OrderByDescending(c => c.DatePosted)
+                    .ToListAsync();
+            }
+
             if (resource.EnableVersionHistory)
             {
                 ViewBag.ResourceVersions = await _context.ResourceVersions
@@ -800,14 +1662,100 @@ namespace LearnLink.Controllers
                     .ToListAsync();
             }
 
-            var relatedResources = await _context.Resources
-                .Include(r => r.User)
-                .Where(r => r.ResourceId != id && r.Subject == resource.Subject && r.Status == "Published")
-                .Take(4)
-                .ToListAsync();
+            var relatedResources = new List<Resource>();
+            try
+            {
+                // KNN-powered similar resources
+                var similarIds = await _recommendationService.GetSimilarResourcesAsync(id, 6, GetEffectiveSchoolId());
+                if (similarIds.Any())
+                {
+                    relatedResources = await _context.Resources
+                        .Include(r => r.User)
+                        .Where(r => similarIds.Contains(r.ResourceId) && r.Status == "Published")
+                        .ToListAsync();
+                    // Preserve KNN ranking order
+                    relatedResources = similarIds
+                        .Select(sid => relatedResources.FirstOrDefault(r => r.ResourceId == sid))
+                        .Where(r => r != null)
+                        .Cast<Resource>()
+                        .ToList();
+                }
+            }
+            catch { /* fallback below */ }
+
+            // Fallback: same-subject resources if KNN returns nothing
+            if (!relatedResources.Any())
+            {
+                relatedResources = await _context.Resources
+                    .Include(r => r.User)
+                    .Where(r => r.ResourceId != id && r.Subject == resource.Subject && r.Status == "Published")
+                    .OrderByDescending(r => r.ViewCount)
+                    .Take(6)
+                    .ToListAsync();
+            }
 
             ViewBag.RelatedResources = relatedResources.Select(MapResource).ToList();
             return View();
+        }
+
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> ResourcePreviewApi(int id)
+        {
+            var resource = await _context.Resources.Include(r => r.User).FirstOrDefaultAsync(r => r.ResourceId == id);
+            if (resource == null) return NotFound();
+
+            var currentUser = await GetCurrentUserAsync();
+
+            var vm = MapResource(resource);
+            if (currentUser != null)
+            {
+                vm.IsLiked = await _context.Likes.AnyAsync(l => l.UserId == currentUser.Id && l.TargetType == "Resource" && l.TargetId == resource.ResourceId);
+                var history = await _context.ReadingHistories.FirstOrDefaultAsync(h => h.UserId == currentUser.Id && h.ResourceId == resource.ResourceId);
+                vm.IsSaved = history?.IsBookmarked ?? false;
+            }
+            vm.LikeCount = await _context.Likes.CountAsync(l => l.TargetType == "Resource" && l.TargetId == resource.ResourceId);
+            vm.Tags = await _context.ResourceTags.Where(rt => rt.ResourceId == resource.ResourceId).Include(rt => rt.Tag).Select(rt => rt.Tag!.TagName).ToListAsync();
+            vm.Categories = await _context.ResourceCategoryMaps.Where(m => m.ResourceId == resource.ResourceId).Include(m => m.Category).Select(m => m.Category!.CategoryName).ToListAsync();
+
+            int ratingPct = vm.Rating > 0 ? (int)Math.Round((vm.Rating / 5.0) * 100) : 0;
+            string formatLabel = (vm.FileFormat?.TrimStart('.').ToUpperInvariant() ?? "") switch
+            {
+                "PDF" => "PDF Document",
+                "DOCX" or "DOC" => "Word Document",
+                "PPTX" or "PPT" => "PowerPoint Presentation",
+                "XLSX" or "XLS" => "Excel Spreadsheet",
+                _ => "Document"
+            };
+
+            return Json(new
+            {
+                id = vm.Id,
+                title = vm.Title,
+                description = vm.Description,
+                subject = vm.Subject,
+                gradeLevel = vm.GradeLevel,
+                quarter = vm.Quarter,
+                resourceType = vm.ResourceType,
+                fileFormat = vm.FileFormat,
+                fileSize = vm.FileSize,
+                viewCount = vm.ViewCount,
+                downloadCount = vm.DownloadCount,
+                rating = vm.Rating,
+                ratingCount = vm.RatingCount,
+                ratingPct = ratingPct,
+                formatLabel = formatLabel,
+                uploader = vm.Uploader,
+                uploaderInitials = vm.UploaderInitials,
+                uploaderColor = vm.UploaderColor,
+                isLiked = vm.IsLiked,
+                isSaved = vm.IsSaved,
+                likeCount = vm.LikeCount,
+                tags = vm.Tags,
+                categories = vm.Categories,
+                createdAt = vm.CreatedAt.ToString("MMM dd, yyyy"),
+                detailUrl = Url.Action("ResourceDetail", "Home", new { id = vm.Id })
+            });
         }
 
         [HttpPost]
@@ -824,8 +1772,11 @@ namespace LearnLink.Controllers
             
             if (existingLike != null)
             {
+                // Unlike — remove the like
+                _context.Likes.Remove(existingLike);
+                await _context.SaveChangesAsync();
                 var currentCount = await _context.Likes.CountAsync(l => l.TargetType == "Resource" && l.TargetId == id);
-                return Json(new { success = true, isLiked = true, count = currentCount });
+                return Json(new { success = true, isLiked = false, count = currentCount });
             }
 
             _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Resource", TargetId = id, CreatedAt = DateTime.Now });
@@ -845,6 +1796,9 @@ namespace LearnLink.Controllers
 
             var resource = await _context.Resources.FindAsync(id);
             if (resource == null) return NotFound();
+
+            if (!resource.AllowComments && !resource.AllowRatings)
+                return Json(new { success = false, message = "Ratings are disabled for this resource." });
 
             if (rating < 1 || rating > 5) return BadRequest();
 
@@ -937,7 +1891,6 @@ namespace LearnLink.Controllers
                 "PPT" => "application/vnd.ms-powerpoint",
                 "XLSX" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "XLS" => "application/vnd.ms-excel",
-                "MP4" => "video/mp4",
                 _ => "application/octet-stream"
             };
         }
@@ -956,8 +1909,31 @@ namespace LearnLink.Controllers
                 return RedirectToAction("Repository");
             }
 
+            bool isOwner = resource.UserId == currentUser.Id;
+            bool isAdmin = User.IsInRole("SuperAdmin") || User.IsInRole("Manager");
+
+            // Check access duration
+            if (!isOwner && !isAdmin && resource.AccessDuration == "Custom" && resource.AccessExpiresAt.HasValue && resource.AccessExpiresAt.Value < DateTime.Now)
+            {
+                if (inline) return NotFound();
+                TempData["ErrorMessage"] = "This resource is no longer accessible. The access period has expired.";
+                return RedirectToAction("Repository");
+            }
+
+            // Check restricted access
+            if (!isOwner && !isAdmin && resource.AccessLevel == "Restricted")
+            {
+                var hasGrant = await _context.ResourceAccessGrants.AnyAsync(g => g.ResourceId == id && g.UserId == currentUser.Id);
+                if (!hasGrant)
+                {
+                    if (inline) return NotFound();
+                    TempData["ErrorMessage"] = "You do not have permission to access this resource.";
+                    return RedirectToAction("Repository");
+                }
+            }
+
             // Policy enforcement: block downloads if the owner disabled them (except for the owner itself)
-            if (!resource.AllowDownloads && resource.UserId != currentUser.Id && !User.IsInRole("SuperAdmin"))
+            if (!resource.AllowDownloads && !isOwner && !isAdmin)
             {
                 if (inline) return NotFound();
                 TempData["ErrorMessage"] = "Downloads are disabled for this resource by the author.";
@@ -983,6 +1959,15 @@ namespace LearnLink.Controllers
                     ActivityDate = DateTime.Now
                 };
                 _context.UserActivityLogs.Add(log);
+
+                // Bump reading progress to 50% on download
+                var dlHistory = await _context.ReadingHistories.FirstOrDefaultAsync(h => h.UserId == currentUser.Id && h.ResourceId == id);
+                if (dlHistory != null && dlHistory.ProgressStatus != "Completed")
+                {
+                    if (dlHistory.ProgressPercent < 50) dlHistory.ProgressPercent = 50;
+                    dlHistory.LastAccessed = DateTime.Now;
+                }
+
                 await _context.SaveChangesAsync();
             }
 
@@ -1012,14 +1997,224 @@ namespace LearnLink.Controllers
             return File(content, "application/octet-stream", downloadName);
         }
 
+        // ==================== Public Download (for anonymous access to Public resources) ====================
+
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> PublicDownload(int id, bool inline = false)
+        {
+            var resource = await _context.Resources.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.ResourceId == id);
+            if (resource == null || resource.Status != "Published" || resource.AccessLevel != "Public")
+                return NotFound();
+
+            if (!resource.AllowDownloads)
+            {
+                if (inline) return NotFound();
+                TempData["ErrorMessage"] = "Downloads are disabled for this resource.";
+                return RedirectToAction("Index");
+            }
+
+            // Check duration
+            if (resource.AccessDuration == "Custom" && resource.AccessExpiresAt.HasValue && resource.AccessExpiresAt.Value < DateTime.Now)
+                return NotFound();
+
+            if (string.IsNullOrEmpty(resource.FilePath))
+                return NotFound();
+
+            var filepath = Path.Combine(_environment.WebRootPath, "uploads", resource.FilePath);
+            if (!System.IO.File.Exists(filepath))
+                return NotFound();
+
+            resource.DownloadCount++;
+            await _context.SaveChangesAsync();
+
+            var content = await System.IO.File.ReadAllBytesAsync(filepath);
+            string contentType = GetContentType(resource.FileFormat);
+            string downloadName = $"{resource.Title}.{resource.FileFormat?.ToLower() ?? "bin"}";
+
+            if (inline)
+            {
+                Response.Headers.Append("Content-Disposition", new System.Net.Mime.ContentDisposition
+                {
+                    FileName = downloadName,
+                    Inline = true
+                }.ToString());
+                return File(content, contentType);
+            }
+
+            return File(content, "application/octet-stream", downloadName);
+        }
+
+        /// <summary>
+        /// Marks a resource as 100% completed in reading history.
+        /// </summary>
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> MarkComplete(int id)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Json(new { success = false });
+
+            var history = await _context.ReadingHistories
+                .FirstOrDefaultAsync(h => h.UserId == currentUser.Id && h.ResourceId == id);
+
+            if (history == null)
+            {
+                history = new ReadingHistory
+                {
+                    UserId = currentUser.Id,
+                    ResourceId = id,
+                    LastAccessed = DateTime.Now,
+                    ProgressStatus = "Completed",
+                    ProgressPercent = 100,
+                    CompletedDate = DateTime.Now
+                };
+                _context.ReadingHistories.Add(history);
+            }
+            else
+            {
+                history.ProgressStatus = "Completed";
+                history.ProgressPercent = 100;
+                history.CompletedDate = DateTime.Now;
+                history.LastAccessed = DateTime.Now;
+            }
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        // ==================== Resource Comments ====================
+
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> PostComment(int resourceId, string content, int? parentCommentId = null)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Json(new { success = false, message = "Not authenticated" });
+
+            if (string.IsNullOrWhiteSpace(content))
+                return Json(new { success = false, message = "Comment cannot be empty" });
+
+            // Check if comments are allowed
+            var resource = await _context.Resources.FindAsync(resourceId);
+            if (resource == null) return Json(new { success = false, message = "Resource not found" });
+            if (!resource.AllowComments) return Json(new { success = false, message = "Comments are disabled for this resource" });
+
+            var comment = new ResourceComment
+            {
+                ResourceId = resourceId,
+                UserId = currentUser.Id,
+                Content = content.Trim(),
+                DatePosted = DateTime.Now,
+                ParentCommentId = parentCommentId
+            };
+            _context.ResourceComments.Add(comment);
+            await _context.SaveChangesAsync();
+
+            await LogActivity(currentUser.Id, "Comment", resource.Title, resource.ResourceId);
+
+            return Json(new
+            {
+                success = true,
+                comment = new
+                {
+                    commentId = comment.CommentId,
+                    content = comment.Content,
+                    datePosted = comment.DatePosted.ToString("MMM dd, yyyy h:mm tt"),
+                    authorName = currentUser.FullName,
+                    authorInitials = currentUser.Initials,
+                    authorColor = currentUser.AvatarColor,
+                    parentCommentId = comment.ParentCommentId
+                }
+            });
+        }
+
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> DeleteComment(int commentId)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Json(new { success = false });
+
+            var comment = await _context.ResourceComments
+                .Include(c => c.Replies)
+                .FirstOrDefaultAsync(c => c.CommentId == commentId);
+
+            if (comment == null) return Json(new { success = false, message = "Comment not found" });
+
+            // Only author, Manager, or SuperAdmin can delete
+            if (comment.UserId != currentUser.Id && !User.IsInRole("SuperAdmin") && !User.IsInRole("Manager"))
+                return Json(new { success = false, message = "Not authorized" });
+
+            // Remove replies first, then the comment
+            _context.ResourceComments.RemoveRange(comment.Replies);
+            _context.ResourceComments.Remove(comment);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> UpdateComment(int resourceId, int commentId, string content)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Json(new { success = false });
+
+            var comment = await _context.ResourceComments
+                .FirstOrDefaultAsync(c => c.CommentId == commentId && c.ResourceId == resourceId);
+
+            if (comment == null) return Json(new { success = false });
+
+            // Only author, Manager, or SuperAdmin can edit
+            if (comment.UserId != currentUser.Id && !User.IsInRole("SuperAdmin") && !User.IsInRole("Manager"))
+                return Json(new { success = false });
+
+            content = content?.Trim() ?? "";
+            if (string.IsNullOrEmpty(content) || content.Length > 2000)
+                return Json(new { success = false });
+
+            comment.Content = content;
+            comment.DateUpdated = DateTime.UtcNow;
+            _context.ResourceComments.Update(comment);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> LikeComment(int commentId)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Json(new { success = false });
+
+            var comment = await _context.ResourceComments
+                .FirstOrDefaultAsync(c => c.CommentId == commentId);
+
+            if (comment == null) return Json(new { success = false });
+
+            // Toggle like - simplified implementation (increments count)
+            // In production, you'd need a CommentLike entity to track which users liked which comments
+            comment.LikeCount = Math.Max(0, comment.LikeCount + 1);
+            _context.ResourceComments.Update(comment);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, count = comment.LikeCount, isLiked = true });
+        }
+
         [AllowAnonymous]
         public async Task<IActionResult> Search(string? q = null)
         {
             if (User.Identity?.IsAuthenticated ?? false)
                 return RedirectToAction("Repository");
 
-            var resources = await _context.Resources.Include(r => r.User)
-                .Where(r => r.Status == "Published")
+            // Only show PUBLIC resources (and not expired) to anonymous users
+            var resources = await _context.Resources
+                .IgnoreQueryFilters()
+                .Include(r => r.User)
+                .Where(r => r.Status == "Published" && r.AccessLevel == "Public")
+                .Where(r => r.AccessDuration != "Custom" || r.AccessExpiresAt == null || r.AccessExpiresAt > DateTime.Now)
                 .OrderByDescending(r => r.DateUploaded)
                 .ToListAsync();
 
@@ -1028,6 +2223,122 @@ namespace LearnLink.Controllers
             ViewBag.AllResources = mapped;
             ViewBag.SearchQuery = q;
             return View("PublicSearch");
+        }
+
+        // ==================== Public Resource Detail (for anonymous access to Public resources) ====================
+
+        [AllowAnonymous]
+        public async Task<IActionResult> PublicResourceDetail(int id)
+        {
+            var resource = await _context.Resources
+                .IgnoreQueryFilters()
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(r => r.ResourceId == id);
+
+            if (resource == null || resource.Status != "Published" || resource.AccessLevel != "Public")
+            {
+                TempData["ErrorMessage"] = "This resource requires sign-in to access.";
+                return RedirectToAction("Login");
+            }
+
+            // Check duration expiry
+            if (resource.AccessDuration == "Custom" && resource.AccessExpiresAt.HasValue && resource.AccessExpiresAt.Value < DateTime.Now)
+            {
+                TempData["ErrorMessage"] = "This resource is no longer accessible. The access period has expired.";
+                return RedirectToAction("Index");
+            }
+
+            // Increment view count
+            resource.ViewCount++;
+            await _context.SaveChangesAsync();
+
+            var vm = MapResource(resource);
+            vm.LikeCount = await _context.Likes.CountAsync(l => l.TargetType == "Resource" && l.TargetId == resource.ResourceId);
+
+            // Load tags and categories
+            vm.Tags = await _context.ResourceTags
+                .Where(rt => rt.ResourceId == resource.ResourceId)
+                .Include(rt => rt.Tag)
+                .Select(rt => rt.Tag!.TagName)
+                .ToListAsync();
+
+            vm.Categories = await _context.ResourceCategoryMaps
+                .Where(m => m.ResourceId == resource.ResourceId)
+                .Include(m => m.Category)
+                .Select(m => m.Category!.CategoryName)
+                .ToListAsync();
+
+            ViewBag.Resource = vm;
+            ViewBag.CurrentUserId = null;
+
+            // Local file preview
+            string localUrl = string.Empty;
+            bool canPreview = false;
+            if (!string.IsNullOrEmpty(resource.FilePath))
+            {
+                localUrl = $"/uploads/{resource.FilePath}";
+                canPreview = true;
+            }
+
+            ViewBag.CloudUrl = localUrl;
+            ViewBag.FileUrl = localUrl;
+            ViewBag.CanPreview = canPreview;
+            ViewBag.AllowDownloads = resource.AllowDownloads;
+            ViewBag.AllowComments = false; // Anonymous users can't comment
+            ViewBag.AllowRatings = false;
+            ViewBag.IsPublicView = true;
+
+            // Load comments (read-only for public)
+            if (resource.AllowComments)
+            {
+                ViewBag.Comments = await _context.ResourceComments
+                    .Where(c => c.ResourceId == resource.ResourceId && c.ParentCommentId == null)
+                    .Include(c => c.User)
+                    .Include(c => c.Replies).ThenInclude(r => r.User)
+                    .OrderByDescending(c => c.DatePosted)
+                    .ToListAsync();
+            }
+
+            if (resource.EnableVersionHistory)
+            {
+                ViewBag.ResourceVersions = await _context.ResourceVersions
+                    .Where(v => v.ResourceId == resource.ResourceId)
+                    .OrderByDescending(v => v.DateUpdated)
+                    .ToListAsync();
+            }
+
+            var relatedResources = new List<Resource>();
+            try
+            {
+                var similarIds = await _recommendationService.GetSimilarResourcesAsync(id, 6);
+                if (similarIds.Any())
+                {
+                    relatedResources = await _context.Resources
+                        .IgnoreQueryFilters()
+                        .Include(r => r.User)
+                        .Where(r => similarIds.Contains(r.ResourceId) && r.Status == "Published" && r.AccessLevel == "Public")
+                        .ToListAsync();
+                    relatedResources = similarIds
+                        .Select(sid => relatedResources.FirstOrDefault(r => r.ResourceId == sid))
+                        .Where(r => r != null)
+                        .Cast<Resource>()
+                        .ToList();
+                }
+            }
+            catch { /* fallback below */ }
+
+            if (!relatedResources.Any())
+            {
+                relatedResources = await _context.Resources
+                    .IgnoreQueryFilters()
+                    .Include(r => r.User)
+                    .Where(r => r.ResourceId != id && r.Subject == resource.Subject && r.Status == "Published" && r.AccessLevel == "Public")
+                    .Take(6)
+                    .ToListAsync();
+            }
+            ViewBag.RelatedResources = relatedResources.Select(MapResource).ToList();
+
+            return View("ResourceDetail");
         }
 
         // ==================== Lessons Learned ====================
@@ -1091,6 +2402,7 @@ namespace LearnLink.Controllers
                 Category = model.Category ?? "",
                 Tags = model.Tags != null ? string.Join(", ", model.Tags) : "",
                 UserId = currentUser.Id,
+                SchoolId = currentUser.SchoolId,
                 ResourceId = resource.ResourceId,
                 Rating = 0,
                 Comment = "",
@@ -1171,10 +2483,14 @@ namespace LearnLink.Controllers
 
             if (existing != null)
             {
-                return Json(new { success = true, likes = lesson.LikeCount, isLiked = true });
+                // Unlike — remove the like and decrement
+                _context.Likes.Remove(existing);
+                lesson.LikeCount = Math.Max(0, lesson.LikeCount - 1);
+                await _context.SaveChangesAsync();
+                return Json(new { success = true, likes = lesson.LikeCount, isLiked = false });
             }
 
-            _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Lesson", TargetId = id });
+            _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Lesson", TargetId = id, CreatedAt = DateTime.Now });
             lesson.LikeCount++;
 
             await _context.SaveChangesAsync();
@@ -1231,10 +2547,33 @@ namespace LearnLink.Controllers
                 .Where(r => r.Status == "Published")
                 .ToListAsync();
 
-            ViewBag.Recommendations = resources.OrderByDescending(r => r.Rating).Take(4).Select(MapResource).ToList();
+            // KNN-powered recommendations for logged-in user
+            var currentUser = await GetCurrentUserAsync();
+            var recommendedList = new List<ResourceViewModel>();
+            if (currentUser != null)
+            {
+                try
+                {
+                    var recIds = await _recommendationService.GetPersonalizedRecommendationsAsync(currentUser.Id, 4, GetEffectiveSchoolId());
+                    if (recIds.Any())
+                    {
+                        var recResources = resources.Where(r => recIds.Contains(r.ResourceId)).ToList();
+                        recommendedList = recIds
+                            .Select(rid => recResources.FirstOrDefault(r => r.ResourceId == rid))
+                            .Where(r => r != null)
+                            .Select(r => MapResource(r!))
+                            .ToList();
+                    }
+                }
+                catch { /* fallback below */ }
+            }
+            if (!recommendedList.Any())
+            {
+                recommendedList = resources.OrderByDescending(r => r.Rating).Take(4).Select(MapResource).ToList();
+            }
+            ViewBag.Recommendations = recommendedList;
             ViewBag.Trending = resources.OrderByDescending(r => r.ViewCount).Take(5).Select(MapResource).ToList();
 
-            var currentUser = await GetCurrentUserAsync();
             if (currentUser != null)
             {
                 var continueReading = await _context.ReadingHistories
@@ -1362,6 +2701,7 @@ namespace LearnLink.Controllers
                 Type = model.Type ?? "Question",
                 Tags = model.Tags != null ? string.Join(", ", model.Tags) : "",
                 UserId = currentUser.Id,
+                SchoolId = currentUser.SchoolId,
                 Status = "Open",
                 DateCreated = DateTime.Now
             };
@@ -1422,10 +2762,14 @@ namespace LearnLink.Controllers
 
             if (existing != null)
             {
-                return Json(new { success = true, likes = discussion.LikeCount, isLiked = true });
+                // Unlike — remove the like and decrement
+                _context.Likes.Remove(existing);
+                discussion.LikeCount = Math.Max(0, discussion.LikeCount - 1);
+                await _context.SaveChangesAsync();
+                return Json(new { success = true, likes = discussion.LikeCount, isLiked = false });
             }
 
-            _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Discussion", TargetId = id });
+            _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Discussion", TargetId = id, CreatedAt = DateTime.Now });
             discussion.LikeCount++;
 
             await _context.SaveChangesAsync();
@@ -1486,10 +2830,14 @@ namespace LearnLink.Controllers
 
             if (existing != null)
             {
-                return Json(new { success = true, likes = reply.LikeCount, isLiked = true });
+                // Unlike — remove the like and decrement
+                _context.Likes.Remove(existing);
+                reply.LikeCount = Math.Max(0, reply.LikeCount - 1);
+                await _context.SaveChangesAsync();
+                return Json(new { success = true, likes = reply.LikeCount, isLiked = false });
             }
 
-            _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Reply", TargetId = id });
+            _context.Likes.Add(new Like { UserId = currentUser.Id, TargetType = "Reply", TargetId = id, CreatedAt = DateTime.Now });
             reply.LikeCount++;
 
             await _context.SaveChangesAsync();
@@ -1541,6 +2889,7 @@ namespace LearnLink.Controllers
         [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
         public async Task<IActionResult> Upload(int? id)
         {
+            await LoadSchoolSettingsToViewBag();
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return RedirectToAction("Login");
 
@@ -1568,13 +2917,41 @@ namespace LearnLink.Controllers
                 .ToListAsync();
 
             ViewBag.RecentUploads = recentUploads.Select(MapResource).ToList();
+
+            // Load all categories for the category picker
+            ViewBag.AllCategories = await _context.ResourceCategories.OrderBy(c => c.CategoryName).ToListAsync();
+
+            // Load existing tags and categories when editing
+            if (resource != null)
+            {
+                var resourceTagNames = await _context.ResourceTags
+                    .Where(rt => rt.ResourceId == resource.ResourceId)
+                    .Include(rt => rt.Tag)
+                    .Select(rt => rt.Tag!.TagName)
+                    .ToListAsync();
+                ViewBag.ExistingTags = string.Join(", ", resourceTagNames);
+
+                ViewBag.ExistingCategoryIds = await _context.ResourceCategoryMaps
+                    .Where(m => m.ResourceId == resource.ResourceId)
+                    .Select(m => m.CategoryId)
+                    .ToListAsync();
+            }
+            else
+            {
+                ViewBag.ExistingTags = "";
+                ViewBag.ExistingCategoryIds = new List<int>();
+            }
+
             return View(resource);
         }
 
         [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
         [HttpPost]
         public async Task<IActionResult> Upload(int? resourceId, string title, string description, string subject,
-            string gradeLevel, string resourceType, string quarter, IFormFile? file, string? versionNotes = null, bool isDraft = false)
+            string gradeLevel, string resourceType, string quarter, IFormFile? file, string? tags = null, int[]? categoryIds = null, string? versionNotes = null, bool isDraft = false,
+            string? accessLevel = null, string? accessDuration = null, DateTime? accessExpiresAt = null,
+            bool allowDownloads = true, bool allowComments = true, bool enableVersionHistory = false,
+            string? restrictedUserIds = null)
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return RedirectToAction("Login");
@@ -1601,6 +2978,7 @@ namespace LearnLink.Controllers
                 resource = new Resource
                 {
                     UserId = currentUser.Id,
+                    SchoolId = currentUser.SchoolId,
                     DateUploaded = DateTime.Now
                 };
                 _context.Resources.Add(resource);
@@ -1614,6 +2992,17 @@ namespace LearnLink.Controllers
             resource.ResourceType = resourceType ?? "";
             resource.Quarter = quarter ?? "";
             resource.Status = isDraft ? "Draft" : "Pending";
+
+            // ---- Policy Settings ----
+            resource.AccessLevel = accessLevel ?? "Registered";
+            resource.AccessDuration = accessDuration ?? "Unlimited";
+            resource.AccessExpiresAt = (accessDuration == "Custom" && accessExpiresAt.HasValue)
+                ? accessExpiresAt.Value
+                : null;
+            resource.AllowDownloads = allowDownloads;
+            resource.AllowComments = allowComments;
+            resource.AllowRatings = allowComments; // ratings follow comments toggle
+            resource.EnableVersionHistory = enableVersionHistory;
 
             // Handle file upload — save local file
             if (file != null && file.Length > 0)
@@ -1673,6 +3062,68 @@ namespace LearnLink.Controllers
                 return RedirectToAction("Upload");
             }
 
+            // --- Process Tags ---
+            var existingTags = _context.ResourceTags.Where(rt => rt.ResourceId == resource.ResourceId);
+            _context.ResourceTags.RemoveRange(existingTags);
+
+            if (!string.IsNullOrWhiteSpace(tags))
+            {
+                var tagNames = tags.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(t => t.Trim())
+                    .Where(t => t.Length > 0)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                foreach (var tagName in tagNames)
+                {
+                    var tag = await _context.Tags.FirstOrDefaultAsync(t => t.TagName.ToLower() == tagName.ToLower());
+                    if (tag == null)
+                    {
+                        tag = new Tag { TagName = tagName };
+                        _context.Tags.Add(tag);
+                        await _context.SaveChangesAsync();
+                    }
+                    _context.ResourceTags.Add(new ResourceTag { ResourceId = resource.ResourceId, TagId = tag.TagId });
+                }
+            }
+
+            // --- Process Categories ---
+            var existingCats = _context.ResourceCategoryMaps.Where(m => m.ResourceId == resource.ResourceId);
+            _context.ResourceCategoryMaps.RemoveRange(existingCats);
+
+            if (categoryIds != null && categoryIds.Length > 0)
+            {
+                foreach (var catId in categoryIds.Distinct())
+                {
+                    _context.ResourceCategoryMaps.Add(new ResourceCategoryMap { ResourceId = resource.ResourceId, CategoryId = catId });
+                }
+            }
+
+            // --- Process Restricted Access Grants ---
+            var existingGrants = _context.ResourceAccessGrants.Where(g => g.ResourceId == resource.ResourceId);
+            _context.ResourceAccessGrants.RemoveRange(existingGrants);
+
+            if (resource.AccessLevel == "Restricted" && !string.IsNullOrWhiteSpace(restrictedUserIds))
+            {
+                var userIds = restrictedUserIds.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(id => id.Trim())
+                    .Where(id => id.Length > 0)
+                    .Distinct()
+                    .ToList();
+
+                foreach (var userId in userIds)
+                {
+                    _context.ResourceAccessGrants.Add(new ResourceAccessGrant
+                    {
+                        ResourceId = resource.ResourceId,
+                        UserId = userId,
+                        GrantedAt = DateTime.Now
+                    });
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
             await LogActivity(currentUser.Id, isNew ? "Upload" : "Edit", resource.Title, resource.ResourceId);
 
             if (isDraft)
@@ -1712,33 +3163,249 @@ namespace LearnLink.Controllers
             return RedirectToAction("MyUploads");
         }
 
+        // ==================== Tags API for Type-Ahead ====================
+
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> SearchTags(string term)
+        {
+            if (string.IsNullOrWhiteSpace(term))
+                return Json(Array.Empty<object>());
+
+            var tags = await _context.Tags
+                .Where(t => t.TagName.Contains(term))
+                .OrderBy(t => t.TagName)
+                .Take(10)
+                .Select(t => new { value = t.TagName })
+                .ToListAsync();
+
+            return Json(tags);
+        }
+
+        // ==================== School Users API (for restricted access modal) ====================
+
         [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
-        public async Task<IActionResult> MyUploads()
+        [HttpGet]
+        public async Task<IActionResult> GetSchoolUsers()
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Unauthorized();
+
+            var schoolId = GetEffectiveSchoolId();
+            var allUsers = await _userManager.Users.ToListAsync();
+
+            var users = schoolId.HasValue
+                ? allUsers.Where(u => u.SchoolId == schoolId.Value && u.Id != currentUser.Id)
+                : allUsers.Where(u => u.Id != currentUser.Id);
+
+            var result = new List<object>();
+            foreach (var u in users.OrderBy(u => u.FullName))
+            {
+                var roles = await _userManager.GetRolesAsync(u);
+                result.Add(new
+                {
+                    userId = u.Id,
+                    fullName = u.FullName,
+                    email = u.Email,
+                    initials = u.Initials,
+                    avatarColor = u.AvatarColor,
+                    role = roles.FirstOrDefault() ?? "Student"
+                });
+            }
+
+            return Json(result);
+        }
+
+        [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
+        [HttpGet]
+        public async Task<IActionResult> GetResourceAccessGrants(int resourceId)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Unauthorized();
+
+            var resource = await _context.Resources.FindAsync(resourceId);
+            if (resource == null) return NotFound();
+            if (resource.UserId != currentUser.Id && !User.IsInRole("SuperAdmin"))
+                return Forbid();
+
+            var grants = await _context.ResourceAccessGrants
+                .Where(g => g.ResourceId == resourceId)
+                .Include(g => g.User)
+                .Select(g => new
+                {
+                    userId = g.UserId,
+                    fullName = g.User!.FullName,
+                    email = g.User.Email,
+                    initials = g.User.Initials,
+                    avatarColor = g.User.AvatarColor
+                })
+                .ToListAsync();
+
+            return Json(grants);
+        }
+
+        // ==================== Batch / Multi-File Upload ====================
+
+        [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
+        [HttpPost]
+        public async Task<IActionResult> BatchUpload(IList<IFormFile> files, string titlePrefix, string subject,
+            string gradeLevel, string resourceType, string quarter, string description, string? tags = null, int[]? categoryIds = null)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Json(new { success = false, message = "Not authenticated." });
+
+            if (files == null || files.Count == 0)
+                return Json(new { success = false, message = "No files selected." });
+
+            var results = new List<object>();
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                foreach (var file in files)
+                {
+                    if (file.Length == 0) continue;
+
+                    var ext = Path.GetExtension(file.FileName).TrimStart('.').ToLower();
+                    var uniqueFileName = Guid.NewGuid().ToString("N") + "." + ext;
+                    var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads");
+                    if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+                    var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                    using (var fs = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(fs);
+                    }
+
+                    var fileTitle = files.Count > 1
+                        ? $"{titlePrefix} - {Path.GetFileNameWithoutExtension(file.FileName)}"
+                        : titlePrefix;
+
+                    var resource = new Resource
+                    {
+                        Title = fileTitle,
+                        Description = description ?? "",
+                        Subject = subject ?? "",
+                        GradeLevel = gradeLevel ?? "",
+                        ResourceType = resourceType ?? "",
+                        Quarter = quarter ?? "",
+                        FilePath = uniqueFileName,
+                        FileFormat = ext.ToUpper(),
+                        FileSize = file.Length < 1024 * 1024
+                            ? $"{file.Length / 1024.0:F1} KB"
+                            : $"{file.Length / (1024.0 * 1024.0):F1} MB",
+                        UserId = currentUser.Id,
+                        SchoolId = currentUser.SchoolId,
+                        DateUploaded = DateTime.Now,
+                        Status = "Pending"
+                    };
+                    _context.Resources.Add(resource);
+                    await _context.SaveChangesAsync();
+
+                    // Tags
+                    if (!string.IsNullOrWhiteSpace(tags))
+                    {
+                        var tagNames = tags.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                            .Select(t => t.Trim()).Where(t => t.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase);
+                        foreach (var tagName in tagNames)
+                        {
+                            var tag = await _context.Tags.FirstOrDefaultAsync(t => t.TagName.ToLower() == tagName.ToLower());
+                            if (tag == null) { tag = new Tag { TagName = tagName }; _context.Tags.Add(tag); await _context.SaveChangesAsync(); }
+                            _context.ResourceTags.Add(new ResourceTag { ResourceId = resource.ResourceId, TagId = tag.TagId });
+                        }
+                    }
+                    // Categories
+                    if (categoryIds != null)
+                    {
+                        foreach (var catId in categoryIds.Distinct())
+                            _context.ResourceCategoryMaps.Add(new ResourceCategoryMap { ResourceId = resource.ResourceId, CategoryId = catId });
+                    }
+                    await _context.SaveChangesAsync();
+
+                    await LogActivity(currentUser.Id, "Upload", resource.Title, resource.ResourceId);
+                    results.Add(new { id = resource.ResourceId, title = resource.Title, status = "Pending" });
+                }
+
+                await transaction.CommitAsync();
+                return Json(new { success = true, count = results.Count, resources = results });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return Json(new { success = false, message = ex.InnerException?.Message ?? ex.Message });
+            }
+        }
+
+        [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
+        public async Task<IActionResult> MyUploads(string? search, string? status, int page = 1, int pageSize = 12)
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return RedirectToAction("Login");
 
-            List<Resource> userResources;
+            IQueryable<Resource> query;
             if (User.IsInRole("SuperAdmin"))
             {
-                userResources = await _context.Resources.Include(r => r.User).ToListAsync();
+                query = _context.Resources.Include(r => r.User);
             }
             else
             {
-                userResources = await _context.Resources
+                query = _context.Resources
                     .Include(r => r.User)
-                    .Where(r => r.UserId == currentUser.Id)
-                    .ToListAsync();
+                    .Where(r => r.UserId == currentUser.Id);
             }
 
-            var uploads = userResources.Select(MapResource).ToList();
-            ViewBag.Uploads = uploads;
-            ViewBag.TotalUploads = uploads.Count;
-            ViewBag.PublishedCount = uploads.Count(r => r.Status == "Published");
-            ViewBag.PendingCount = uploads.Count(r => r.Status == "Pending");
-            ViewBag.DraftCount = uploads.Count(r => r.Status == "Draft");
-            ViewBag.RejectedCount = uploads.Count(r => r.Status == "Rejected");
+            // Filter
+            if (!string.IsNullOrWhiteSpace(search))
+                query = query.Where(r => r.Title.Contains(search) || r.Description.Contains(search));
+            if (!string.IsNullOrWhiteSpace(status))
+                query = query.Where(r => r.Status == status);
+
+            // Stats (before pagination)
+            var allResources = User.IsInRole("SuperAdmin")
+                ? await _context.Resources.ToListAsync()
+                : await _context.Resources.Where(r => r.UserId == currentUser.Id).ToListAsync();
+
+            ViewBag.TotalUploads = allResources.Count;
+            ViewBag.PublishedCount = allResources.Count(r => r.Status == "Published");
+            ViewBag.PendingCount = allResources.Count(r => r.Status == "Pending");
+            ViewBag.DraftCount = allResources.Count(r => r.Status == "Draft");
+            ViewBag.RejectedCount = allResources.Count(r => r.Status == "Rejected");
+
+            var yesterday = DateTime.Now.Date;
+            var yesterdayResources = allResources.Where(r => r.DateUploaded < yesterday).ToList();
+            ViewBag.YesterdayUploads = yesterdayResources.Count;
+            ViewBag.YesterdayPublished = yesterdayResources.Count(r => r.Status == "Published");
+            ViewBag.YesterdayPending = yesterdayResources.Count(r => r.Status == "Pending");
+            ViewBag.YesterdayDrafts = yesterdayResources.Count(r => r.Status == "Draft");
+
+            query = query.OrderByDescending(r => r.DateUploaded);
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+            ViewBag.Uploads = items.Select(MapResource).ToList();
+
+            ViewBag.CurrentSearch = search ?? "";
+            ViewBag.CurrentStatus = status ?? "";
+            ViewBag.Pagination = new {
+                PageIndex = page,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                TotalCount = totalCount,
+                PageSize = pageSize,
+                HasPreviousPage = page > 1,
+                HasNextPage = page < (int)Math.Ceiling(totalCount / (double)pageSize),
+                StartPage = Math.Max(1, page - 2),
+                EndPage = Math.Min((int)Math.Ceiling(totalCount / (double)pageSize), page + 2),
+                BaseUrl = Url.Action("MyUploads", "Home"),
+                QueryParams = BuildMyUploadsQuery(search, status)
+            };
             return View();
+        }
+
+        private string BuildMyUploadsQuery(string? search, string? status)
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(search)) parts.Add($"search={Uri.EscapeDataString(search)}");
+            if (!string.IsNullOrWhiteSpace(status)) parts.Add($"status={Uri.EscapeDataString(status)}");
+            return parts.Count > 0 ? "?" + string.Join("&", parts) : "";
         }
 
         [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
@@ -1867,6 +3534,12 @@ namespace LearnLink.Controllers
             if (resource.UserId != currentUser.Id && !User.IsInRole("SuperAdmin"))
                 return Forbid();
 
+            // Load restricted user IDs for this resource
+            var restrictedUserIds = await _context.ResourceAccessGrants
+                .Where(g => g.ResourceId == id)
+                .Select(g => g.UserId)
+                .ToListAsync();
+
             return Json(new
             {
                 resourceId = resource.ResourceId,
@@ -1878,7 +3551,8 @@ namespace LearnLink.Controllers
                 requireVersionNotes = resource.RequireVersionNotes,
                 allowComments = resource.AllowComments,
                 allowRatings = resource.AllowRatings,
-                moderateComments = resource.ModerateComments
+                moderateComments = resource.ModerateComments,
+                restrictedUserIds = restrictedUserIds
             });
         }
 
@@ -1893,7 +3567,8 @@ namespace LearnLink.Controllers
             bool requireVersionNotes,
             bool allowComments,
             bool allowRatings,
-            bool moderateComments)
+            bool moderateComments,
+            List<string>? restrictedUserIds = null)
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return Unauthorized();
@@ -1914,23 +3589,86 @@ namespace LearnLink.Controllers
             resource.AllowRatings = allowRatings;
             resource.ModerateComments = moderateComments;
 
+            // Handle restricted user access grants
+            if (accessLevel == "Restricted" && restrictedUserIds != null && restrictedUserIds.Any())
+            {
+                // Remove existing grants for this resource
+                var existingGrants = await _context.ResourceAccessGrants
+                    .Where(g => g.ResourceId == resourceId)
+                    .ToListAsync();
+                _context.ResourceAccessGrants.RemoveRange(existingGrants);
+
+                // Add new grants
+                foreach (var userId in restrictedUserIds)
+                {
+                    _context.ResourceAccessGrants.Add(new ResourceAccessGrant
+                    {
+                        ResourceId = resourceId,
+                        UserId = userId,
+                        GrantedAt = DateTime.Now
+                    });
+                }
+            }
+            else if (accessLevel != "Restricted")
+            {
+                // Clear grants if access level is no longer restricted
+                var existingGrants = await _context.ResourceAccessGrants
+                    .Where(g => g.ResourceId == resourceId)
+                    .ToListAsync();
+                _context.ResourceAccessGrants.RemoveRange(existingGrants);
+            }
+
             await _context.SaveChangesAsync();
 
             return Json(new { success = true, message = "Policy settings saved successfully." });
         }
 
-        // ==================== Administration — SuperAdmin ====================
-
-        [Authorize(Roles = "SuperAdmin")]
-        public async Task<IActionResult> Users()
+        [HttpGet]
+        [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
+        public async Task<IActionResult> GetAllUsers()
         {
-            var users = await _userManager.Users.Include(u => u.Department).ToListAsync();
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Unauthorized();
+
+            var schoolId = GetEffectiveSchoolId();
+
+            // Get users from the same school (or all if no school context)
+            var usersQuery = _userManager.Users.AsQueryable();
+            if (schoolId.HasValue)
+                usersQuery = usersQuery.Where(u => u.SchoolId == schoolId.Value);
+
+            var users = await usersQuery
+                .Where(u => u.Id != currentUser.Id) // Exclude current user
+                .OrderBy(u => u.FullName)
+                .Select(u => new
+                {
+                    id = u.Id,
+                    fullName = u.FullName,
+                    userName = u.UserName,
+                    email = u.Email ?? ""
+                })
+                .ToListAsync();
+
+            return Json(users);
+        }
+
+        // ==================== Administration — SuperAdmin & Manager ====================
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        public async Task<IActionResult> Users(string? search, string? role, string? status, int page = 1, int pageSize = 12)
+        {
+            var schoolId = GetEffectiveSchoolId();
+            var allUsers = await _userManager.Users.Include(u => u.Department).ToListAsync();
+            
+            var users = schoolId.HasValue
+                ? allUsers.Where(u => u.SchoolId == schoolId.Value).ToList()
+                : allUsers;
             var userViewModels = new List<UserViewModel>();
 
             foreach (var u in users)
             {
                 var roles = await _userManager.GetRolesAsync(u);
-                var role = roles.FirstOrDefault() ?? "Student";
+                var roleStr = roles.FirstOrDefault() ?? "Student";
                 var resourceCount = await _context.Resources.CountAsync(r => r.UserId == u.Id);
 
                 userViewModels.Add(new UserViewModel
@@ -1939,8 +3677,8 @@ namespace LearnLink.Controllers
                     Email = u.Email ?? "",
                     Initials = u.Initials,
                     AvatarColor = u.AvatarColor,
-                    Role = role,
-                    RoleBadgeClass = GetRoleBadge(role),
+                    Role = roleStr,
+                    RoleBadgeClass = GetRoleBadge(roleStr),
                     GradeOrPosition = u.GradeOrPosition,
                     Status = u.Status,
                     StatusBadgeClass = GetStatusBadge(u.Status),
@@ -1952,15 +3690,60 @@ namespace LearnLink.Controllers
                 });
             }
 
-            ViewBag.UserList = userViewModels;
+            // Filter
+            var filtered = userViewModels.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(search))
+                filtered = filtered.Where(u => u.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || u.Email.Contains(search, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(role))
+                filtered = filtered.Where(u => u.Role == role);
+            if (!string.IsNullOrWhiteSpace(status))
+                filtered = filtered.Where(u => u.Status == status);
+
+            var filteredList = filtered.ToList();
+            var totalCount = filteredList.Count;
+            var pagedUsers = filteredList.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            ViewBag.UserList = pagedUsers;
             ViewBag.TotalUsers = userViewModels.Count;
             ViewBag.ActiveCount = userViewModels.Count(u => u.Status == "Active");
             ViewBag.ContributorCount = userViewModels.Count(u => u.Role == "Contributor");
             ViewBag.ManagerCount = userViewModels.Count(u => u.Role == "Manager");
+
+            var yesterday = DateTime.Now.Date;
+            var yesterdayUsers = userViewModels.Where(u => u.JoinedAt < yesterday).ToList();
+            ViewBag.YesterdayTotalUsers = yesterdayUsers.Count;
+            ViewBag.YesterdayActiveCount = yesterdayUsers.Count(u => u.Status == "Active");
+            ViewBag.YesterdayContributorCount = yesterdayUsers.Count(u => u.Role == "Contributor");
+            ViewBag.YesterdayManagerCount = yesterdayUsers.Count(u => u.Role == "Manager");
+
+            ViewBag.CurrentSearch = search ?? "";
+            ViewBag.CurrentRole = role ?? "";
+            ViewBag.CurrentStatusFilter = status ?? "";
+            ViewBag.Pagination = new {
+                PageIndex = page,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                TotalCount = totalCount,
+                PageSize = pageSize,
+                HasPreviousPage = page > 1,
+                HasNextPage = page < (int)Math.Ceiling(totalCount / (double)pageSize),
+                StartPage = Math.Max(1, page - 2),
+                EndPage = Math.Min((int)Math.Ceiling(totalCount / (double)pageSize), page + 2),
+                BaseUrl = Url.Action("Users", "Home"),
+                QueryParams = BuildUsersQuery(search, role, status)
+            };
             return View();
         }
 
-        [Authorize(Roles = "SuperAdmin")]
+        private string BuildUsersQuery(string? search, string? role, string? status)
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(search)) parts.Add($"search={Uri.EscapeDataString(search)}");
+            if (!string.IsNullOrWhiteSpace(role)) parts.Add($"role={Uri.EscapeDataString(role)}");
+            if (!string.IsNullOrWhiteSpace(status)) parts.Add($"status={Uri.EscapeDataString(status)}");
+            return parts.Count > 0 ? "?" + string.Join("&", parts) : "";
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
         public async Task<IActionResult> PostAddUser(UserViewModel model)
         {
@@ -1970,10 +3753,22 @@ namespace LearnLink.Controllers
                 return RedirectToAction("Users");
             }
 
+            var currentUser = await GetCurrentUserAsync();
             var names = model.Name.Split(' ', 2);
             var firstName = names[0];
             var lastName = names.Length > 1 ? names[1] : "";
             var initials = model.Name.Length >= 2 ? model.Name.Substring(0, 2).ToUpper() : "U";
+
+            // Manager can only add users to their own school; SuperAdmin uses effective school
+            var targetSchoolId = User.IsInRole("Manager") ? currentUser?.SchoolId : GetEffectiveSchoolId();
+
+            // Manager cannot assign SuperAdmin role
+            var role = model.Role ?? "Student";
+            if (User.IsInRole("Manager") && !User.IsInRole("SuperAdmin") && role == "SuperAdmin")
+            {
+                TempData["ErrorMessage"] = "Managers cannot assign the SuperAdmin role.";
+                return RedirectToAction("Users");
+            }
 
             var user = new ApplicationUser
             {
@@ -1987,14 +3782,14 @@ namespace LearnLink.Controllers
                 AvatarColor = "background: linear-gradient(135deg, #6366f1, #4f46e5)",
                 Status = "Active",
                 DateCreated = DateTime.Now,
-                DepartmentId = null
+                DepartmentId = null,
+                SchoolId = targetSchoolId
             };
 
             var password = "Temp123!";
             var result = await _userManager.CreateAsync(user, password);
             if (result.Succeeded)
             {
-                var role = model.Role ?? "Student";
                 await _userManager.AddToRoleAsync(user, role);
                 TempData["SuccessMessage"] = $"{model.Name} has been added successfully! (Temporary password: {password})";
             }
@@ -2006,11 +3801,14 @@ namespace LearnLink.Controllers
             return RedirectToAction("Users");
         }
 
-        [Authorize(Roles = "SuperAdmin")]
+        [Authorize(Roles = "SuperAdmin,Manager")]
         public async Task<IActionResult> UserDetails(string email)
         {
             var user = await _userManager.Users.Include(u => u.Department).FirstOrDefaultAsync(u => u.Email == email);
             if (user == null) return RedirectToAction("Users");
+
+            // School-scoping guard
+            if (!IsSameSchool(user)) return RedirectToAction("Users");
 
             var roles = await _userManager.GetRolesAsync(user);
             var role = roles.FirstOrDefault() ?? "Student";
@@ -2060,12 +3858,12 @@ namespace LearnLink.Controllers
             return View();
         }
 
-        [Authorize(Roles = "SuperAdmin")]
+        [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
         public async Task<IActionResult> EditUser(string email, string name, string grade)
         {
             var user = await _userManager.FindByEmailAsync(email);
-            if (user != null)
+            if (user != null && IsSameSchool(user))
             {
                 var names = name.Split(' ', 2);
                 user.FirstName = names[0];
@@ -2078,13 +3876,19 @@ namespace LearnLink.Controllers
             return RedirectToAction("Users");
         }
 
-        [Authorize(Roles = "SuperAdmin")]
+        [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
         public async Task<IActionResult> ChangeRole(string email, string role)
         {
             var user = await _userManager.FindByEmailAsync(email);
-            if (user != null)
+            if (user != null && IsSameSchool(user))
             {
+                // Manager cannot promote to SuperAdmin
+                if (User.IsInRole("Manager") && !User.IsInRole("SuperAdmin") && role == "SuperAdmin")
+                {
+                    TempData["ErrorMessage"] = "Managers cannot assign the SuperAdmin role.";
+                    return RedirectToAction("Users");
+                }
                 var currentRoles = await _userManager.GetRolesAsync(user);
                 await _userManager.RemoveFromRolesAsync(user, currentRoles);
                 await _userManager.AddToRoleAsync(user, role);
@@ -2093,12 +3897,12 @@ namespace LearnLink.Controllers
             return RedirectToAction("Users");
         }
 
-        [Authorize(Roles = "SuperAdmin")]
+        [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
         public async Task<IActionResult> SuspendUser(string email, string reason)
         {
             var user = await _userManager.FindByEmailAsync(email);
-            if (user != null)
+            if (user != null && IsSameSchool(user))
             {
                 user.Status = "Suspended";
                 user.SuspensionReason = reason;
@@ -2109,12 +3913,12 @@ namespace LearnLink.Controllers
             return RedirectToAction("Users");
         }
 
-        [Authorize(Roles = "SuperAdmin")]
+        [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
         public async Task<IActionResult> ReactivateUser(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
-            if (user != null)
+            if (user != null && IsSameSchool(user))
             {
                 user.Status = "Active";
                 user.SuspensionReason = null;
@@ -2125,12 +3929,20 @@ namespace LearnLink.Controllers
             return RedirectToAction("Users");
         }
 
-        [Authorize(Roles = "SuperAdmin")]
+        [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
         public async Task<IActionResult> DeleteUser(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null) return NotFound();
+
+            // Manager can only delete users in their own school
+            if (User.IsInRole("Manager") && !IsSameSchool(user))
+                return Forbid();
+
+            // Prevent deleting SuperAdmins unless you are a SuperAdmin
+            if (await _userManager.IsInRoleAsync(user, "SuperAdmin") && !User.IsInRole("SuperAdmin"))
+                return Forbid();
 
             var result = await _userManager.DeleteAsync(user);
             if (result.Succeeded)
@@ -2146,7 +3958,7 @@ namespace LearnLink.Controllers
             return BadRequest("Failed to delete user.");
         }
 
-        [Authorize(Roles = "SuperAdmin")]
+        [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
         public async Task<IActionResult> DeleteMultipleUsers(string[] emails)
         {
@@ -2159,6 +3971,13 @@ namespace LearnLink.Controllers
                 var user = await _userManager.FindByEmailAsync(email);
                 if (user != null)
                 {
+                    // Manager can only delete users in their own school
+                    if (User.IsInRole("Manager") && !IsSameSchool(user))
+                        continue;
+                    // Don't delete SuperAdmins unless caller is SuperAdmin
+                    if (await _userManager.IsInRoleAsync(user, "SuperAdmin") && !User.IsInRole("SuperAdmin"))
+                        continue;
+
                     var result = await _userManager.DeleteAsync(user);
                     if (result.Succeeded)
                     {
@@ -2173,14 +3992,251 @@ namespace LearnLink.Controllers
             return Json(new { success = true, message = $"{deletedCount} user(s) deleted successfully." });
         }
 
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        public async Task<IActionResult> Settings()
+        {
+            await LoadSchoolSettingsToViewBag();
+            var schoolId = GetEffectiveSchoolId();
+
+            if (schoolId.HasValue)
+            {
+                var settings = await _context.SchoolSettings
+                    .IgnoreQueryFilters()
+                    .Include(s => s.School)
+                    .FirstOrDefaultAsync(s => s.SchoolId == schoolId.Value);
+                ViewBag.SchoolSettingsModel = settings;
+            }
+
+            return View();
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [HttpPost]
+        public async Task<IActionResult> SaveSettings(string institutionName, string adminEmail,
+            string timeZone, string dateFormat, string language,
+            string subjects, string gradeLevels, string resourceTypes, string quarters)
+        {
+            var schoolId = GetEffectiveSchoolId();
+            if (!schoolId.HasValue)
+            {
+                TempData["ErrorMessage"] = "No school context selected.";
+                return RedirectToAction("Settings");
+            }
+
+            var settings = await _context.SchoolSettings
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(s => s.SchoolId == schoolId.Value);
+
+            if (settings == null)
+            {
+                settings = new SchoolSettings { SchoolId = schoolId.Value };
+                _context.SchoolSettings.Add(settings);
+            }
+
+            settings.InstitutionName = institutionName ?? "";
+            settings.AdminEmail = adminEmail ?? "";
+            settings.TimeZone = timeZone ?? "Asia/Manila";
+            settings.DateFormat = dateFormat ?? "MM/dd/yyyy";
+            settings.Language = language ?? "English";
+
+            // Parse comma-separated values to JSON arrays
+            if (!string.IsNullOrWhiteSpace(subjects))
+                settings.Subjects = JsonSerializer.Serialize(subjects.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            if (!string.IsNullOrWhiteSpace(gradeLevels))
+                settings.GradeLevels = JsonSerializer.Serialize(gradeLevels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            if (!string.IsNullOrWhiteSpace(resourceTypes))
+                settings.ResourceTypes = JsonSerializer.Serialize(resourceTypes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            if (!string.IsNullOrWhiteSpace(quarters))
+                settings.Quarters = JsonSerializer.Serialize(quarters.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+            // Also update the school name
+            var school = await _context.Schools.FindAsync(schoolId.Value);
+            if (school != null && !string.IsNullOrWhiteSpace(institutionName))
+            {
+                school.Name = institutionName;
+            }
+
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "Settings saved successfully.";
+            return RedirectToAction("Settings");
+        }
+
+        // ==================== School Management (SuperAdmin only) ====================
+
         [Authorize(Roles = "SuperAdmin")]
-        public IActionResult Settings() => View();
+        public async Task<IActionResult> Schools()
+        {
+            var schools = await _context.Schools
+                .Include(s => s.Settings)
+                .OrderBy(s => s.Name)
+                .ToListAsync();
+
+            var schoolViewModels = new List<dynamic>();
+            foreach (var school in schools)
+            {
+                var userCount = await _userManager.Users.CountAsync(u => u.SchoolId == school.SchoolId);
+                var resourceCount = await _context.Resources.IgnoreQueryFilters().CountAsync(r => r.SchoolId == school.SchoolId);
+                schoolViewModels.Add(new
+                {
+                    school.SchoolId,
+                    school.Name,
+                    school.Code,
+                    school.Description,
+                    school.ContactEmail,
+                    school.IsActive,
+                    school.AllowCrossSchoolSharing,
+                    school.DateCreated,
+                    UserCount = userCount,
+                    ResourceCount = resourceCount,
+                    ManagerName = (await _userManager.Users
+                        .Where(u => u.SchoolId == school.SchoolId)
+                        .ToListAsync())
+                        .Where(u => _userManager.IsInRoleAsync(u, "Manager").Result)
+                        .Select(u => u.FullName)
+                        .FirstOrDefault() ?? "No manager assigned"
+                });
+            }
+
+            ViewBag.Schools = schoolViewModels;
+
+            // Yesterday comparison for KPI cards
+            var yesterday = DateTime.Now.Date;
+            ViewBag.YesterdaySchoolCount = schools.Count(s => s.DateCreated < yesterday);
+            ViewBag.YesterdayActiveSchools = schools.Count(s => s.DateCreated < yesterday && s.IsActive);
+            // User/resource counts as of yesterday are approximated by current counts minus today's additions
+            var todayNewUsers = await _userManager.Users.CountAsync(u => u.DateCreated >= yesterday);
+            var todayNewResources = await _context.Resources.IgnoreQueryFilters().CountAsync(r => r.DateUploaded >= yesterday);
+            ViewBag.YesterdayTotalUsers = schoolViewModels.Sum(s => (int)s.UserCount) - todayNewUsers;
+            ViewBag.YesterdayTotalResources = schoolViewModels.Sum(s => (int)s.ResourceCount) - todayNewResources;
+            return View();
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPost]
+        public async Task<IActionResult> CreateSchool(string name, string code, string description, string contactEmail, string address)
+        {
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(code))
+            {
+                TempData["ErrorMessage"] = "School name and code are required.";
+                return RedirectToAction("Schools");
+            }
+
+            code = code.Trim().ToUpper();
+
+            // Check for duplicate code
+            if (await _context.Schools.AnyAsync(s => s.Code == code))
+            {
+                TempData["ErrorMessage"] = $"A school with code '{code}' already exists.";
+                return RedirectToAction("Schools");
+            }
+
+            var school = new School
+            {
+                Name = name.Trim(),
+                Code = code,
+                Description = description?.Trim() ?? "",
+                ContactEmail = contactEmail?.Trim() ?? "",
+                Address = address?.Trim() ?? "",
+                IsActive = true,
+                DateCreated = DateTime.Now
+            };
+
+            _context.Schools.Add(school);
+            await _context.SaveChangesAsync();
+
+            // Create default settings for the new school
+            _context.SchoolSettings.Add(new SchoolSettings
+            {
+                SchoolId = school.SchoolId,
+                InstitutionName = name.Trim(),
+                AdminEmail = contactEmail?.Trim() ?? ""
+            });
+
+            // Create default departments for the new school
+            var defaultDepts = new[]
+            {
+                ("Mathematics", "Mathematics Department"),
+                ("English", "English and Literature Department"),
+                ("Filipino", "Filipino Language Department"),
+                ("Science", "Science Department"),
+                ("Araling Panlipunan", "Social Studies Department"),
+                ("TLE", "Technology and Livelihood Education"),
+                ("MAPEH", "Music, Arts, PE, and Health Department")
+            };
+
+            foreach (var (deptName, deptDesc) in defaultDepts)
+            {
+                _context.Departments.Add(new Department
+                {
+                    DepartmentName = deptName,
+                    Description = deptDesc,
+                    SchoolId = school.SchoolId
+                });
+            }
+
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = $"School '{name}' created successfully with code '{code}'.";
+            return RedirectToAction("Schools");
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPost]
+        public async Task<IActionResult> ToggleSchoolStatus(int id)
+        {
+            var school = await _context.Schools.FindAsync(id);
+            if (school != null)
+            {
+                school.IsActive = !school.IsActive;
+                await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = $"School '{school.Name}' has been {(school.IsActive ? "activated" : "deactivated")}.";
+            }
+            return RedirectToAction("Schools");
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPost]
+        public async Task<IActionResult> ToggleCrossSchoolSharing(int id)
+        {
+            var school = await _context.Schools.FindAsync(id);
+            if (school != null)
+            {
+                school.AllowCrossSchoolSharing = !school.AllowCrossSchoolSharing;
+                await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = $"Cross-school sharing for '{school.Name}' has been {(school.AllowCrossSchoolSharing ? "enabled" : "disabled")}.";
+            }
+            return RedirectToAction("Schools");
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPost]
+        public async Task<IActionResult> SwitchSchoolContext(int? schoolId)
+        {
+            if (schoolId.HasValue && schoolId.Value > 0)
+            {
+                var school = await _context.Schools.FindAsync(schoolId.Value);
+                if (school != null)
+                {
+                    HttpContext.Session.SetInt32("SwitchedSchoolId", schoolId.Value);
+                    TempData["SuccessMessage"] = $"Switched to {school.Name} context.";
+                }
+            }
+            else
+            {
+                HttpContext.Session.Remove("SwitchedSchoolId");
+                TempData["SuccessMessage"] = "Switched to All Schools view.";
+            }
+            return RedirectToAction("Dashboard");
+        }
 
         // ==================== Reports ====================
 
         [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
         public async Task<IActionResult> Reports()
         {
+            await LoadSchoolSettingsToViewBag();
+            var schoolId = GetEffectiveSchoolId();
+
+            // Resources auto-filtered by global query filter
             var resources = await _context.Resources.Include(r => r.User)
                 .Where(r => r.Status == "Published")
                 .ToListAsync();
@@ -2189,12 +4245,27 @@ namespace LearnLink.Controllers
             ViewBag.TotalDownloads = resources.Sum(r => r.DownloadCount);
             ViewBag.AvgRating = resources.Any() ? resources.Average(r => r.Rating) : 0;
             ViewBag.NewContributions = resources.Count;
+
+            // Yesterday comparison for KPI cards
+            var yesterday = DateTime.Now.Date;
+            var yesterdayResources = resources.Where(r => r.DateUploaded < yesterday).ToList();
+            var yesterdayEngagements = yesterdayResources.Sum(r => r.ViewCount) + yesterdayResources.Sum(r => r.DownloadCount);
+            var yesterdayDownloads = yesterdayResources.Sum(r => r.DownloadCount);
+            var yesterdayAvgRating = yesterdayResources.Any() ? yesterdayResources.Average(r => r.Rating) : 0;
+            var yesterdayContributions = yesterdayResources.Count;
+            ViewBag.YesterdayEngagements = yesterdayEngagements;
+            ViewBag.YesterdayDownloads = yesterdayDownloads;
+            ViewBag.YesterdayAvgRating = yesterdayAvgRating;
+            ViewBag.YesterdayContributions = yesterdayContributions;
             ViewBag.TopResources = resources.OrderByDescending(r => r.ViewCount).Take(5).Select(MapResource).ToList();
 
-            // Top contributors
+            // Top contributors — school-scoped
             var allUsers = await _userManager.Users.ToListAsync();
+            var scopedUsers = schoolId.HasValue
+                ? allUsers.Where(u => u.SchoolId == schoolId.Value).ToList()
+                : allUsers;
             var contributors = new List<UserViewModel>();
-            foreach (var u in allUsers)
+            foreach (var u in scopedUsers)
             {
                 var roles = await _userManager.GetRolesAsync(u);
                 var role = roles.FirstOrDefault() ?? "";
@@ -2244,6 +4315,163 @@ namespace LearnLink.Controllers
             ViewBag.EngagementTrendCounts = trends;
 
             return View();
+        }
+
+        // ==================== Announcements Board ====================
+
+        [Authorize]
+        public async Task<IActionResult> Announcements()
+        {
+            await LoadSchoolSettingsToViewBag();
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return RedirectToAction("Login");
+
+            var schoolId = GetEffectiveSchoolId();
+            var isAdmin = User.IsInRole("SuperAdmin");
+            var isManager = User.IsInRole("Manager");
+            var canManage = isAdmin || isManager;
+
+            var announcements = await _context.Announcements
+                .Include(a => a.User)
+                .Where(a => !schoolId.HasValue || a.SchoolId == schoolId.Value)
+                .OrderByDescending(a => a.IsPinned)
+                .ThenByDescending(a => a.Priority == "Urgent" ? 3 : a.Priority == "Important" ? 2 : 1)
+                .ThenByDescending(a => a.DateCreated)
+                .ToListAsync();
+
+            ViewBag.CanManage = canManage;
+            ViewBag.Announcements = announcements.Select(a => new AnnouncementViewModel
+            {
+                Id = a.AnnouncementId,
+                Title = a.Title,
+                Content = a.Content,
+                Author = a.User?.FullName ?? "Unknown",
+                AuthorInitials = a.User?.Initials ?? "?",
+                AuthorColor = a.User?.AvatarColor ?? "",
+                AuthorRole = canManage ? "Manager" : "User",
+                IsPinned = a.IsPinned,
+                Priority = a.Priority,
+                ExpiresAt = a.ExpiresAt,
+                DateCreated = a.DateCreated,
+                IsOwner = a.UserId == currentUser.Id,
+                CanManage = canManage
+            }).ToList();
+
+            return View();
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> PostAnnouncement(string title, string content, string priority, bool isPinned, string? expiresAt)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return RedirectToAction("Login");
+
+            var schoolId = GetEffectiveSchoolId();
+            if (!schoolId.HasValue)
+            {
+                TempData["ErrorMessage"] = "No school context available.";
+                return RedirectToAction("Announcements");
+            }
+
+            var announcement = new Announcement
+            {
+                Title = title,
+                Content = content,
+                UserId = currentUser.Id,
+                SchoolId = schoolId.Value,
+                IsPinned = isPinned,
+                Priority = string.IsNullOrEmpty(priority) ? "Normal" : priority,
+                ExpiresAt = string.IsNullOrEmpty(expiresAt) ? null : DateTime.Parse(expiresAt),
+                DateCreated = DateTime.Now
+            };
+
+            _context.Announcements.Add(announcement);
+            await _context.SaveChangesAsync();
+
+            // Notify all users in the school
+            var schoolUsers = await _userManager.Users
+                .Where(u => u.SchoolId == schoolId.Value && u.Id != currentUser.Id && u.Status == "Active")
+                .ToListAsync();
+
+            foreach (var user in schoolUsers)
+            {
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = user.Id,
+                    Title = "New Announcement",
+                    Message = $"{currentUser.FullName} posted: {title}",
+                    Type = "announcement",
+                    Icon = priority == "Urgent" ? "bi-exclamation-triangle-fill" : "bi-megaphone",
+                    IconBg = priority == "Urgent" ? "bg-danger" : priority == "Important" ? "bg-warning" : "bg-info",
+                    Link = "/Home/Announcements",
+                    CreatedAt = DateTime.Now
+                });
+            }
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Announcement posted successfully!";
+            return RedirectToAction("Announcements");
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditAnnouncement(int id, string title, string content, string priority, bool isPinned, string? expiresAt)
+        {
+            var announcement = await _context.Announcements.FindAsync(id);
+            if (announcement == null)
+            {
+                TempData["ErrorMessage"] = "Announcement not found.";
+                return RedirectToAction("Announcements");
+            }
+
+            announcement.Title = title;
+            announcement.Content = content;
+            announcement.Priority = string.IsNullOrEmpty(priority) ? "Normal" : priority;
+            announcement.IsPinned = isPinned;
+            announcement.ExpiresAt = string.IsNullOrEmpty(expiresAt) ? null : DateTime.Parse(expiresAt);
+
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "Announcement updated successfully!";
+            return RedirectToAction("Announcements");
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteAnnouncement(int id)
+        {
+            var announcement = await _context.Announcements.FindAsync(id);
+            if (announcement == null)
+            {
+                TempData["ErrorMessage"] = "Announcement not found.";
+                return RedirectToAction("Announcements");
+            }
+
+            _context.Announcements.Remove(announcement);
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "Announcement deleted.";
+            return RedirectToAction("Announcements");
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> TogglePinAnnouncement(int id)
+        {
+            var announcement = await _context.Announcements.FindAsync(id);
+            if (announcement == null)
+            {
+                TempData["ErrorMessage"] = "Announcement not found.";
+                return RedirectToAction("Announcements");
+            }
+
+            announcement.IsPinned = !announcement.IsPinned;
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = announcement.IsPinned ? "Announcement pinned." : "Announcement unpinned.";
+            return RedirectToAction("Announcements");
         }
 
         private string GetSubjectColor(string subject) => subject switch

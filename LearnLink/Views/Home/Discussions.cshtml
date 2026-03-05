@@ -94,7 +94,7 @@
                             <i class="bi bi-eye"></i> @discussion.ViewCount views
                         </span>
                     </div>
-                    <button class="ll-btn ll-btn-primary ll-btn-sm" onclick="document.getElementById('replyTextarea').focus();">
+                    <button class="ll-btn ll-btn-primary ll-btn-sm" onclick="document.getElementById('replyEditor').querySelector('.ql-editor').focus();">
                         <i class="bi bi-reply"></i> Reply
                     </button>
                 </div>
@@ -157,8 +157,9 @@
                 <h6 class="fw-bold mb-3">Add Your Reply</h6>
                 <form asp-action="PostReply" method="post">
                     <input type="hidden" name="discussionId" value="@(discussion?.Id ?? 1)" />
-                    <textarea class="ll-form-control mb-3" rows="4" name="content" id="replyTextarea" placeholder="Share your thoughts, experiences, or tips..." required></textarea>
-                    <div class="d-flex justify-content-end align-items-center">
+                    <div id="replyEditor" style="min-height: 100px;"></div>
+                    <input type="hidden" name="content" id="replyHidden" />
+                    <div class="d-flex justify-content-end align-items-center mt-3">
                         <button type="submit" class="ll-btn ll-btn-primary">
                             <i class="bi bi-send"></i> Post Reply
                         </button>
@@ -217,7 +218,8 @@
                     </div>
                     <div class="ll-form-group">
                         <label class="ll-form-label">Content</label>
-                        <textarea class="ll-form-control" rows="6" name="Content" id="editDiscContent" required></textarea>
+                        <div id="editDiscContentEditor" style="min-height: 150px;"></div>
+                        <input type="hidden" name="Content" id="editDiscContent" />
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -288,18 +290,31 @@
 
 @section Scripts {
 <script>
-    function insertMarkdown(markdown) {
-        var textarea = document.getElementById("replyTextarea");
-        if (!textarea) return;
-        var start = textarea.selectionStart;
-        var end = textarea.selectionEnd;
-        var text = textarea.value;
-        textarea.value = (text.substring(0, start) + markdown + text.substring(end, text.length));
-        textarea.selectionStart = textarea.selectionEnd = start + markdown.length;
-        textarea.focus();
-    }
-
     (function() {
+        // ===== Quill Rich Text Editors =====
+        const quillToolbar = [
+            [{ 'header': [2, 3, false] }],
+            ['bold', 'italic', 'underline'],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+            ['link'],
+            ['clean']
+        ];
+        const replyQuill = new Quill('#replyEditor', {
+            theme: 'snow', placeholder: 'Share your thoughts, experiences, or tips...', modules: { toolbar: quillToolbar }
+        });
+        const editDiscQuill = new Quill('#editDiscContentEditor', {
+            theme: 'snow', placeholder: 'Write your discussion content...', modules: { toolbar: quillToolbar }
+        });
+
+        // Sync Quill to hidden inputs on form submit
+        document.getElementById('replyEditor')?.closest('form')?.addEventListener('submit', function() {
+            const html = replyQuill.root.innerHTML;
+            document.getElementById('replyHidden').value = html === '<p><br></p>' ? '' : html;
+        });
+        document.getElementById('editDiscContentEditor')?.closest('form')?.addEventListener('submit', function() {
+            const html = editDiscQuill.root.innerHTML;
+            document.getElementById('editDiscContent').value = html === '<p><br></p>' ? '' : html;
+        });
         // Like buttons
         document.querySelectorAll('.disc-like-btn, .reply-like-btn').forEach(btn => {
             btn.addEventListener('click', function() {
@@ -314,19 +329,12 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            if (btnEl.innerHTML.includes('bi-heart-fill')) {    
-                                // Actually backend toggles increase only in current mock, let's assume it handles toggle
-                                // For visual feedback based on backend response "isLiked"
-                                if (data.isLiked) {
-                                    icon.classList.remove('bi-heart');
-                                    icon.classList.add('bi-heart-fill', 'text-danger');
-                                } else {
-                                    icon.classList.remove('bi-heart-fill', 'text-danger');
-                                    icon.classList.add('bi-heart');
-                                }
-                            } else {
+                            if (data.isLiked) {
                                 icon.classList.remove('bi-heart');
                                 icon.classList.add('bi-heart-fill', 'text-danger');
+                            } else {
+                                icon.classList.remove('bi-heart-fill', 'text-danger');
+                                icon.classList.add('bi-heart');
                             }
                             countEl.textContent = data.likes;
                         }
@@ -349,7 +357,7 @@
                 e.preventDefault();
                 document.getElementById('editDiscId').value = this.dataset.id;
                 document.getElementById('editDiscTitle').value = this.dataset.title;
-                document.getElementById('editDiscContent').value = this.dataset.content;
+                editDiscQuill.root.innerHTML = this.dataset.content || '';
                 document.getElementById('editDiscType').value = this.dataset.type;
                 
                 // Set active type button

@@ -7,6 +7,21 @@
     var activeCount = ViewBag.ActiveCount ?? 0;
     var contributorCount = ViewBag.ContributorCount ?? 0;
     var managerCount = ViewBag.ManagerCount ?? 0;
+
+    var yTotalUsers = (int)(ViewBag.YesterdayTotalUsers ?? 0);
+    var yActiveCount = (int)(ViewBag.YesterdayActiveCount ?? 0);
+    var yContributorCount = (int)(ViewBag.YesterdayContributorCount ?? 0);
+    var yManagerCount = (int)(ViewBag.YesterdayManagerCount ?? 0);
+
+    string KpiChange(int current, int yesterday)
+    {
+        var diff = current - yesterday;
+        if (yesterday == 0) return diff > 0 ? $"+{diff} new today" : "No change";
+        var pct = Math.Abs((double)diff / yesterday * 100);
+        var dir = diff >= 0 ? "+" : "-";
+        return $"{dir}{pct:0.#}% vs yesterday";
+    }
+    bool KpiPositive(int current, int yesterday) => current >= yesterday;
 }
 
 <!-- Page Header -->
@@ -39,6 +54,10 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@totalUsers</div>
                 <div class="ll-stat-label">Total Users</div>
+                <div class="ll-stat-change @(KpiPositive((int)totalUsers, yTotalUsers) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive((int)totalUsers, yTotalUsers) ? "up" : "down")"></i>
+                    @KpiChange((int)totalUsers, yTotalUsers)
+                </div>
             </div>
         </div>
     </div>
@@ -50,6 +69,10 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@activeCount</div>
                 <div class="ll-stat-label">Active Users</div>
+                <div class="ll-stat-change @(KpiPositive((int)activeCount, yActiveCount) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive((int)activeCount, yActiveCount) ? "up" : "down")"></i>
+                    @KpiChange((int)activeCount, yActiveCount)
+                </div>
             </div>
         </div>
     </div>
@@ -61,6 +84,10 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@contributorCount</div>
                 <div class="ll-stat-label">Contributors</div>
+                <div class="ll-stat-change @(KpiPositive((int)contributorCount, yContributorCount) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive((int)contributorCount, yContributorCount) ? "up" : "down")"></i>
+                    @KpiChange((int)contributorCount, yContributorCount)
+                </div>
             </div>
         </div>
     </div>
@@ -72,54 +99,66 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@managerCount</div>
                 <div class="ll-stat-label">Managers</div>
+                <div class="ll-stat-change @(KpiPositive((int)managerCount, yManagerCount) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive((int)managerCount, yManagerCount) ? "up" : "down")"></i>
+                    @KpiChange((int)managerCount, yManagerCount)
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+@{
+    var currentSearch = ViewBag.CurrentSearch as string ?? "";
+    var currentRole = ViewBag.CurrentRole as string ?? "";
+    var currentStatusFilter = ViewBag.CurrentStatusFilter as string ?? "";
+}
+
 <!-- Filter and Search -->
 <div class="ll-card mb-4">
     <div class="ll-card-body">
-        <div class="row g-3 align-items-center">
+        <form method="get" action="@Url.Action("Users", "Home")" class="row g-3 align-items-center">
             <div class="col-lg-4">
                 <div class="position-relative">
                     <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
-                    <input type="text" class="ll-form-control ps-5" placeholder="Search users by name or email..." id="userSearchInput">
+                    <input type="text" class="ll-form-control ps-5" name="search" value="@currentSearch" placeholder="Search users by name or email...">
                 </div>
             </div>
             <div class="col-lg-2">
-                <select class="ll-form-control ll-form-select" id="roleFilter">
+                <select class="ll-form-control ll-form-select" name="role">
                     <option value="">All Roles</option>
-                    <option value="Contributor">Contributor</option>
-                    <option value="Manager">Manager</option>
-                    <option value="Student">Student</option>
+                    @{ var roles = new[] { "Contributor", "Manager", "Student" }; }
+                    @foreach (var r in roles)
+                    {
+                        if (currentRole == r) { <option value="@r" selected="selected">@r</option> }
+                        else { <option value="@r">@r</option> }
+                    }
                 </select>
             </div>
             <div class="col-lg-2">
-                <select class="ll-form-control ll-form-select" id="statusFilter">
+                <select class="ll-form-control ll-form-select" name="status">
                     <option value="">All Status</option>
-                    <option value="Active">Active</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Suspended">Suspended</option>
+                    @{ var statuses = new[] { "Active", "Pending", "Suspended" }; }
+                    @foreach (var s in statuses)
+                    {
+                        if (currentStatusFilter == s) { <option value="@s" selected="selected">@s</option> }
+                        else { <option value="@s">@s</option> }
+                    }
                 </select>
             </div>
             <div class="col-lg-2">
-                <select class="ll-form-control ll-form-select" id="gradeFilter">
-                    <option value="">All Grades</option>
-                    <option value="Grade 7">Grade 7</option>
-                    <option value="Grade 8">Grade 8</option>
-                    <option value="Grade 9">Grade 9</option>
-                    <option value="Grade 10">Grade 10</option>
-                    <option value="Teacher">Teacher</option>
-                </select>
-            </div>
-            <div class="col-lg-2">
-                <button class="ll-btn ll-btn-primary w-100" id="filterBtn">
+                <button type="submit" class="ll-btn ll-btn-primary w-100">
                     <i class="bi bi-funnel"></i>
                     Filter
                 </button>
             </div>
-        </div>
+            <div class="col-lg-2">
+                <a href="@Url.Action("Users", "Home")" class="ll-btn ll-btn-outline w-100">
+                    <i class="bi bi-x-circle"></i>
+                    Clear
+                </a>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -238,18 +277,7 @@
             }
         </div>
     </div>
-    <div class="ll-card-body border-top">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="text-muted small">Showing <span id="visibleCount">@users.Count</span> of @totalUsers users</div>
-            <nav aria-label="Users pagination">
-                <ul class="pagination pagination-sm mb-0">
-                    <li class="page-item disabled"><a class="page-link" href="#"><i class="bi bi-chevron-left"></i></a></li>
-                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                    <li class="page-item"><a class="page-link" href="#"><i class="bi bi-chevron-right"></i></a></li>
-                </ul>
-            </nav>
-        </div>
-    </div>
+    @await Html.PartialAsync("_Pagination")
 </div>
 
 <!-- Add User Modal -->
@@ -479,72 +507,20 @@
 @section Scripts {
 <script>
     (function() {
-        var rows = document.querySelectorAll('.user-row');
-
-        function filterUsers() {
-            var search = document.getElementById('userSearchInput').value.toLowerCase();
-            var role = document.getElementById('roleFilter').value;
-            var status = document.getElementById('statusFilter').value;
-            var grade = document.getElementById('gradeFilter').value.toLowerCase();
-            var visible = 0;
-
-            rows.forEach(function(row) {
-                var name = row.dataset.name.toLowerCase();
-                var email = row.dataset.email.toLowerCase();
-                var r = row.dataset.role;
-                var s = row.dataset.status;
-                var g = row.dataset.grade.toLowerCase();
-
-                var matchSearch = !search || name.includes(search) || email.includes(search);
-                var matchRole = !role || r === role;
-                var matchStatus = !status || s === status;
-                var matchGrade = !grade || g.includes(grade);
-
-                if (matchSearch && matchRole && matchStatus && matchGrade) {
-                    row.style.display = '';
-                    visible++;
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-
-            document.getElementById('visibleCount').textContent = visible;
-        }
-
-        // Real-time search
-        document.getElementById('userSearchInput').addEventListener('input', filterUsers);
-
-        // Filter button
-        document.getElementById('filterBtn').addEventListener('click', filterUsers);
-
-        // Filter on dropdown change
-        document.getElementById('roleFilter').addEventListener('change', filterUsers);
-        document.getElementById('statusFilter').addEventListener('change', filterUsers);
-        document.getElementById('gradeFilter').addEventListener('change', filterUsers);
-
         // Select all checkbox
         document.getElementById('selectAllUsers').addEventListener('change', function() {
             var checked = this.checked;
             var currentVisibleEmails = [];
-            rows.forEach(function(row) {
-                if (row.style.display !== 'none') {
-                    row.querySelector('.user-checkbox').checked = checked;
-                    if (checked) {
-                        currentVisibleEmails.push(row.dataset.email);
-                    }
-                }
+            document.querySelectorAll('.user-row').forEach(function(row) {
+                row.querySelector('.user-checkbox').checked = checked;
+                if (checked) currentVisibleEmails.push(row.dataset.email);
             });
-            if (checked && currentVisibleEmails.length > 0) {
-                triggerUserDeleteConfirmation(currentVisibleEmails);
-            }
+            if (checked && currentVisibleEmails.length > 0) triggerUserDeleteConfirmation(currentVisibleEmails);
         });
 
-        // Individual user checkboxes
         document.querySelectorAll('.user-checkbox').forEach(cb => {
             cb.addEventListener('change', function() {
-                if (this.checked) {
-                    triggerUserDeleteConfirmation([this.closest('tr').dataset.email]);
-                }
+                if (this.checked) triggerUserDeleteConfirmation([this.closest('tr').dataset.email]);
             });
         });
 

@@ -1,0 +1,402 @@
+@model LearnLink.Models.StudentDashboardViewModel
+@{
+    ViewData["Title"] = "My Dashboard";
+    ViewData["ActivePage"] = "StudentDashboard";
+
+    var greeting = DateTime.Now.Hour < 12 ? "Good morning" : DateTime.Now.Hour < 17 ? "Good afternoon" : "Good evening";
+    var userName = User.Identity?.Name ?? "Student";
+}
+
+<!-- Pinned Announcements Banner -->
+@if (Model.PinnedAnnouncements.Any())
+{
+<div class="mb-4">
+    @foreach (var ann in Model.PinnedAnnouncements)
+    {
+    <div class="alert @(ann.Priority == "Urgent" ? "alert-danger" : ann.Priority == "Important" ? "alert-warning" : "alert-info") d-flex align-items-start gap-2 mb-2 border-0 shadow-sm" role="alert">
+        <i class="bi @ann.PriorityIcon fs-5 mt-1"></i>
+        <div class="flex-grow-1">
+            <strong>@ann.Title</strong>
+            <p class="mb-0 small opacity-75">@ann.Content</p>
+        </div>
+        <small class="text-nowrap opacity-50">@ann.DateCreated.ToString("MMM dd")</small>
+    </div>
+    }
+</div>
+}
+
+<!-- Page Header -->
+<div class="ll-page-header">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <h1 class="ll-page-title">@greeting! <span class="fw-normal opacity-75">Here's your learning overview</span></h1>
+            <div class="ll-breadcrumb">
+                <a href="#">Home</a>
+                <i class="bi bi-chevron-right small"></i>
+                <span>My Dashboard</span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline-primary">
+                <i class="bi bi-folder2-open"></i>
+                Browse Resources
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Stats Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-6 col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon primary">
+                <i class="bi bi-book"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">@Model.ResourcesRead</div>
+                <div class="ll-stat-label">Resources Read</div>
+                <div class="ll-stat-change positive">
+                    <i class="bi bi-check-circle"></i>
+                    @Model.ResourcesCompleted completed
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon success">
+                <i class="bi bi-trophy"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">@Model.CompletionPercent%</div>
+                <div class="ll-stat-label">Completion Rate</div>
+                <div class="ll-stat-change positive">
+                    <i class="bi bi-fire"></i>
+                    @Model.CurrentStreak day streak
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon warning">
+                <i class="bi bi-lightbulb"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">@Model.LessonsSubmitted</div>
+                <div class="ll-stat-label">Lessons Submitted</div>
+                <div class="ll-stat-change positive">
+                    <i class="bi bi-bookmark"></i>
+                    @Model.Bookmarks bookmarked
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-sm-6 col-xl-3">
+        <div class="ll-stat-card">
+            <div class="ll-stat-icon info">
+                <i class="bi bi-chat-dots"></i>
+            </div>
+            <div class="ll-stat-content">
+                <div class="ll-stat-value">@Model.DiscussionsParticipated</div>
+                <div class="ll-stat-label">Discussions Joined</div>
+                <div class="ll-stat-change positive">
+                    <i class="bi bi-star"></i>
+                    Best: @Model.BestStreak day streak
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Subject Progress + Recent Reading -->
+<div class="row g-4 mb-4">
+    <!-- Subject Progress Chart -->
+    <div class="col-lg-7">
+        <div class="ll-card">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title"><i class="bi bi-bar-chart me-2 text-primary"></i>Progress by Subject</h5>
+            </div>
+            <div class="ll-card-body">
+                @if (Model.SubjectProgress.Any())
+                {
+                <canvas id="subjectProgressChart" height="280"></canvas>
+                }
+                else
+                {
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-bar-chart display-4 d-block mb-3"></i>
+                    <p>Start reading resources to see your progress here!</p>
+                    <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-primary btn-sm">Browse Resources</a>
+                </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Streak & Quick Stats -->
+    <div class="col-lg-5">
+        <div class="ll-card mb-4">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title"><i class="bi bi-fire me-2 text-danger"></i>Learning Streak</h5>
+            </div>
+            <div class="ll-card-body text-center py-4">
+                <div class="d-flex justify-content-center gap-5">
+                    <div>
+                        <div class="display-3 fw-bold text-primary">@Model.CurrentStreak</div>
+                        <small class="text-muted">Current Streak (days)</small>
+                    </div>
+                    <div>
+                        <div class="display-3 fw-bold text-warning">@Model.BestStreak</div>
+                        <small class="text-muted">Best Streak (days)</small>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="progress" style="height: 8px;">
+                        @{
+                            var streakPercent = Model.BestStreak > 0 ? Math.Min(100, (int)Math.Round((double)Model.CurrentStreak / Model.BestStreak * 100)) : 0;
+                        }
+                        <div class="progress-bar bg-primary" style="width: @streakPercent%"></div>
+                    </div>
+                    <small class="text-muted mt-1 d-block">@streakPercent% of your best streak</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overall Completion Ring -->
+        <div class="ll-card">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title"><i class="bi bi-pie-chart me-2 text-success"></i>Overall Completion</h5>
+            </div>
+            <div class="ll-card-body text-center py-3">
+                <div class="position-relative d-inline-block" style="width: 120px; height: 120px;">
+                    <canvas id="completionRing" width="120" height="120"></canvas>
+                    <div class="position-absolute top-50 start-50 translate-middle">
+                        <span class="fs-3 fw-bold text-primary">@Model.CompletionPercent%</span>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">@Model.ResourcesCompleted of @Model.ResourcesRead resources completed</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Continue Reading + Recommended -->
+<div class="row g-4 mb-4">
+    <!-- Continue Reading -->
+    <div class="col-lg-6">
+        <div class="ll-card">
+            <div class="ll-card-header d-flex justify-content-between align-items-center">
+                <h5 class="ll-card-title mb-0"><i class="bi bi-clock-history me-2 text-info"></i>Continue Reading</h5>
+                <a href="@Url.Action("ReadingHistory", "Home")" class="ll-btn ll-btn-outline-primary btn-sm">View All</a>
+            </div>
+            <div class="ll-card-body p-0">
+                @if (Model.RecentReading.Any())
+                {
+                <div class="list-group list-group-flush">
+                    @foreach (var item in Model.RecentReading)
+                    {
+                    <a href="@Url.Action("ResourceDetail", "Home", new { id = item.ResourceId })" class="list-group-item list-group-item-action border-0 px-3 py-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:42px;height:42px;background:@item.IconBg;min-width:42px;">
+                                <i class="bi @item.IconClass @item.IconColor"></i>
+                            </div>
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="fw-semibold text-truncate">@item.Title</div>
+                                <small class="text-muted">@item.Subject &middot; @item.Author</small>
+                                <div class="progress mt-1" style="height: 4px;">
+                                    <div class="progress-bar @(item.IsCompleted ? "bg-success" : "bg-primary")" style="width: @item.ProgressPercent%"></div>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge @(item.IsCompleted ? "bg-success" : "bg-primary") bg-opacity-10 @(item.IsCompleted ? "text-success" : "text-primary")">
+                                    @(item.IsCompleted ? "Done" : $"{item.ProgressPercent}%")
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                    }
+                </div>
+                }
+                else
+                {
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-book display-4 d-block mb-2"></i>
+                    <p class="mb-0">No reading history yet. Start exploring!</p>
+                </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Recommended Resources -->
+    <div class="col-lg-6">
+        <div class="ll-card">
+            <div class="ll-card-header d-flex justify-content-between align-items-center">
+                <h5 class="ll-card-title mb-0"><i class="bi bi-stars me-2 text-warning"></i>Recommended For You <span class="ll-repo-knn-badge ms-2">AI-Powered</span></h5>
+                <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline-primary btn-sm">Browse All</a>
+            </div>
+            <div class="ll-card-body p-0">
+                @if (Model.RecommendedResources.Any())
+                {
+                <div class="list-group list-group-flush">
+                    @foreach (var res in Model.RecommendedResources)
+                    {
+                    <a href="@Url.Action("ResourceDetail", "Home", new { id = res.Id })" class="list-group-item list-group-item-action border-0 px-3 py-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:42px;height:42px;background:@res.IconBg;min-width:42px;">
+                                <i class="bi @res.IconClass @res.IconColor"></i>
+                            </div>
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="fw-semibold text-truncate">@res.Title</div>
+                                <small class="text-muted">@res.Subject &middot; @res.GradeLevel &middot; <i class="bi bi-eye"></i> @res.ViewCount</small>
+                            </div>
+                            <span class="badge bg-primary bg-opacity-10 text-primary">@res.ResourceType</span>
+                        </div>
+                    </a>
+                    }
+                </div>
+                }
+                else
+                {
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-check-all display-4 d-block mb-2"></i>
+                    <p class="mb-0">You've explored all available resources!</p>
+                </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="ll-card">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title"><i class="bi bi-activity me-2 text-primary"></i>Recent Activity</h5>
+            </div>
+            <div class="ll-card-body p-0">
+                @if (Model.RecentActivity.Any())
+                {
+                <div class="list-group list-group-flush">
+                    @foreach (var act in Model.RecentActivity)
+                    {
+                    <div class="list-group-item border-0 px-3 py-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center bg-body-secondary" style="width:36px;height:36px;min-width:36px;">
+                                <i class="bi @act.IconClass @act.IconColor"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <span class="fw-medium">You</span>
+                                <span class="text-muted">@act.Action</span>
+                                <span class="fw-medium">@act.Target</span>
+                            </div>
+                            <small class="text-muted text-nowrap">@act.TimeAgo</small>
+                        </div>
+                    </div>
+                    }
+                </div>
+                }
+                else
+                {
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-activity display-4 d-block mb-2"></i>
+                    <p class="mb-0">No activity yet. Start learning!</p>
+                </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Subject Progress Chart
+    var subjectCanvas = document.getElementById('subjectProgressChart');
+    if (subjectCanvas) {
+        var subjects = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SubjectProgress.Select(s => s.Subject)));
+        var completed = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SubjectProgress.Select(s => s.Completed)));
+        var totals = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SubjectProgress.Select(s => s.Total)));
+        var remaining = totals.map((t, i) => t - completed[i]);
+        var colors = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SubjectProgress.Select(s => s.Color)));
+
+        new Chart(subjectCanvas, {
+            type: 'bar',
+            data: {
+                labels: subjects,
+                datasets: [
+                    {
+                        label: 'Completed',
+                        data: completed,
+                        backgroundColor: colors,
+                        borderRadius: 6,
+                        borderSkipped: false
+                    },
+                    {
+                        label: 'Remaining',
+                        data: remaining,
+                        backgroundColor: colors.map(c => c + '33'),
+                        borderRadius: 6,
+                        borderSkipped: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            afterBody: function(ctx) {
+                                var i = ctx[0].dataIndex;
+                                var pct = totals[i] > 0 ? Math.round(completed[i] / totals[i] * 100) : 0;
+                                return pct + '% complete';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { display: false }
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    }
+
+    // Completion Ring
+    var ringCanvas = document.getElementById('completionRing');
+    if (ringCanvas) {
+        var pct = @Model.CompletionPercent;
+        new Chart(ringCanvas, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [pct, 100 - pct],
+                    backgroundColor: ['#4361ee', '#e9ecef'],
+                    borderWidth: 0,
+                    cutout: '78%'
+                }]
+            },
+            options: {
+                responsive: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                animation: { animateRotate: true }
+            }
+        });
+    }
+});
+</script>
+}

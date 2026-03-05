@@ -1,11 +1,25 @@
 using LearnLink.Data;
 using LearnLink.Models;
+using LearnLink.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// Multi-tenancy: School context service
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ISchoolContext, HttpSchoolContext>();
+
+// Session support (for SuperAdmin school switcher)
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(60);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 
 // Configure EF Core + Identity with Roles
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -23,13 +37,33 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.Password.RequiredLength = 6;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
-.AddDefaultTokenProviders();
+.AddDefaultTokenProviders()
+.AddClaimsPrincipalFactory<SchoolClaimsPrincipalFactory>();
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Home/Login";
     options.AccessDeniedPath = "/Home/AccessDenied";
 });
+
+// Google Authentication
+var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
+var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+bool googleAuthEnabled = !string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret);
+if (googleAuthEnabled)
+{
+    builder.Services.AddAuthentication()
+        .AddGoogle(options =>
+        {
+            options.ClientId = googleClientId!;
+            options.ClientSecret = googleClientSecret!;
+            options.CallbackPath = "/signin-google";
+        });
+}
+builder.Services.AddSingleton(new GoogleAuthFlag { IsEnabled = googleAuthEnabled });
+
+// KNN Recommendation Engine
+builder.Services.AddScoped<IRecommendationService, KnnRecommendationService>();
 
 builder.Services.AddRazorPages();
 var app = builder.Build();
@@ -107,6 +141,92 @@ using (var scope = app.Services.CreateScope())
                 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ResourceVersions') AND name = 'FileSize')
                     ALTER TABLE [ResourceVersions] ADD [FileSize] nvarchar(20) NOT NULL DEFAULT '';
             ");
+
+            // Manually ensure multi-tenancy tables and columns exist
+            // (Fixes SchoolId error when AddMultiSchoolTenancy migration fails due to column conflicts)
+            await context.Database.ExecuteSqlRawAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Schools')
+                BEGIN
+                    CREATE TABLE [Schools] (
+                        [SchoolId] int NOT NULL IDENTITY(1,1),
+                        [Name] nvarchar(150) NOT NULL,
+                        [Code] nvarchar(20) NOT NULL,
+                        [Description] nvarchar(500) NOT NULL DEFAULT '',
+                        [Address] nvarchar(500) NOT NULL DEFAULT '',
+                        [ContactEmail] nvarchar(100) NOT NULL DEFAULT '',
+                        [LogoPath] nvarchar(500) NULL,
+                        [IsActive] bit NOT NULL DEFAULT 1,
+                        [AllowCrossSchoolSharing] bit NOT NULL DEFAULT 0,
+                        [DateCreated] datetime2 NOT NULL DEFAULT GETDATE(),
+                        CONSTRAINT [PK_Schools] PRIMARY KEY ([SchoolId])
+                    );
+                    CREATE UNIQUE INDEX [IX_Schools_Code] ON [Schools] ([Code]);
+                END
+            ");
+
+            await context.Database.ExecuteSqlRawAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'SchoolSettings')
+                BEGIN
+                    CREATE TABLE [SchoolSettings] (
+                        [Id] int NOT NULL IDENTITY(1,1),
+                        [SchoolId] int NOT NULL,
+                        [InstitutionName] nvarchar(150) NOT NULL DEFAULT '',
+                        [AdminEmail] nvarchar(100) NOT NULL DEFAULT '',
+                        [TimeZone] nvarchar(50) NOT NULL DEFAULT 'Asia/Manila',
+                        [DateFormat] nvarchar(20) NOT NULL DEFAULT 'MM/dd/yyyy',
+                        [Language] nvarchar(20) NOT NULL DEFAULT 'English',
+                        [Subjects] nvarchar(max) NOT NULL DEFAULT '[]',
+                        [GradeLevels] nvarchar(max) NOT NULL DEFAULT '[]',
+                        [ResourceTypes] nvarchar(max) NOT NULL DEFAULT '[]',
+                        [Quarters] nvarchar(max) NOT NULL DEFAULT '[]',
+                        CONSTRAINT [PK_SchoolSettings] PRIMARY KEY ([Id]),
+                        CONSTRAINT [FK_SchoolSettings_Schools_SchoolId] FOREIGN KEY ([SchoolId]) REFERENCES [Schools] ([SchoolId]) ON DELETE CASCADE
+                    );
+                    CREATE UNIQUE INDEX [IX_SchoolSettings_SchoolId] ON [SchoolSettings] ([SchoolId]);
+                END
+            ");
+
+            await context.Database.ExecuteSqlRawAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AspNetUsers') AND name = 'SchoolId')
+                    ALTER TABLE [AspNetUsers] ADD [SchoolId] int NULL;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Departments') AND name = 'SchoolId')
+                    ALTER TABLE [Departments] ADD [SchoolId] int NULL;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'SchoolId')
+                    ALTER TABLE [Resources] ADD [SchoolId] int NULL;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'IsSharedCrossSchool')
+                    ALTER TABLE [Resources] ADD [IsSharedCrossSchool] bit NOT NULL DEFAULT 0;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Discussions') AND name = 'SchoolId')
+                    ALTER TABLE [Discussions] ADD [SchoolId] int NULL;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('LessonsLearned') AND name = 'SchoolId')
+                    ALTER TABLE [LessonsLearned] ADD [SchoolId] int NULL;
+            ");
+
+            // Add indexes and foreign keys for SchoolId columns (safe: checks for existence)
+            await context.Database.ExecuteSqlRawAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AspNetUsers_SchoolId')
+                    CREATE INDEX [IX_AspNetUsers_SchoolId] ON [AspNetUsers] ([SchoolId]);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Departments_SchoolId')
+                    CREATE INDEX [IX_Departments_SchoolId] ON [Departments] ([SchoolId]);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Resources_SchoolId')
+                    CREATE INDEX [IX_Resources_SchoolId] ON [Resources] ([SchoolId]);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Discussions_SchoolId')
+                    CREATE INDEX [IX_Discussions_SchoolId] ON [Discussions] ([SchoolId]);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_LessonsLearned_SchoolId')
+                    CREATE INDEX [IX_LessonsLearned_SchoolId] ON [LessonsLearned] ([SchoolId]);
+            ");
+
+            await context.Database.ExecuteSqlRawAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_AspNetUsers_Schools_SchoolId')
+                    ALTER TABLE [AspNetUsers] ADD CONSTRAINT [FK_AspNetUsers_Schools_SchoolId] FOREIGN KEY ([SchoolId]) REFERENCES [Schools] ([SchoolId]) ON DELETE SET NULL;
+                IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Departments_Schools_SchoolId')
+                    ALTER TABLE [Departments] ADD CONSTRAINT [FK_Departments_Schools_SchoolId] FOREIGN KEY ([SchoolId]) REFERENCES [Schools] ([SchoolId]) ON DELETE SET NULL;
+                IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Resources_Schools_SchoolId')
+                    ALTER TABLE [Resources] ADD CONSTRAINT [FK_Resources_Schools_SchoolId] FOREIGN KEY ([SchoolId]) REFERENCES [Schools] ([SchoolId]) ON DELETE SET NULL;
+                IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Discussions_Schools_SchoolId')
+                    ALTER TABLE [Discussions] ADD CONSTRAINT [FK_Discussions_Schools_SchoolId] FOREIGN KEY ([SchoolId]) REFERENCES [Schools] ([SchoolId]) ON DELETE SET NULL;
+                IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_LessonsLearned_Schools_SchoolId')
+                    ALTER TABLE [LessonsLearned] ADD CONSTRAINT [FK_LessonsLearned_Schools_SchoolId] FOREIGN KEY ([SchoolId]) REFERENCES [Schools] ([SchoolId]) ON DELETE SET NULL;
+            ");
         }
         catch (Exception ex)
         {
@@ -156,6 +276,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
+app.UseSession(); // Must be before Authentication for school switcher
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -166,3 +287,5 @@ app.MapRazorPages();
 
 
 app.Run();
+
+public class GoogleAuthFlag { public bool IsEnabled { get; set; } }

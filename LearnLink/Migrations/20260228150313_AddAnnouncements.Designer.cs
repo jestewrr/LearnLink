@@ -4,6 +4,7 @@ using LearnLink.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LearnLink.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260228150313_AddAnnouncements")]
+    partial class AddAnnouncements
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -591,9 +594,6 @@ namespace LearnLink.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
-                    b.Property<DateTime?>("AccessExpiresAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("AccessLevel")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -709,34 +709,6 @@ namespace LearnLink.Migrations
                     b.ToTable("Resources");
                 });
 
-            modelBuilder.Entity("LearnLink.Models.ResourceAccessGrant", b =>
-                {
-                    b.Property<int>("GrantId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("GrantId"));
-
-                    b.Property<DateTime>("GrantedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("ResourceId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("GrantId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("ResourceId", "UserId")
-                        .IsUnique();
-
-                    b.ToTable("ResourceAccessGrants");
-                });
-
             modelBuilder.Entity("LearnLink.Models.ResourceCategory", b =>
                 {
                     b.Property<int>("CategoryId")
@@ -798,12 +770,6 @@ namespace LearnLink.Migrations
 
                     b.Property<DateTime>("DatePosted")
                         .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("DateUpdated")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("LikeCount")
-                        .HasColumnType("int");
 
                     b.Property<int?>("ParentCommentId")
                         .HasColumnType("int");
@@ -1414,25 +1380,6 @@ namespace LearnLink.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("LearnLink.Models.ResourceAccessGrant", b =>
-                {
-                    b.HasOne("LearnLink.Models.Resource", "Resource")
-                        .WithMany("AccessGrants")
-                        .HasForeignKey("ResourceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("LearnLink.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Resource");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("LearnLink.Models.ResourceCategoryMap", b =>
                 {
                     b.HasOne("LearnLink.Models.ResourceCategory", "Category")
@@ -1621,8 +1568,6 @@ namespace LearnLink.Migrations
 
             modelBuilder.Entity("LearnLink.Models.Resource", b =>
                 {
-                    b.Navigation("AccessGrants");
-
                     b.Navigation("ActivityLogs");
 
                     b.Navigation("BestPractices");

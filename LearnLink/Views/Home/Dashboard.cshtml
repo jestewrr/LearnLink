@@ -12,6 +12,17 @@
     var recentResources = ViewBag.RecentResources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
     var pendingApprovals = ViewBag.PendingApprovals as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
     var recentActivity = ViewBag.RecentActivity as List<LearnLink.Models.ActivityViewModel> ?? new List<LearnLink.Models.ActivityViewModel>();
+
+    // Helper to compute KPI change text
+    string KpiChange(int current, int yesterday)
+    {
+        var diff = current - yesterday;
+        if (yesterday == 0) return diff > 0 ? $"+{diff} new today" : "No change";
+        var pct = Math.Abs((double)diff / yesterday * 100);
+        var dir = diff >= 0 ? "+" : "-";
+        return $"{dir}{pct:0.#}% vs yesterday";
+    }
+    bool KpiPositive(int current, int yesterday) => current >= yesterday;
 }
 
 <!-- Page Header -->
@@ -47,6 +58,10 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@(stats?.TotalResources.ToString("N0") ?? "0")</div>
                 <div class="ll-stat-label">Total Resources</div>
+                <div class="ll-stat-change @(KpiPositive(stats?.TotalResources ?? 0, stats?.YesterdayResources ?? 0) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive(stats?.TotalResources ?? 0, stats?.YesterdayResources ?? 0) ? "up" : "down")"></i>
+                    @KpiChange(stats?.TotalResources ?? 0, stats?.YesterdayResources ?? 0)
+                </div>
             </div>
         </div>
     </div>
@@ -58,6 +73,10 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@(stats?.TotalDownloads.ToString("N0") ?? "0")</div>
                 <div class="ll-stat-label">Total Downloads</div>
+                <div class="ll-stat-change @(KpiPositive(stats?.TotalDownloads ?? 0, stats?.YesterdayDownloads ?? 0) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive(stats?.TotalDownloads ?? 0, stats?.YesterdayDownloads ?? 0) ? "up" : "down")"></i>
+                    @KpiChange(stats?.TotalDownloads ?? 0, stats?.YesterdayDownloads ?? 0)
+                </div>
             </div>
         </div>
     </div>
@@ -69,6 +88,10 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@(stats?.ActiveUsers.ToString("N0") ?? "0")</div>
                 <div class="ll-stat-label">Active Users</div>
+                <div class="ll-stat-change @(KpiPositive(stats?.ActiveUsers ?? 0, stats?.YesterdayActiveUsers ?? 0) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive(stats?.ActiveUsers ?? 0, stats?.YesterdayActiveUsers ?? 0) ? "up" : "down")"></i>
+                    @KpiChange(stats?.ActiveUsers ?? 0, stats?.YesterdayActiveUsers ?? 0)
+                </div>
             </div>
         </div>
     </div>
@@ -80,6 +103,10 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@(stats?.ActiveDiscussions.ToString("N0") ?? "0")</div>
                 <div class="ll-stat-label">Total Discussions</div>
+                <div class="ll-stat-change @(KpiPositive(stats?.ActiveDiscussions ?? 0, stats?.YesterdayDiscussions ?? 0) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive(stats?.ActiveDiscussions ?? 0, stats?.YesterdayDiscussions ?? 0) ? "up" : "down")"></i>
+                    @KpiChange(stats?.ActiveDiscussions ?? 0, stats?.YesterdayDiscussions ?? 0)
+                </div>
             </div>
         </div>
     </div>

@@ -9,12 +9,36 @@
     var topResources = ViewBag.TopResources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
     var topContributors = ViewBag.TopContributors as List<LearnLink.Models.UserViewModel> ?? new List<LearnLink.Models.UserViewModel>();
 
+    // Yesterday comparison
+    var yEngagements = (int)(ViewBag.YesterdayEngagements ?? 0);
+    var yDownloads = (int)(ViewBag.YesterdayDownloads ?? 0);
+    var yAvgRating = (double)(ViewBag.YesterdayAvgRating ?? 0.0);
+    var yContributions = (int)(ViewBag.YesterdayContributions ?? 0);
+
     // Subject Distribution data (Real)
     var subjectDistribution = ViewBag.SubjectDistribution as IEnumerable<dynamic> ?? new List<dynamic>();
     
     // Engagement Trends (Real)
     var engagementTrends = ViewBag.EngagementTrendCounts as int[] ?? new int[30];
     var maxTrend = engagementTrends.Any() ? engagementTrends.Max() : 1; // Avoid division by zero
+
+    string KpiChange(int current, int yesterday)
+    {
+        var diff = current - yesterday;
+        if (yesterday == 0) return diff > 0 ? $"+{diff} new today" : "No change";
+        var pct = Math.Abs((double)diff / yesterday * 100);
+        var dir = diff >= 0 ? "+" : "-";
+        return $"{dir}{pct:0.#}% vs yesterday";
+    }
+    string KpiChangeDouble(double current, double yesterday)
+    {
+        var diff = current - yesterday;
+        if (yesterday == 0) return diff > 0 ? $"+{diff:0.1} today" : "No change";
+        var dir = diff >= 0 ? "+" : "-";
+        return $"{dir}{Math.Abs(diff):0.1} vs yesterday";
+    }
+    bool KpiPositive(int current, int yesterday) => current >= yesterday;
+    bool KpiPositiveDouble(double current, double yesterday) => current >= yesterday;
 }
 
 <!-- Page Header -->
@@ -43,9 +67,9 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@totalEngagements.ToString("N0")</div>
                 <div class="ll-stat-label">Total Engagements</div>
-                <div class="ll-stat-change positive">
-                    <i class="bi bi-arrow-up"></i>
-                    18.2% vs last month
+                <div class="ll-stat-change @(KpiPositive((int)totalEngagements, yEngagements) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive((int)totalEngagements, yEngagements) ? "up" : "down")"></i>
+                    @KpiChange((int)totalEngagements, yEngagements)
                 </div>
             </div>
         </div>
@@ -58,9 +82,9 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@totalDownloads.ToString("N0")</div>
                 <div class="ll-stat-label">Resource Downloads</div>
-                <div class="ll-stat-change positive">
-                    <i class="bi bi-arrow-up"></i>
-                    12.5% vs last month
+                <div class="ll-stat-change @(KpiPositive((int)totalDownloads, yDownloads) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive((int)totalDownloads, yDownloads) ? "up" : "down")"></i>
+                    @KpiChange((int)totalDownloads, yDownloads)
                 </div>
             </div>
         </div>
@@ -73,9 +97,9 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@(((double)avgRating).ToString("0.0"))</div>
                 <div class="ll-stat-label">Avg. Resource Rating</div>
-                <div class="ll-stat-change positive">
-                    <i class="bi bi-arrow-up"></i>
-                    0.3 increase
+                <div class="ll-stat-change @(KpiPositiveDouble((double)avgRating, yAvgRating) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositiveDouble((double)avgRating, yAvgRating) ? "up" : "down")"></i>
+                    @KpiChangeDouble((double)avgRating, yAvgRating)
                 </div>
             </div>
         </div>
@@ -88,9 +112,9 @@
             <div class="ll-stat-content">
                 <div class="ll-stat-value">@newContributions</div>
                 <div class="ll-stat-label">Published Resources</div>
-                <div class="ll-stat-change negative">
-                    <i class="bi bi-arrow-down"></i>
-                    2.1% vs last month
+                <div class="ll-stat-change @(KpiPositive((int)newContributions, yContributions) ? "positive" : "negative")">
+                    <i class="bi bi-arrow-@(KpiPositive((int)newContributions, yContributions) ? "up" : "down")"></i>
+                    @KpiChange((int)newContributions, yContributions)
                 </div>
             </div>
         </div>

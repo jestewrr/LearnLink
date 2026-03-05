@@ -1,0 +1,56 @@
+@* Pagination Partial - Pass ViewBag.Pagination (dynamic with PageIndex, TotalPages, TotalCount, HasPreviousPage, HasNextPage, StartPage, EndPage, BaseUrl, QueryParams) *@
+@{
+    var pag = ViewBag.Pagination;
+    if (pag == null) return;
+    int totalPages = (int)(pag.TotalPages ?? 0);
+    if (totalPages <= 1) return;
+    string baseUrl = pag.BaseUrl?.ToString() ?? "";
+    string queryParams = pag.QueryParams?.ToString() ?? "";
+    string BuildUrl(int page) {
+        var sep = queryParams.Contains("?") ? "&" : "?";
+        return $"{baseUrl}{queryParams}{sep}page={page}";
+    }
+}
+
+<nav aria-label="Page navigation" class="mt-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <small class="text-muted">
+            Showing <strong>@(((int)pag.PageIndex - 1) * (int)pag.PageSize + 1)–@(Math.Min((int)pag.PageIndex * (int)pag.PageSize, (int)pag.TotalCount))</strong>
+            of <strong>@((int)pag.TotalCount)</strong> results
+        </small>
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item @(!pag.HasPreviousPage ? "disabled" : "")">
+                <a class="page-link" href="@(pag.HasPreviousPage ? BuildUrl((int)pag.PageIndex - 1) : "#")" aria-label="Previous">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            @if ((int)pag.StartPage > 1)
+            {
+                <li class="page-item"><a class="page-link" href="@BuildUrl(1)">1</a></li>
+                @if ((int)pag.StartPage > 2)
+                {
+                    <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                }
+            }
+            @for (int i = (int)pag.StartPage; i <= (int)pag.EndPage; i++)
+            {
+                <li class="page-item @(i == (int)pag.PageIndex ? "active" : "")">
+                    <a class="page-link" href="@BuildUrl(i)">@i</a>
+                </li>
+            }
+            @if ((int)pag.EndPage < (int)pag.TotalPages)
+            {
+                @if ((int)pag.EndPage < (int)pag.TotalPages - 1)
+                {
+                    <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                }
+                <li class="page-item"><a class="page-link" href="@BuildUrl((int)pag.TotalPages)">@((int)pag.TotalPages)</a></li>
+            }
+            <li class="page-item @(!pag.HasNextPage ? "disabled" : "")">
+                <a class="page-link" href="@(pag.HasNextPage ? BuildUrl((int)pag.PageIndex + 1) : "#")" aria-label="Next">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+        </ul>
+    </div>
+</nav>

@@ -1,6 +1,10 @@
 @{
-    ViewData["Title"] = "Register - LearnLink";
+    ViewData["Title"] = "Complete Profile - LearnLink";
     Layout = null;
+
+    var googleEmail = ViewBag.GoogleEmail as string ?? "";
+    var googleFirstName = ViewBag.GoogleFirstName as string ?? "";
+    var googleLastName = ViewBag.GoogleLastName as string ?? "";
 }
 
 <!DOCTYPE html>
@@ -41,60 +45,68 @@
     <div class="ll-auth-wrapper">
         <div class="container-fluid p-0">
             <div class="row g-0 justify-content-center">
-                <!-- Right Panel - Register Form -->
                 <div class="col-lg-6 ll-auth-right">
                     <div class="ll-auth-form-container">
                         <div class="ll-auth-form-card">
                             <div class="text-center mb-4">
-                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width: 56px; height: 56px; background: #fef3c7;">
-                                    <i class="bi bi-person-plus fs-4" style="color: var(--ll-accent-dark);"></i>
+                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width: 56px; height: 56px; background: #d1fae5;">
+                                    <i class="bi bi-google fs-4" style="color: #059669;"></i>
                                 </div>
-                                <h2 class="ll-auth-form-title">Create your account</h2>
-                                <p class="ll-auth-form-subtitle mb-0">Join LearnLink and start your learning journey today.</p>
+                                <h2 class="ll-auth-form-title">Complete your profile</h2>
+                                <p class="ll-auth-form-subtitle mb-0">
+                                    You signed in with Google as <strong>@googleEmail</strong>.<br />
+                                    Please fill in the remaining details to finish registration.
+                                </p>
                             </div>
 
-                            <form asp-action="Register" method="post">
+                            <form asp-action="CompleteProfile" method="post">
                                 @if (ViewBag.Error != null)
                                 {
                                     <div class="alert alert-danger small py-2 mb-3">
                                         <i class="bi bi-exclamation-circle me-1"></i>@ViewBag.Error
                                     </div>
                                 }
+
+                                <input type="hidden" name="email" value="@googleEmail" />
+
+                                <!-- Name Fields -->
                                 <div class="row g-3 mb-3">
                                     <div class="col-md-4">
                                         <label class="form-label">First Name <span class="text-danger">*</span></label>
                                         <div class="ll-auth-input-group">
                                             <i class="bi bi-person ll-auth-input-icon"></i>
-                                            <input type="text" name="firstName" class="form-control" placeholder="First name" required>
+                                            <input type="text" name="firstName" class="form-control" placeholder="First name" value="@googleFirstName" required>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Middle Name</label>
                                         <div class="ll-auth-input-group">
                                             <i class="bi bi-person ll-auth-input-icon"></i>
-                                            <input type="text" name="middleName" class="form-control" placeholder="Optional">
+                                            <input type="text" name="middleName" class="form-control" placeholder="Middle name (optional)">
                                         </div>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Last Name <span class="text-danger">*</span></label>
                                         <div class="ll-auth-input-group">
                                             <i class="bi bi-person ll-auth-input-icon"></i>
-                                            <input type="text" name="lastName" class="form-control" placeholder="Last name" required>
+                                            <input type="text" name="lastName" class="form-control" placeholder="Last name" value="@googleLastName" required>
                                         </div>
                                     </div>
                                 </div>
 
+                                <!-- Grade/Position -->
                                 <div class="mb-3">
-                                    <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                                    <label class="form-label">Grade / Position</label>
                                     <div class="ll-auth-input-group">
-                                        <i class="bi bi-envelope ll-auth-input-icon"></i>
-                                        <input type="email" name="email" class="form-control" placeholder="name@example.com" required>
+                                        <i class="bi bi-bookmark ll-auth-input-icon"></i>
+                                        <input type="text" name="gradeOrPosition" class="form-control" placeholder="e.g., Grade 8 - Section A or Math Teacher">
                                     </div>
                                 </div>
 
+                                <!-- Password -->
                                 <div class="row g-3 mb-3">
                                     <div class="col-md-6">
-                                        <label class="form-label">Password</label>
+                                        <label class="form-label">Password <span class="text-danger">*</span></label>
                                         <div class="ll-auth-input-group">
                                             <i class="bi bi-lock ll-auth-input-icon"></i>
                                             <input type="password" name="password" id="regPassword" class="form-control" placeholder="Create password" required>
@@ -102,9 +114,10 @@
                                                 <i class="bi bi-eye"></i>
                                             </button>
                                         </div>
+                                        <div class="form-text small text-muted">Min 6 characters</div>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">Confirm Password</label>
+                                        <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
                                         <div class="ll-auth-input-group">
                                             <i class="bi bi-lock-fill ll-auth-input-icon"></i>
                                             <input type="password" name="confirmPassword" id="confirmPassword" class="form-control" placeholder="Re-enter password" required>
@@ -115,14 +128,7 @@
                                     </div>
                                 </div>
 
-                                <div class="mb-3">
-                                    <label class="form-label">Grade / Position</label>
-                                    <div class="ll-auth-input-group">
-                                        <i class="bi bi-bookmark ll-auth-input-icon"></i>
-                                        <input type="text" name="gradeOrPosition" class="form-control" placeholder="e.g., Grade 8 - Section A or Math Teacher">
-                                    </div>
-                                </div>
-
+                                <!-- School Code -->
                                 <div class="mb-3">
                                     <label class="form-label">School Code <span class="text-danger">*</span></label>
                                     <div class="ll-auth-input-group">
@@ -131,34 +137,16 @@
                                     </div>
                                     <div class="form-text small text-muted">Ask your school administrator for the school code.</div>
                                 </div>
+
                                 <button type="submit" class="btn ll-auth-btn-accent w-100 py-2 mb-3">
-                                    <i class="bi bi-person-plus me-2"></i>Create Account
+                                    <i class="bi bi-check-circle me-2"></i>Complete Registration
                                 </button>
+
+                                <div class="text-center">
+                                    <span class="text-muted small">Want to use a different account?</span>
+                                    <a href="@Url.Action("Register", "Home")" class="text-decoration-none small fw-semibold" style="color: var(--ll-primary);">Go back</a>
+                                </div>
                             </form>
-
-                            @if (ViewBag.GoogleAuthEnabled == true)
-                            {
-                            <!-- Google Sign-In Divider -->
-                            <div class="ll-auth-divider my-3">
-                                <span>or continue with</span>
-                            </div>
-
-                            <!-- Google Sign-In -->
-                            <form asp-action="GoogleLogin" method="post">
-                                <input type="hidden" name="returnUrl" value="@Url.Action("Register", "Home")" />
-                                <button type="submit" class="btn ll-auth-btn-google w-100 py-2 mb-3">
-                                    <svg class="me-2" width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.0 24.0 0 0 0 0 21.56l7.98-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-                                    Sign up with Google
-                                </button>
-                            </form>
-                            }
-
-                            <div class="text-center">
-                                <span class="text-muted small">Already have an account?</span>
-                                <a href="@Url.Action("Login", "Home")" class="text-decoration-none small fw-semibold" style="color: var(--ll-primary);">Sign In</a>
-                            </div>
-
-
                         </div>
                     </div>
                 </div>

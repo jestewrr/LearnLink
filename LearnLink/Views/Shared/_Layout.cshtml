@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="~/css/learnlink.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/LearnLink.styles.css" asp-append-version="true" />
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
 </head>
 <body>
     @{
@@ -21,11 +22,13 @@
         var isManager = User.IsInRole("Manager");
         var isStudent = User.IsInRole("Student");
         var canUpload = isAdmin || isContributor || isManager;
-        var canAdmin = isAdmin;
+        var canAdmin = isAdmin || isManager;
         var canReport = isAdmin || isContributor || isManager;
         var userEmail = User.Identity?.Name ?? "User";
         var userInitials = userEmail.Length >= 2 ? userEmail[..2].ToUpper() : "U";
         var userRole = isAdmin ? "Super Admin" : isManager ? "Manager" : isContributor ? "Contributor" : "Student";
+        var schoolName = User.FindFirst("SchoolName")?.Value;
+        var schoolCode = User.FindFirst("SchoolCode")?.Value;
     }
     @if (ViewData["HideLayout"] is true)
     {
@@ -41,11 +44,28 @@
                 </div>
                 <span class="brand-text"><span class="fw-bold">Learn</span><span style="color: var(--ll-accent);">Link</span></span>
             </div>
+            @if (!string.IsNullOrEmpty(schoolName))
+            {
+            <div class="text-center px-3 pb-2">
+                <span class="ll-sidebar-school-badge" title="@schoolName (@schoolCode)">
+                    <i class="bi bi-building me-1"></i>@schoolName
+                </span>
+            </div>
+            }
 
             <nav class="ll-sidebar-nav">
                 <!-- Main Navigation -->
                 <div class="ll-nav-section">
                     <div class="ll-nav-section-title">Main Menu</div>
+                    @if (isStudent)
+                    {
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("StudentDashboard", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "StudentDashboard" ? "active" : "")">
+                            <i class="bi bi-speedometer2"></i>
+                            <span class="nav-text">My Dashboard</span>
+                        </a>
+                    </div>
+                    }
                     @if (!isStudent && !isContributor)
                     {
                     <div class="ll-nav-item">
@@ -59,6 +79,12 @@
                         <a href="@Url.Action("Repository", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Repository" ? "active" : "")">
                             <i class="bi bi-folder2-open"></i>
                             <span class="nav-text">Knowledge Repository</span>
+                        </a>
+                    </div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("Announcements", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Announcements" ? "active" : "")">
+                            <i class="bi bi-megaphone"></i>
+                            <span class="nav-text">Announcements</span>
                         </a>
                     </div>
                 </div>
@@ -123,11 +149,20 @@
                     </div>
                 </div>
 
-                <!-- Administration (Admin only) / Reports (Admin, Contributor, Manager) -->
+                <!-- Administration (Admin & Manager) / Reports (Admin, Contributor, Manager) -->
                 @if (canAdmin || canReport)
                 {
                 <div class="ll-nav-section">
                     <div class="ll-nav-section-title">Administration</div>
+                    @if (isAdmin)
+                    {
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("Schools", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Schools" ? "active" : "")">
+                            <i class="bi bi-building"></i>
+                            <span class="nav-text">Schools</span>
+                        </a>
+                    </div>
+                    }
                     @if (canAdmin)
                     {
                     <div class="ll-nav-item">
@@ -136,7 +171,15 @@
                             <span class="nav-text">User Management</span>
                         </a>
                     </div>
-
+                    }
+                    @if (canAdmin)
+                    {
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("Settings", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "Settings" ? "active" : "")">
+                            <i class="bi bi-gear"></i>
+                            <span class="nav-text">Settings</span>
+                        </a>
+                    </div>
                     }
                     @if (canReport)
                     {
@@ -218,6 +261,10 @@
                             <li class="px-3 py-2">
                                 <div class="fw-bold small">@userEmail</div>
                                 <div class="text-muted small">@userRole</div>
+                                @if (!string.IsNullOrEmpty(schoolName))
+                                {
+                                <div class="text-muted small"><i class="bi bi-building me-1"></i>@schoolName</div>
+                                }
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="@Url.Action("Profile", "Home")"><i class="bi bi-person me-2"></i>My Profile</a></li>
@@ -393,6 +440,156 @@
             // Refresh every 30 seconds
             setInterval(loadNotifications, 30000);
         })();
+    </script>
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+    <script>
+    // ===== Custom Select Dropdown Initializer =====
+    (function() {
+        function initCustomSelect(sel) {
+            if (sel.dataset.llInit) return;
+            sel.dataset.llInit = '1';
+
+            var wrap = document.createElement('div');
+            wrap.className = 'll-custom-select';
+            if (sel.style.width === 'auto' || sel.style.minWidth) {
+                wrap.classList.add('ll-cs-inline');
+                if (sel.style.minWidth) wrap.style.minWidth = sel.style.minWidth;
+            }
+            if (sel.style.maxWidth) wrap.style.maxWidth = sel.style.maxWidth;
+
+            sel.parentNode.insertBefore(wrap, sel);
+            wrap.appendChild(sel);
+            sel.classList.add('ll-select-hidden');
+            sel.tabIndex = -1;
+
+            var trigger = document.createElement('button');
+            trigger.type = 'button';
+            trigger.className = 'll-cs-trigger';
+            trigger.setAttribute('aria-haspopup', 'listbox');
+            wrap.appendChild(trigger);
+
+            var dropdown = document.createElement('div');
+            dropdown.className = 'll-cs-dropdown';
+            dropdown.setAttribute('role', 'listbox');
+            wrap.appendChild(dropdown);
+
+            function buildOptions() {
+                dropdown.innerHTML = '';
+                var selectedText = '';
+                Array.from(sel.options).forEach(function(opt, i) {
+                    var div = document.createElement('div');
+                    div.className = 'll-cs-option';
+                    div.dataset.value = opt.value;
+                    div.dataset.index = i;
+                    div.textContent = opt.textContent;
+                    div.setAttribute('role', 'option');
+                    if (opt.disabled) div.classList.add('ll-cs-disabled');
+                    if (opt.value === '' && i === 0) div.classList.add('ll-cs-placeholder');
+                    if (opt.selected) {
+                        div.classList.add('ll-cs-selected');
+                        selectedText = opt.textContent;
+                    }
+                    div.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        if (opt.disabled) return;
+                        sel.selectedIndex = i;
+                        sel.dispatchEvent(new Event('change', { bubbles: true }));
+                        updateSelected();
+                        closeDropdown();
+                    });
+                    dropdown.appendChild(div);
+                });
+                trigger.textContent = selectedText || (sel.options[0] ? sel.options[0].textContent : '');
+            }
+
+            function updateSelected() {
+                var opts = dropdown.querySelectorAll('.ll-cs-option');
+                opts.forEach(function(o) { o.classList.remove('ll-cs-selected'); });
+                if (sel.selectedIndex >= 0 && opts[sel.selectedIndex]) {
+                    opts[sel.selectedIndex].classList.add('ll-cs-selected');
+                    trigger.textContent = sel.options[sel.selectedIndex].textContent;
+                }
+            }
+
+            function openDropdown() {
+                document.querySelectorAll('.ll-custom-select.ll-cs-open').forEach(function(w) {
+                    if (w !== wrap) w.classList.remove('ll-cs-open', 'll-cs-dropup');
+                });
+                var rect = wrap.getBoundingClientRect();
+                var spaceBelow = window.innerHeight - rect.bottom;
+                if (spaceBelow < 260 && rect.top > 260) {
+                    wrap.classList.add('ll-cs-dropup');
+                } else {
+                    wrap.classList.remove('ll-cs-dropup');
+                }
+                wrap.classList.add('ll-cs-open');
+                var selected = dropdown.querySelector('.ll-cs-selected');
+                if (selected) selected.scrollIntoView({ block: 'nearest' });
+            }
+
+            function closeDropdown() {
+                wrap.classList.remove('ll-cs-open', 'll-cs-dropup');
+            }
+
+            trigger.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (wrap.classList.contains('ll-cs-open')) closeDropdown();
+                else openDropdown();
+            });
+
+            trigger.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (wrap.classList.contains('ll-cs-open')) closeDropdown();
+                    else openDropdown();
+                } else if (e.key === 'Escape') {
+                    closeDropdown();
+                } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    var dir = e.key === 'ArrowDown' ? 1 : -1;
+                    var idx = sel.selectedIndex + dir;
+                    while (idx >= 0 && idx < sel.options.length && sel.options[idx].disabled) idx += dir;
+                    if (idx >= 0 && idx < sel.options.length) {
+                        sel.selectedIndex = idx;
+                        sel.dispatchEvent(new Event('change', { bubbles: true }));
+                        updateSelected();
+                    }
+                }
+            });
+
+            document.addEventListener('click', function() { closeDropdown(); });
+            wrap.addEventListener('click', function(e) { e.stopPropagation(); });
+            sel.addEventListener('change', updateSelected);
+
+            var observer = new MutationObserver(function() { buildOptions(); });
+            observer.observe(sel, { childList: true, subtree: true });
+
+            buildOptions();
+        }
+
+        function initAll() {
+            document.querySelectorAll('select.ll-form-select:not([data-ll-init])').forEach(initCustomSelect);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initAll);
+        } else {
+            initAll();
+        }
+
+        var bodyObserver = new MutationObserver(function(mutations) {
+            var hasNew = mutations.some(function(m) {
+                return Array.from(m.addedNodes).some(function(n) {
+                    return n.nodeType === 1 && (n.matches && n.matches('select.ll-form-select') ||
+                        n.querySelector && n.querySelector('select.ll-form-select'));
+                });
+            });
+            if (hasNew) setTimeout(initAll, 50);
+        });
+        bodyObserver.observe(document.body, { childList: true, subtree: true });
+
+        window.llInitCustomSelects = initAll;
+    })();
     </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
