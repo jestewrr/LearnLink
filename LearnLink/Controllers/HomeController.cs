@@ -1399,6 +1399,33 @@ namespace LearnLink.Controllers
                 }
             }).ToList();
 
+            // Calculate Weekly Resources Completed
+            var startOfWeek = DateTime.Now.Date.AddDays(-(int)DateTime.Now.DayOfWeek);
+            var weeklyResourcesCompleted = readingHistory
+                .Count(rh => rh.ProgressStatus == "Completed" && 
+                             rh.CompletedDate.HasValue && 
+                             rh.CompletedDate.Value.Date >= startOfWeek);
+
+            // Fetch Top 4 Bookmarked Resources for Quick Access
+            var recentBookmarks = await _context.ReadingHistories
+                .Include(rh => rh.Resource)
+                .Include(rh => rh.Resource!.User)
+                .Where(rh => rh.UserId == userId && rh.IsBookmarked && rh.Resource!.Status == "Published")
+                .OrderByDescending(rh => rh.LastAccessed)
+                .Take(4)
+                .Select(rh => MapResource(rh.Resource!))
+                .ToListAsync();
+
+            // Fetch Top 4 Trending Resources (Based on ViewCount + DownloadCount)
+            var schoolId = GetEffectiveSchoolId();
+            var trendingResources = await _context.Resources
+                .Include(r => r.User)
+                .Where(r => r.Status == "Published" && (r.IsSharedCrossSchool || r.SchoolId == schoolId))
+                .OrderByDescending(r => r.ViewCount + r.DownloadCount)
+                .Take(4)
+                .Select(r => MapResource(r))
+                .ToListAsync();
+
             var model = new StudentDashboardViewModel
             {
                 ResourcesRead = resourcesRead,
@@ -1410,9 +1437,13 @@ namespace LearnLink.Controllers
                 SubjectProgress = subjectProgress,
                 RecentReading = recentReading,
                 RecommendedResources = recommended.Select(MapResource).ToList(),
+                TrendingResources = trendingResources,
+                RecentBookmarks = recentBookmarks,
                 RecentActivity = recentActivity,
                 CurrentStreak = currentStreak,
-                BestStreak = bestStreak
+                BestStreak = bestStreak,
+                WeeklyResourcesCompleted = weeklyResourcesCompleted,
+                WeeklyResourceGoal = 3
             };
 
             return View(model);

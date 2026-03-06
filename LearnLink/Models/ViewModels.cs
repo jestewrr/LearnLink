@@ -198,11 +198,15 @@ namespace LearnLink.Models
         // Recent activity
         public List<ReadingHistoryViewModel> RecentReading { get; set; } = new();
         public List<ResourceViewModel> RecommendedResources { get; set; } = new();
+        public List<ResourceViewModel> TrendingResources { get; set; } = new();
+        public List<ResourceViewModel> RecentBookmarks { get; set; } = new();
         public List<ActivityViewModel> RecentActivity { get; set; } = new();
 
-        // Streaks
+        // Streaks & Goals
         public int CurrentStreak { get; set; }
         public int BestStreak { get; set; }
+        public int WeeklyResourcesCompleted { get; set; }
+        public int WeeklyResourceGoal { get; set; } = 3;
     }
 
     public class SubjectProgressItem

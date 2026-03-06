@@ -106,10 +106,11 @@
                 }
                 else
                 {
-                <div class="text-center py-5 text-muted">
-                    <i class="bi bi-bar-chart display-4 d-block mb-3"></i>
-                    <p>Start reading resources to see your progress here!</p>
-                    <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-primary btn-sm">Browse Resources</a>
+                <div class="text-center py-5 text-muted d-flex flex-column align-items-center justify-content-center h-100" style="min-height: 280px;">
+                    <i class="bi bi-bar-chart display-4 d-block mb-3 text-primary opacity-50"></i>
+                    <h5 class="text-dark">No Data Yet</h5>
+                    <p>Start reading resources to see your progress chart here!</p>
+                    <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-primary btn-sm mt-2">Browse Resources</a>
                 </div>
                 }
             </div>
@@ -146,7 +147,7 @@
         </div>
 
         <!-- Overall Completion Ring -->
-        <div class="ll-card">
+        <div class="ll-card mb-4">
             <div class="ll-card-header">
                 <h5 class="ll-card-title"><i class="bi bi-pie-chart me-2 text-success"></i>Overall Completion</h5>
             </div>
@@ -162,14 +163,34 @@
                 </div>
             </div>
         </div>
+
+        <!-- Weekly Target -->
+        <div class="ll-card">
+            <div class="ll-card-header d-flex justify-content-between align-items-center">
+                <h5 class="ll-card-title mb-0"><i class="bi bi-bullseye me-2 text-info"></i>Weekly Target</h5>
+                <span class="badge bg-primary bg-opacity-10 text-primary">@Model.WeeklyResourcesCompleted / @Model.WeeklyResourceGoal</span>
+            </div>
+            <div class="ll-card-body py-4">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted small fw-medium">Resources Read This Week</span>
+                    <span class="text-dark small fw-bold">@(Model.WeeklyResourcesCompleted >= Model.WeeklyResourceGoal ? "Goal Reached! 🎉" : $"{Model.WeeklyResourceGoal - Model.WeeklyResourcesCompleted} left")</span>
+                </div>
+                <div class="progress" style="height: 10px;">
+                    @{
+                        var weeklyGoalPercent = Model.WeeklyResourceGoal > 0 ? Math.Min(100, (int)Math.Round((double)Model.WeeklyResourcesCompleted / Model.WeeklyResourceGoal * 100)) : 0;
+                    }
+                    <div class="progress-bar @(weeklyGoalPercent >= 100 ? "bg-success" : "bg-primary") progress-bar-striped @(weeklyGoalPercent >= 100 ? "" : "progress-bar-animated")" style="width: @weeklyGoalPercent%"></div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Continue Reading + Recommended -->
+<!-- Continue Reading + Recommended + Trending -->
 <div class="row g-4 mb-4">
     <!-- Continue Reading -->
-    <div class="col-lg-6">
-        <div class="ll-card">
+    <div class="col-lg-4">
+        <div class="ll-card h-100">
             <div class="ll-card-header d-flex justify-content-between align-items-center">
                 <h5 class="ll-card-title mb-0"><i class="bi bi-clock-history me-2 text-info"></i>Continue Reading</h5>
                 <a href="@Url.Action("ReadingHistory", "Home")" class="ll-btn ll-btn-outline-primary btn-sm">View All</a>
@@ -178,7 +199,7 @@
                 @if (Model.RecentReading.Any())
                 {
                 <div class="list-group list-group-flush">
-                    @foreach (var item in Model.RecentReading)
+                    @foreach (var item in Model.RecentReading.Take(4))
                     {
                     <a href="@Url.Action("ResourceDetail", "Home", new { id = item.ResourceId })" class="list-group-item list-group-item-action border-0 px-3 py-3">
                         <div class="d-flex align-items-center gap-3">
@@ -187,15 +208,10 @@
                             </div>
                             <div class="flex-grow-1 min-w-0">
                                 <div class="fw-semibold text-truncate">@item.Title</div>
-                                <small class="text-muted">@item.Subject &middot; @item.Author</small>
+                                <small class="text-muted">@item.Subject</small>
                                 <div class="progress mt-1" style="height: 4px;">
                                     <div class="progress-bar @(item.IsCompleted ? "bg-success" : "bg-primary")" style="width: @item.ProgressPercent%"></div>
                                 </div>
-                            </div>
-                            <div class="text-end">
-                                <span class="badge @(item.IsCompleted ? "bg-success" : "bg-primary") bg-opacity-10 @(item.IsCompleted ? "text-success" : "text-primary")">
-                                    @(item.IsCompleted ? "Done" : $"{item.ProgressPercent}%")
-                                </span>
                             </div>
                         </div>
                     </a>
@@ -204,8 +220,8 @@
                 }
                 else
                 {
-                <div class="text-center py-4 text-muted">
-                    <i class="bi bi-book display-4 d-block mb-2"></i>
+                <div class="text-center py-4 text-muted border-top">
+                    <i class="bi bi-book display-4 d-block mb-2 text-info opacity-50"></i>
                     <p class="mb-0">No reading history yet. Start exploring!</p>
                 </div>
                 }
@@ -214,17 +230,17 @@
     </div>
 
     <!-- Recommended Resources -->
-    <div class="col-lg-6">
-        <div class="ll-card">
+    <div class="col-lg-4">
+        <div class="ll-card h-100">
             <div class="ll-card-header d-flex justify-content-between align-items-center">
-                <h5 class="ll-card-title mb-0"><i class="bi bi-stars me-2 text-warning"></i>Recommended For You <span class="ll-repo-knn-badge ms-2">AI-Powered</span></h5>
-                <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline-primary btn-sm">Browse All</a>
+                <h5 class="ll-card-title mb-0"><i class="bi bi-stars me-2 text-warning"></i>Recommended</h5>
+                <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline-primary btn-sm">All</a>
             </div>
             <div class="ll-card-body p-0">
                 @if (Model.RecommendedResources.Any())
                 {
                 <div class="list-group list-group-flush">
-                    @foreach (var res in Model.RecommendedResources)
+                    @foreach (var res in Model.RecommendedResources.Take(4))
                     {
                     <a href="@Url.Action("ResourceDetail", "Home", new { id = res.Id })" class="list-group-item list-group-item-action border-0 px-3 py-3">
                         <div class="d-flex align-items-center gap-3">
@@ -232,8 +248,8 @@
                                 <i class="bi @res.IconClass @res.IconColor"></i>
                             </div>
                             <div class="flex-grow-1 min-w-0">
-                                <div class="fw-semibold text-truncate">@res.Title</div>
-                                <small class="text-muted">@res.Subject &middot; @res.GradeLevel &middot; <i class="bi bi-eye"></i> @res.ViewCount</small>
+                                <div class="fw-semibold text-truncate" title="@res.Title">@res.Title</div>
+                                <small class="text-muted">@res.Subject</small>
                             </div>
                             <span class="badge bg-primary bg-opacity-10 text-primary">@res.ResourceType</span>
                         </div>
@@ -243,9 +259,46 @@
                 }
                 else
                 {
-                <div class="text-center py-4 text-muted">
-                    <i class="bi bi-check-all display-4 d-block mb-2"></i>
-                    <p class="mb-0">You've explored all available resources!</p>
+                <div class="text-center py-4 text-muted border-top">
+                    <i class="bi bi-check-all display-4 d-block mb-2 text-warning opacity-50"></i>
+                    <p class="mb-0">You've explored all recommendations!</p>
+                </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Trending Resources -->
+    <div class="col-lg-4">
+        <div class="ll-card h-100">
+            <div class="ll-card-header d-flex justify-content-between align-items-center">
+                <h5 class="ll-card-title mb-0"><i class="bi bi-graph-up-arrow me-2 text-danger"></i>Trending Now</h5>
+            </div>
+            <div class="ll-card-body p-0">
+                @if (Model.TrendingResources.Any())
+                {
+                <div class="list-group list-group-flush">
+                    @foreach (var res in Model.TrendingResources)
+                    {
+                    <a href="@Url.Action("ResourceDetail", "Home", new { id = res.Id })" class="list-group-item list-group-item-action border-0 px-3 py-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:42px;height:42px;background:@res.IconBg;min-width:42px;">
+                                <i class="bi @res.IconClass @res.IconColor"></i>
+                            </div>
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="fw-semibold text-truncate" title="@res.Title">@res.Title</div>
+                                <small class="text-muted"><i class="bi bi-eye"></i> @res.ViewCount &middot; <i class="bi bi-download"></i> @res.DownloadCount</small>
+                            </div>
+                        </div>
+                    </a>
+                    }
+                </div>
+                }
+                else
+                {
+                <div class="text-center py-4 text-muted border-top">
+                    <i class="bi bi-graph-up-arrow display-4 d-block mb-2 text-danger opacity-50"></i>
+                    <p class="mb-0">No trending resources yet.</p>
                 </div>
                 }
             </div>
@@ -253,18 +306,58 @@
     </div>
 </div>
 
-<!-- Recent Activity -->
+<!-- Bookmarks & Recent Activity -->
 <div class="row g-4 mb-4">
-    <div class="col-12">
-        <div class="ll-card">
+    <!-- Quick Access Bookmarks -->
+    <div class="col-lg-6">
+        <div class="ll-card h-100">
+            <div class="ll-card-header d-flex justify-content-between align-items-center">
+                <h5 class="ll-card-title mb-0"><i class="bi bi-bookmark-fill me-2 text-primary"></i>Quick Access Bookmarks</h5>
+                <a href="@Url.Action("ReadingHistory", "Home", new { filter = "bookmarked" })" class="ll-btn ll-btn-outline-primary btn-sm">View All</a>
+            </div>
+            <div class="ll-card-body p-0">
+                @if (Model.RecentBookmarks.Any())
+                {
+                <div class="list-group list-group-flush">
+                    @foreach (var res in Model.RecentBookmarks)
+                    {
+                    <a href="@Url.Action("ResourceDetail", "Home", new { id = res.Id })" class="list-group-item list-group-item-action border-0 px-3 py-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:42px;height:42px;background:@res.IconBg;min-width:42px;">
+                                <i class="bi @res.IconClass @res.IconColor"></i>
+                            </div>
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="fw-semibold text-truncate" title="@res.Title">@res.Title</div>
+                                <small class="text-muted">@res.Subject &middot; @res.Uploader</small>
+                            </div>
+                            <i class="bi bi-chevron-right text-muted opacity-50"></i>
+                        </div>
+                    </a>
+                    }
+                </div>
+                }
+                else
+                {
+                <div class="text-center py-4 text-muted border-top">
+                    <i class="bi bi-bookmark display-4 d-block mb-2 text-primary opacity-50"></i>
+                    <p class="mb-0">You haven't bookmarked any resources yet.</p>
+                </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="col-lg-6">
+        <div class="ll-card h-100">
             <div class="ll-card-header">
-                <h5 class="ll-card-title"><i class="bi bi-activity me-2 text-primary"></i>Recent Activity</h5>
+                <h5 class="ll-card-title"><i class="bi bi-activity me-2 text-info"></i>Recent Activity</h5>
             </div>
             <div class="ll-card-body p-0">
                 @if (Model.RecentActivity.Any())
                 {
                 <div class="list-group list-group-flush">
-                    @foreach (var act in Model.RecentActivity)
+                    @foreach (var act in Model.RecentActivity.Take(5))
                     {
                     <div class="list-group-item border-0 px-3 py-3">
                         <div class="d-flex align-items-center gap-3">
@@ -284,8 +377,8 @@
                 }
                 else
                 {
-                <div class="text-center py-4 text-muted">
-                    <i class="bi bi-activity display-4 d-block mb-2"></i>
+                <div class="text-center py-4 text-muted border-top">
+                    <i class="bi bi-activity display-4 d-block mb-2 text-info opacity-50"></i>
                     <p class="mb-0">No activity yet. Start learning!</p>
                 </div>
                 }
