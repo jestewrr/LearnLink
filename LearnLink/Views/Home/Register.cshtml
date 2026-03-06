@@ -124,12 +124,20 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">School Code <span class="text-danger">*</span></label>
+                                    <label class="form-label">School <span class="text-danger">*</span></label>
                                     <div class="ll-auth-input-group">
                                         <i class="bi bi-building ll-auth-input-icon"></i>
-                                        <input type="text" name="schoolCode" class="form-control" placeholder="Enter your school code (e.g., SJHS)" required>
+                                        <select name="schoolId" class="form-control form-select" required>
+                                            <option value="" disabled selected>Select your school</option>
+                                            @if (ViewBag.Schools != null)
+                                            {
+                                                foreach (var school in ViewBag.Schools as List<LearnLink.Models.School>)
+                                                {
+                                                    <option value="@school.SchoolId">@school.Name</option>
+                                                }
+                                            }
+                                        </select>
                                     </div>
-                                    <div class="form-text small text-muted">Ask your school administrator for the school code.</div>
                                 </div>
                                 <button type="submit" class="btn ll-auth-btn-accent w-100 py-2 mb-3">
                                     <i class="bi bi-person-plus me-2"></i>Create Account

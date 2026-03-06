@@ -610,7 +610,7 @@ namespace LearnLink.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Register(string firstName, string middleName, string lastName, string email, string password, string confirmPassword, string schoolCode, string gradeOrPosition)
+        public async Task<IActionResult> Register(string firstName, string middleName, string lastName, string email, string password, string confirmPassword, int schoolId, string gradeOrPosition)
         {
             if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName) ||
                 string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
@@ -627,18 +627,18 @@ namespace LearnLink.Controllers
                 return View();
             }
 
-            if (string.IsNullOrWhiteSpace(schoolCode))
+            if (schoolId <= 0)
             {
-                ViewBag.Error = "Please enter your school code.";
+                ViewBag.Error = "Please select your school.";
                 ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
                 return View();
             }
 
-            // Validate school code
-            var school = await _context.Schools.FirstOrDefaultAsync(s => s.Code == schoolCode.Trim().ToUpper() && s.IsActive);
+            // Validate school exists and is active
+            var school = await _context.Schools.FirstOrDefaultAsync(s => s.SchoolId == schoolId && s.IsActive);
             if (school == null)
             {
-                ViewBag.Error = "Invalid school code. Please check with your school administrator for the correct code.";
+                ViewBag.Error = "Invalid school selected. Please try again.";
                 ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
                 return View();
             }
@@ -891,7 +891,7 @@ namespace LearnLink.Controllers
         public async Task<IActionResult> CompleteProfile(
             string firstName, string middleName, string lastName,
             string email, string password, string confirmPassword,
-            string schoolCode, string gradeOrPosition)
+            int schoolId, string gradeOrPosition)
         {
             var googleProviderKey = TempData["GoogleProviderKey"]?.ToString();
             var googleLoginProvider = TempData["GoogleLoginProvider"]?.ToString();
@@ -922,9 +922,9 @@ namespace LearnLink.Controllers
                 return View();
             }
 
-            if (string.IsNullOrWhiteSpace(schoolCode))
+            if (schoolId <= 0)
             {
-                ViewBag.Error = "Please enter your school code.";
+                ViewBag.Error = "Please select your school.";
                 ViewBag.GoogleEmail = email;
                 ViewBag.GoogleFirstName = firstName;
                 ViewBag.GoogleLastName = lastName;
@@ -934,10 +934,10 @@ namespace LearnLink.Controllers
                 return View();
             }
 
-            var school = await _context.Schools.FirstOrDefaultAsync(s => s.Code == schoolCode.Trim().ToUpper() && s.IsActive);
+            var school = await _context.Schools.FirstOrDefaultAsync(s => s.SchoolId == schoolId && s.IsActive);
             if (school == null)
             {
-                ViewBag.Error = "Invalid school code. Please check with your school administrator.";
+                ViewBag.Error = "Invalid school selected. Please try again.";
                 ViewBag.GoogleEmail = email;
                 ViewBag.GoogleFirstName = firstName;
                 ViewBag.GoogleLastName = lastName;
