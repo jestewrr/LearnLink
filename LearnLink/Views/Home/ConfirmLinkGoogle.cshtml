@@ -75,7 +75,10 @@
                                 </div>
 
                                 <div class="mb-4">
-                                    <label class="form-label">Password</label>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <label class="form-label mb-0">Password</label>
+                                        <a href="@Url.Action("ForgotPassword", "Home")" class="text-decoration-none small fw-medium" style="color: var(--ll-primary); text-transform: none; letter-spacing: 0;">Forgot password?</a>
+                                    </div>
                                     <div class="ll-auth-input-group">
                                         <i class="bi bi-lock ll-auth-input-icon"></i>
                                         <input type="password" name="password" id="linkPassword" class="form-control" placeholder="Enter your existing password" required autofocus>

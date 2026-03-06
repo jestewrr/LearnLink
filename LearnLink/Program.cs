@@ -44,6 +44,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Home/Login";
     options.AccessDeniedPath = "/Home/AccessDenied";
+    options.ExpireTimeSpan = TimeSpan.FromDays(30);
+    options.Cookie.MaxAge = options.ExpireTimeSpan;
+    options.SlidingExpiration = true;
 });
 
 // Google Authentication
@@ -61,6 +64,8 @@ if (googleAuthEnabled)
         });
 }
 builder.Services.AddSingleton(new GoogleAuthFlag { IsEnabled = googleAuthEnabled });
+builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
 // KNN Recommendation Engine
 builder.Services.AddScoped<IRecommendationService, KnnRecommendationService>();
@@ -199,6 +204,12 @@ using (var scope = app.Services.CreateScope())
                     ALTER TABLE [Discussions] ADD [SchoolId] int NULL;
                 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('LessonsLearned') AND name = 'SchoolId')
                     ALTER TABLE [LessonsLearned] ADD [SchoolId] int NULL;
+            ");
+
+            // Ensure optional MiddleName column exists on AspNetUsers (fixes deployments with older schemas)
+            await context.Database.ExecuteSqlRawAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AspNetUsers') AND name = 'MiddleName')
+                    ALTER TABLE [AspNetUsers] ADD [MiddleName] nvarchar(100) NULL;
             ");
 
             // Add indexes and foreign keys for SchoolId columns (safe: checks for existence)

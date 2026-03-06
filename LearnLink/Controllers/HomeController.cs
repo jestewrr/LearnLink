@@ -7,7 +7,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
 using System.Text.Json;
 using Resource = LearnLink.Models.Resource;
 
@@ -21,6 +23,7 @@ namespace LearnLink.Controllers
         private readonly IWebHostEnvironment _environment;
         private readonly ISchoolContext _schoolContext;
         private readonly IRecommendationService _recommendationService;
+        private readonly IEmailService _emailService;
         private readonly bool _googleAuthEnabled;
 
         public HomeController(
@@ -30,7 +33,8 @@ namespace LearnLink.Controllers
             IWebHostEnvironment environment,
             ISchoolContext schoolContext,
             GoogleAuthFlag googleAuth,
-            IRecommendationService recommendationService)
+            IRecommendationService recommendationService,
+            IEmailService emailService)
         {
             _context = context;
             _signInManager = signInManager;
@@ -39,6 +43,7 @@ namespace LearnLink.Controllers
             _schoolContext = schoolContext;
             _googleAuthEnabled = googleAuth.IsEnabled;
             _recommendationService = recommendationService;
+            _emailService = emailService;
         }
 
         // ==================== Helpers ====================
@@ -411,12 +416,17 @@ namespace LearnLink.Controllers
             if (_signInManager.IsSignedIn(User))
                 return RedirectToAction("Dashboard");
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
+            ViewBag.RememberMe = false;
             return View();
         }
 
         [HttpPost]
         public async Task<IActionResult> Login(string email, string password, bool rememberMe)
         {
+            ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
+            ViewBag.Email = email;
+            ViewBag.RememberMe = rememberMe;
+
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
             {
                 ViewBag.Error = "Please enter email and password.";
@@ -467,6 +477,126 @@ namespace LearnLink.Controllers
             }
 
             ViewBag.Error = "Invalid email or password.";
+            return View();
+        }
+
+        [HttpGet]
+        public IActionResult ForgotPassword()
+        {
+            ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ForgotPassword(string email)
+        {
+            ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
+            ViewBag.Email = email;
+
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                ViewBag.Error = "Please enter your email address.";
+                return View();
+            }
+
+            if (!_emailService.IsConfigured)
+            {
+                ViewBag.Error = "Password reset email is not configured yet. Add SMTP settings first.";
+                return View();
+            }
+
+            var user = await _userManager.FindByEmailAsync(email.Trim());
+            if (user != null)
+            {
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+                var resetUrl = Url.Action(
+                    "ResetPassword",
+                    "Home",
+                    new { email = user.Email, token = encodedToken },
+                    protocol: Request.Scheme);
+
+                if (!string.IsNullOrWhiteSpace(resetUrl))
+                {
+                    var safeName = string.IsNullOrWhiteSpace(user.FirstName) ? "there" : user.FirstName;
+                    var body = $@"
+                        <div style=""font-family:Segoe UI,Arial,sans-serif;color:#1e293b;line-height:1.6"">
+                            <h2 style=""margin-bottom:12px;"">Reset your LearnLink password</h2>
+                            <p>Hello {safeName},</p>
+                            <p>We received a request to reset your password. Click the button below to choose a new one.</p>
+                            <p style=""margin:24px 0;"">
+                                <a href=""{resetUrl}"" style=""background:#3B7DD8;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;display:inline-block;font-weight:600;"">Reset Password</a>
+                            </p>
+                            <p>If you did not request this, you can safely ignore this email.</p>
+                            <p style=""font-size:13px;color:#64748b;"">If the button does not work, copy and paste this link into your browser:<br>{resetUrl}</p>
+                        </div>";
+
+                    await _emailService.SendAsync(user.Email!, "Reset your LearnLink password", body);
+                }
+            }
+
+            TempData["SuccessMessage"] = "If an account with that email exists, a password reset link has been sent.";
+            return RedirectToAction("ForgotPassword");
+        }
+
+        [HttpGet]
+        public IActionResult ResetPassword(string email, string token)
+        {
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(token))
+            {
+                TempData["ErrorMessage"] = "Invalid or expired password reset link.";
+                return RedirectToAction("ForgotPassword");
+            }
+
+            ViewBag.Email = email;
+            ViewBag.Token = token;
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ResetPassword(string email, string token, string password, string confirmPassword)
+        {
+            ViewBag.Email = email;
+            ViewBag.Token = token;
+
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(password))
+            {
+                ViewBag.Error = "All fields are required.";
+                return View();
+            }
+
+            if (password != confirmPassword)
+            {
+                ViewBag.Error = "Passwords do not match.";
+                return View();
+            }
+
+            string decodedToken;
+            try
+            {
+                decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+            }
+            catch
+            {
+                ViewBag.Error = "Invalid or expired password reset link.";
+                return View();
+            }
+
+            var user = await _userManager.FindByEmailAsync(email.Trim());
+            if (user == null)
+            {
+                TempData["SuccessMessage"] = "Password reset successfully. You can now sign in.";
+                return RedirectToAction("Login");
+            }
+
+            var result = await _userManager.ResetPasswordAsync(user, decodedToken, password);
+            if (result.Succeeded)
+            {
+                TempData["SuccessMessage"] = "Password reset successfully. You can now sign in.";
+                return RedirectToAction("Login");
+            }
+
+            ViewBag.Error = string.Join(" ", result.Errors.Select(e => e.Description));
             return View();
         }
 
@@ -658,9 +788,9 @@ namespace LearnLink.Controllers
         [HttpPost]
         public async Task<IActionResult> ConfirmLinkGoogle(string password)
         {
-            var email = TempData["LinkGoogleEmail"]?.ToString();
-            var providerKey = TempData["LinkGoogleProviderKey"]?.ToString();
-            var loginProvider = TempData["LinkGoogleLoginProvider"]?.ToString();
+            var email = TempData.Peek("LinkGoogleEmail")?.ToString();
+            var providerKey = TempData.Peek("LinkGoogleProviderKey")?.ToString();
+            var loginProvider = TempData.Peek("LinkGoogleLoginProvider")?.ToString();
 
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(providerKey) || string.IsNullOrEmpty(loginProvider))
             {
@@ -675,37 +805,61 @@ namespace LearnLink.Controllers
                 return RedirectToAction("Login");
             }
 
+            if (!await _userManager.HasPasswordAsync(user))
+            {
+                ViewBag.Error = "This account does not have a local password yet. Use Forgot password to create one, then try linking again.";
+                ViewBag.LinkEmail = email;
+                return View();
+            }
+
             if (string.IsNullOrWhiteSpace(password))
             {
                 ViewBag.Error = "Please enter your password.";
                 ViewBag.LinkEmail = email;
-                // Re-store TempData for the next attempt
-                TempData["LinkGoogleEmail"] = email;
-                TempData["LinkGoogleProviderKey"] = providerKey;
-                TempData["LinkGoogleLoginProvider"] = loginProvider;
                 return View();
             }
 
             // Verify password
-            var passwordCheck = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: false);
-            if (!passwordCheck.Succeeded)
+            var passwordMatches = await _userManager.CheckPasswordAsync(user, password);
+            if (!passwordMatches)
             {
                 ViewBag.Error = "Incorrect password. Please try again.";
                 ViewBag.LinkEmail = email;
-                TempData["LinkGoogleEmail"] = email;
-                TempData["LinkGoogleProviderKey"] = providerKey;
-                TempData["LinkGoogleLoginProvider"] = loginProvider;
                 return View();
+            }
+
+            var existingLogins = await _userManager.GetLoginsAsync(user);
+            if (existingLogins.Any(login => login.LoginProvider == loginProvider && login.ProviderKey == providerKey))
+            {
+                await _signInManager.SignInAsync(user, isPersistent: false);
+                TempData.Remove("LinkGoogleEmail");
+                TempData.Remove("LinkGoogleProviderKey");
+                TempData.Remove("LinkGoogleLoginProvider");
+                TempData["SuccessMessage"] = "Your Google account is already linked.";
+                return await _userManager.IsInRoleAsync(user, "Student")
+                    ? RedirectToAction("Repository")
+                    : RedirectToAction("Dashboard");
             }
 
             // Link Google login and sign in
             var loginInfo = new UserLoginInfo(loginProvider, providerKey, "Google");
-            await _userManager.AddLoginAsync(user, loginInfo);
+            var addLoginResult = await _userManager.AddLoginAsync(user, loginInfo);
+            if (!addLoginResult.Succeeded)
+            {
+                ViewBag.Error = string.Join(" ", addLoginResult.Errors.Select(e => e.Description));
+                ViewBag.LinkEmail = email;
+                return View();
+            }
+
             await _signInManager.SignInAsync(user, isPersistent: false);
 
             user.Status = "Active";
             await _userManager.UpdateAsync(user);
             await LogActivity(user.Id, "Login", "Google Sign-In (linked)");
+
+            TempData.Remove("LinkGoogleEmail");
+            TempData.Remove("LinkGoogleProviderKey");
+            TempData.Remove("LinkGoogleLoginProvider");
 
             TempData["SuccessMessage"] = "Google account linked successfully!";
             return await _userManager.IsInRoleAsync(user, "Student")
