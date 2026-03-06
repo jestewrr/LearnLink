@@ -102,7 +102,7 @@
                     </h6>
                     <div class="small mb-2"><span class="text-muted">Learned from:</span> <a href="@Url.Action("ResourceDetail", "Home", new { id = lesson.ResourceId })" class="text-decoration-none fw-medium" style="color: var(--ll-primary);">@lesson.ResourceTitle</a></div>
                     <div class="small text-muted mb-3"><i class="bi bi-tag text-muted"></i> @lesson.Category</div>
-                    <p class="text-dark mb-0 fs-6" style="white-space: pre-wrap;">@lesson.Content</p>
+                    <div class="text-dark mb-0 fs-6" style="white-space: pre-wrap;">@Html.Raw(lesson.Content)</div>
                 </div>
                 
                 <div class="d-flex justify-content-between align-items-center mt-1">

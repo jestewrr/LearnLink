@@ -226,11 +226,31 @@ using (var scope = app.Services.CreateScope())
                     );
                 END
                 
-                -- Fix missing columns in ResourceComments
-                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ResourceComments') AND name = 'DateUpdated')
-                    ALTER TABLE [ResourceComments] ADD [DateUpdated] datetime2 NULL;
-                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ResourceComments') AND name = 'LikeCount')
-                    ALTER TABLE [ResourceComments] ADD [LikeCount] int NOT NULL DEFAULT 0;
+                -- Fix missing ResourceComments table
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('ResourceComments') AND type in ('U'))
+                BEGIN
+                    CREATE TABLE [ResourceComments] (
+                        [CommentId] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
+                        [ResourceId] int NOT NULL,
+                        [UserId] nvarchar(450) NOT NULL,
+                        [Content] nvarchar(2000) NOT NULL,
+                        [DatePosted] datetime2 NOT NULL DEFAULT GETDATE(),
+                        [DateUpdated] datetime2 NULL,
+                        [ParentCommentId] int NULL,
+                        [LikeCount] int NOT NULL DEFAULT 0,
+                        CONSTRAINT [FK_ResourceComments_Resources_ResourceId] FOREIGN KEY ([ResourceId]) REFERENCES [Resources] ([ResourceId]) ON DELETE CASCADE,
+                        CONSTRAINT [FK_ResourceComments_AspNetUsers_UserId] FOREIGN KEY ([UserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE CASCADE,
+                        CONSTRAINT [FK_ResourceComments_ResourceComments_ParentCommentId] FOREIGN KEY ([ParentCommentId]) REFERENCES [ResourceComments] ([CommentId])
+                    );
+                END
+                ELSE
+                BEGIN
+                    -- Fix missing columns in ResourceComments if table exists but columns are missing
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ResourceComments') AND name = 'DateUpdated')
+                        ALTER TABLE [ResourceComments] ADD [DateUpdated] datetime2 NULL;
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ResourceComments') AND name = 'LikeCount')
+                        ALTER TABLE [ResourceComments] ADD [LikeCount] int NOT NULL DEFAULT 0;
+                END
             ");
 
             // Add indexes and foreign keys for SchoolId columns (safe: checks for existence)
