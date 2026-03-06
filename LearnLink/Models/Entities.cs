@@ -690,38 +690,4 @@ namespace LearnLink.Models
 
         public DateTime GrantedAt { get; set; } = DateTime.Now;
     }
-
-    // ==================== Announcements ====================
-
-    public class Announcement
-    {
-        [Key]
-        public int AnnouncementId { get; set; }
-
-        [Required, StringLength(200)]
-        public string Title { get; set; } = "";
-
-        [Required]
-        public string Content { get; set; } = "";
-
-        [Required]
-        public string UserId { get; set; } = "";
-
-        [ForeignKey("UserId")]
-        public ApplicationUser? User { get; set; }
-
-        public int SchoolId { get; set; }
-
-        [ForeignKey("SchoolId")]
-        public School? School { get; set; }
-
-        public bool IsPinned { get; set; } = false;
-
-        [StringLength(20)]
-        public string Priority { get; set; } = "Normal";  // Normal, Important, Urgent
-
-        public DateTime? ExpiresAt { get; set; }
-
-        public DateTime DateCreated { get; set; } = DateTime.Now;
-    }
 }

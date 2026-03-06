@@ -47,7 +47,6 @@ namespace LearnLink.Data
 
         public DbSet<Like> Likes { get; set; }
         public DbSet<Notification> Notifications { get; set; }
-        public DbSet<Announcement> Announcements { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -294,21 +293,6 @@ namespace LearnLink.Data
                 .OnDelete(DeleteBehavior.NoAction);
 
             builder.Entity<Notification>().HasIndex(n => new { n.UserId, n.IsRead });
-
-            // ===== Announcement → User + School =====
-            builder.Entity<Announcement>()
-                .HasOne(a => a.User)
-                .WithMany()
-                .HasForeignKey(a => a.UserId)
-                .OnDelete(DeleteBehavior.NoAction);
-
-            builder.Entity<Announcement>()
-                .HasOne(a => a.School)
-                .WithMany()
-                .HasForeignKey(a => a.SchoolId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.Entity<Announcement>().HasIndex(a => new { a.SchoolId, a.IsPinned });
 
             // ===== ResourceAccessGrant → Resource + User =====
             builder.Entity<ResourceAccessGrant>()

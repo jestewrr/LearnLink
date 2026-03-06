@@ -203,9 +203,6 @@ namespace LearnLink.Models
         // Streaks
         public int CurrentStreak { get; set; }
         public int BestStreak { get; set; }
-
-        // Announcements pinned
-        public List<AnnouncementViewModel> PinnedAnnouncements { get; set; } = new();
     }
 
     public class SubjectProgressItem
@@ -215,36 +212,5 @@ namespace LearnLink.Models
         public int Completed { get; set; }
         public int Percent => Total > 0 ? (int)Math.Round((double)Completed / Total * 100) : 0;
         public string Color { get; set; } = "#4361ee";
-    }
-
-    // ==================== Announcements ====================
-
-    public class AnnouncementViewModel
-    {
-        public int Id { get; set; }
-        public string Title { get; set; } = "";
-        public string Content { get; set; } = "";
-        public string Author { get; set; } = "";
-        public string AuthorInitials { get; set; } = "";
-        public string AuthorColor { get; set; } = "";
-        public string AuthorRole { get; set; } = "";
-        public bool IsPinned { get; set; }
-        public string Priority { get; set; } = "Normal";
-        public DateTime? ExpiresAt { get; set; }
-        public DateTime DateCreated { get; set; }
-        public bool IsOwner { get; set; }
-        public bool CanManage { get; set; }
-        public string PriorityBadgeClass => Priority switch
-        {
-            "Urgent" => "ll-badge-danger",
-            "Important" => "ll-badge-warning",
-            _ => "ll-badge-info"
-        };
-        public string PriorityIcon => Priority switch
-        {
-            "Urgent" => "bi-exclamation-triangle-fill",
-            "Important" => "bi-exclamation-circle-fill",
-            _ => "bi-info-circle-fill"
-        };
     }
 }

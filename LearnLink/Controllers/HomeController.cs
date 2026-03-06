@@ -1399,29 +1399,6 @@ namespace LearnLink.Controllers
                 }
             }).ToList();
 
-            // Pinned announcements
-            var schoolId = GetEffectiveSchoolId();
-            var pinnedAnnouncements = await _context.Announcements
-                .Include(a => a.User)
-                .Where(a => a.IsPinned && (a.ExpiresAt == null || a.ExpiresAt > DateTime.Now))
-                .Where(a => !schoolId.HasValue || a.SchoolId == schoolId.Value)
-                .OrderByDescending(a => a.Priority == "Urgent" ? 3 : a.Priority == "Important" ? 2 : 1)
-                .ThenByDescending(a => a.DateCreated)
-                .Take(3)
-                .Select(a => new AnnouncementViewModel
-                {
-                    Id = a.AnnouncementId,
-                    Title = a.Title,
-                    Content = a.Content,
-                    Author = a.User != null ? a.User.FullName : "Unknown",
-                    AuthorInitials = a.User != null ? a.User.Initials : "?",
-                    AuthorColor = a.User != null ? a.User.AvatarColor : "",
-                    IsPinned = a.IsPinned,
-                    Priority = a.Priority,
-                    DateCreated = a.DateCreated
-                })
-                .ToListAsync();
-
             var model = new StudentDashboardViewModel
             {
                 ResourcesRead = resourcesRead,
@@ -1435,8 +1412,7 @@ namespace LearnLink.Controllers
                 RecommendedResources = recommended.Select(MapResource).ToList(),
                 RecentActivity = recentActivity,
                 CurrentStreak = currentStreak,
-                BestStreak = bestStreak,
-                PinnedAnnouncements = pinnedAnnouncements
+                BestStreak = bestStreak
             };
 
             return View(model);
@@ -4471,162 +4447,7 @@ namespace LearnLink.Controllers
             return View();
         }
 
-        // ==================== Announcements Board ====================
 
-        [Authorize]
-        public async Task<IActionResult> Announcements()
-        {
-            await LoadSchoolSettingsToViewBag();
-            var currentUser = await GetCurrentUserAsync();
-            if (currentUser == null) return RedirectToAction("Login");
-
-            var schoolId = GetEffectiveSchoolId();
-            var isAdmin = User.IsInRole("SuperAdmin");
-            var isManager = User.IsInRole("Manager");
-            var canManage = isAdmin || isManager;
-
-            var announcements = await _context.Announcements
-                .Include(a => a.User)
-                .Where(a => !schoolId.HasValue || a.SchoolId == schoolId.Value)
-                .OrderByDescending(a => a.IsPinned)
-                .ThenByDescending(a => a.Priority == "Urgent" ? 3 : a.Priority == "Important" ? 2 : 1)
-                .ThenByDescending(a => a.DateCreated)
-                .ToListAsync();
-
-            ViewBag.CanManage = canManage;
-            ViewBag.Announcements = announcements.Select(a => new AnnouncementViewModel
-            {
-                Id = a.AnnouncementId,
-                Title = a.Title,
-                Content = a.Content,
-                Author = a.User?.FullName ?? "Unknown",
-                AuthorInitials = a.User?.Initials ?? "?",
-                AuthorColor = a.User?.AvatarColor ?? "",
-                AuthorRole = canManage ? "Manager" : "User",
-                IsPinned = a.IsPinned,
-                Priority = a.Priority,
-                ExpiresAt = a.ExpiresAt,
-                DateCreated = a.DateCreated,
-                IsOwner = a.UserId == currentUser.Id,
-                CanManage = canManage
-            }).ToList();
-
-            return View();
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "SuperAdmin,Manager")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> PostAnnouncement(string title, string content, string priority, bool isPinned, string? expiresAt)
-        {
-            var currentUser = await GetCurrentUserAsync();
-            if (currentUser == null) return RedirectToAction("Login");
-
-            var schoolId = GetEffectiveSchoolId();
-            if (!schoolId.HasValue)
-            {
-                TempData["ErrorMessage"] = "No school context available.";
-                return RedirectToAction("Announcements");
-            }
-
-            var announcement = new Announcement
-            {
-                Title = title,
-                Content = content,
-                UserId = currentUser.Id,
-                SchoolId = schoolId.Value,
-                IsPinned = isPinned,
-                Priority = string.IsNullOrEmpty(priority) ? "Normal" : priority,
-                ExpiresAt = string.IsNullOrEmpty(expiresAt) ? null : DateTime.Parse(expiresAt),
-                DateCreated = DateTime.Now
-            };
-
-            _context.Announcements.Add(announcement);
-            await _context.SaveChangesAsync();
-
-            // Notify all users in the school
-            var schoolUsers = await _userManager.Users
-                .Where(u => u.SchoolId == schoolId.Value && u.Id != currentUser.Id && u.Status == "Active")
-                .ToListAsync();
-
-            foreach (var user in schoolUsers)
-            {
-                _context.Notifications.Add(new Notification
-                {
-                    UserId = user.Id,
-                    Title = "New Announcement",
-                    Message = $"{currentUser.FullName} posted: {title}",
-                    Type = "announcement",
-                    Icon = priority == "Urgent" ? "bi-exclamation-triangle-fill" : "bi-megaphone",
-                    IconBg = priority == "Urgent" ? "bg-danger" : priority == "Important" ? "bg-warning" : "bg-info",
-                    Link = "/Home/Announcements",
-                    CreatedAt = DateTime.Now
-                });
-            }
-            await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = "Announcement posted successfully!";
-            return RedirectToAction("Announcements");
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "SuperAdmin,Manager")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditAnnouncement(int id, string title, string content, string priority, bool isPinned, string? expiresAt)
-        {
-            var announcement = await _context.Announcements.FindAsync(id);
-            if (announcement == null)
-            {
-                TempData["ErrorMessage"] = "Announcement not found.";
-                return RedirectToAction("Announcements");
-            }
-
-            announcement.Title = title;
-            announcement.Content = content;
-            announcement.Priority = string.IsNullOrEmpty(priority) ? "Normal" : priority;
-            announcement.IsPinned = isPinned;
-            announcement.ExpiresAt = string.IsNullOrEmpty(expiresAt) ? null : DateTime.Parse(expiresAt);
-
-            await _context.SaveChangesAsync();
-            TempData["SuccessMessage"] = "Announcement updated successfully!";
-            return RedirectToAction("Announcements");
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "SuperAdmin,Manager")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteAnnouncement(int id)
-        {
-            var announcement = await _context.Announcements.FindAsync(id);
-            if (announcement == null)
-            {
-                TempData["ErrorMessage"] = "Announcement not found.";
-                return RedirectToAction("Announcements");
-            }
-
-            _context.Announcements.Remove(announcement);
-            await _context.SaveChangesAsync();
-            TempData["SuccessMessage"] = "Announcement deleted.";
-            return RedirectToAction("Announcements");
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "SuperAdmin,Manager")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> TogglePinAnnouncement(int id)
-        {
-            var announcement = await _context.Announcements.FindAsync(id);
-            if (announcement == null)
-            {
-                TempData["ErrorMessage"] = "Announcement not found.";
-                return RedirectToAction("Announcements");
-            }
-
-            announcement.IsPinned = !announcement.IsPinned;
-            await _context.SaveChangesAsync();
-            TempData["SuccessMessage"] = announcement.IsPinned ? "Announcement pinned." : "Announcement unpinned.";
-            return RedirectToAction("Announcements");
-        }
 
         private string GetSubjectColor(string subject) => subject switch
         {

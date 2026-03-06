@@ -7,24 +7,6 @@
     var userName = User.Identity?.Name ?? "Student";
 }
 
-<!-- Pinned Announcements Banner -->
-@if (Model.PinnedAnnouncements.Any())
-{
-<div class="mb-4">
-    @foreach (var ann in Model.PinnedAnnouncements)
-    {
-    <div class="alert @(ann.Priority == "Urgent" ? "alert-danger" : ann.Priority == "Important" ? "alert-warning" : "alert-info") d-flex align-items-start gap-2 mb-2 border-0 shadow-sm" role="alert">
-        <i class="bi @ann.PriorityIcon fs-5 mt-1"></i>
-        <div class="flex-grow-1">
-            <strong>@ann.Title</strong>
-            <p class="mb-0 small opacity-75">@ann.Content</p>
-        </div>
-        <small class="text-nowrap opacity-50">@ann.DateCreated.ToString("MMM dd")</small>
-    </div>
-    }
-</div>
-}
-
 <!-- Page Header -->
 <div class="ll-page-header">
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
