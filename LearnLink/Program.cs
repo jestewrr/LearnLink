@@ -210,6 +210,27 @@ using (var scope = app.Services.CreateScope())
             await context.Database.ExecuteSqlRawAsync(@"
                 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AspNetUsers') AND name = 'MiddleName')
                     ALTER TABLE [AspNetUsers] ADD [MiddleName] nvarchar(100) NULL;
+                    
+                -- Fix missing AccessExpiresAt column
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'AccessExpiresAt')
+                    ALTER TABLE [Resources] ADD [AccessExpiresAt] datetime2 NULL;
+
+                -- Fix missing ResourceAccessGrants table
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('ResourceAccessGrants') AND type in ('U'))
+                BEGIN
+                    CREATE TABLE [ResourceAccessGrants] (
+                        [GrantId] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
+                        [ResourceId] int NOT NULL,
+                        [UserId] nvarchar(450) NOT NULL,
+                        [GrantedAt] datetime2 NOT NULL
+                    );
+                END
+                
+                -- Fix missing columns in ResourceComments
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ResourceComments') AND name = 'DateUpdated')
+                    ALTER TABLE [ResourceComments] ADD [DateUpdated] datetime2 NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ResourceComments') AND name = 'LikeCount')
+                    ALTER TABLE [ResourceComments] ADD [LikeCount] int NOT NULL DEFAULT 0;
             ");
 
             // Add indexes and foreign keys for SchoolId columns (safe: checks for existence)
