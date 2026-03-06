@@ -251,6 +251,81 @@ using (var scope = app.Services.CreateScope())
                     IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ResourceComments') AND name = 'LikeCount')
                         ALTER TABLE [ResourceComments] ADD [LikeCount] int NOT NULL DEFAULT 0;
                 END
+
+                -- Fix missing Likes table
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('Likes') AND type in ('U'))
+                BEGIN
+                    CREATE TABLE [Likes] (
+                        [LikeId] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
+                        [UserId] nvarchar(450) NOT NULL,
+                        [TargetType] nvarchar(20) NOT NULL,
+                        [TargetId] int NOT NULL,
+                        [CreatedAt] datetime2 NOT NULL DEFAULT GETDATE(),
+                        CONSTRAINT [FK_Likes_AspNetUsers_UserId] FOREIGN KEY ([UserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE CASCADE
+                    );
+                    CREATE INDEX [IX_Likes_UserId] ON [Likes] ([UserId]);
+                END
+
+                -- Fix missing ResourceVersions table
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('ResourceVersions') AND type in ('U'))
+                BEGIN
+                    CREATE TABLE [ResourceVersions] (
+                        [VersionId] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
+                        [ResourceId] int NOT NULL,
+                        [VersionNumber] nvarchar(50) NOT NULL,
+                        [VersionNotes] nvarchar(1000) NULL,
+                        [FilePath] nvarchar(500) NOT NULL,
+                        [FileFormat] nvarchar(10) NOT NULL,
+                        [FileSize] nvarchar(20) NOT NULL,
+                        [DateUpdated] datetime2 NOT NULL DEFAULT GETDATE(),
+                        CONSTRAINT [FK_ResourceVersions_Resources_ResourceId] FOREIGN KEY ([ResourceId]) REFERENCES [Resources] ([ResourceId]) ON DELETE CASCADE
+                    );
+                    CREATE INDEX [IX_ResourceVersions_ResourceId] ON [ResourceVersions] ([ResourceId]);
+                END
+
+                -- Fix missing Tag tables
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('Tags') AND type in ('U'))
+                BEGIN
+                    CREATE TABLE [Tags] (
+                        [TagId] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
+                        [TagName] nvarchar(50) NOT NULL
+                    );
+                END
+
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('ResourceTags') AND type in ('U'))
+                BEGIN
+                    CREATE TABLE [ResourceTags] (
+                        [ResourceTagId] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
+                        [ResourceId] int NOT NULL,
+                        [TagId] int NOT NULL,
+                        CONSTRAINT [FK_ResourceTags_Resources_ResourceId] FOREIGN KEY ([ResourceId]) REFERENCES [Resources] ([ResourceId]) ON DELETE CASCADE,
+                        CONSTRAINT [FK_ResourceTags_Tags_TagId] FOREIGN KEY ([TagId]) REFERENCES [Tags] ([TagId]) ON DELETE CASCADE
+                    );
+                    CREATE INDEX [IX_ResourceTags_ResourceId] ON [ResourceTags] ([ResourceId]);
+                END
+
+                -- Fix missing Category tables
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('ResourceCategories') AND type in ('U'))
+                BEGIN
+                    CREATE TABLE [ResourceCategories] (
+                        [CategoryId] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
+                        [CategoryName] nvarchar(50) NOT NULL,
+                        [Description] nvarchar(100) NOT NULL DEFAULT ''
+                    );
+                END
+
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('ResourceCategoryMaps') AND type in ('U'))
+                BEGIN
+                    CREATE TABLE [ResourceCategoryMaps] (
+                        [MapId] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
+                        [ResourceId] int NOT NULL,
+                        [CategoryId] int NOT NULL,
+                        CONSTRAINT [FK_ResourceCategoryMaps_Resources_ResourceId] FOREIGN KEY ([ResourceId]) REFERENCES [Resources] ([ResourceId]) ON DELETE CASCADE,
+                        CONSTRAINT [FK_ResourceCategoryMaps_ResourceCategories_CategoryId] FOREIGN KEY ([CategoryId]) REFERENCES [ResourceCategories] ([CategoryId]) ON DELETE CASCADE
+                    );
+                    CREATE INDEX [IX_ResourceCategoryMaps_ResourceId] ON [ResourceCategoryMaps] ([ResourceId]);
+                END
+
             ");
 
             // Add indexes and foreign keys for SchoolId columns (safe: checks for existence)
