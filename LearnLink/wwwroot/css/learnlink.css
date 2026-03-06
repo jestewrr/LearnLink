@@ -1693,6 +1693,10 @@ select.ll-form-select.ll-select-hidden {
     max-width: 480px;
 }
 
+.ll-auth-form-container-wide {
+    max-width: 640px;
+}
+
 .ll-auth-form-card {
     background: #fff;
     border-radius: 20px;
@@ -1941,6 +1945,10 @@ select.ll-form-select.ll-select-hidden {
 
     .ll-auth-form-card {
         padding: 2rem 1.5rem;
+    }
+
+    .ll-auth-form-container-wide {
+        max-width: 100%;
     }
 
     .ll-auth-body {

@@ -44,6 +44,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Home/Login";
     options.AccessDeniedPath = "/Home/AccessDenied";
+    options.ExpireTimeSpan = TimeSpan.FromDays(30);
+    options.Cookie.MaxAge = options.ExpireTimeSpan;
+    options.SlidingExpiration = true;
 });
 
 // Google Authentication
@@ -61,6 +64,8 @@ if (googleAuthEnabled)
         });
 }
 builder.Services.AddSingleton(new GoogleAuthFlag { IsEnabled = googleAuthEnabled });
+builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
 // KNN Recommendation Engine
 builder.Services.AddScoped<IRecommendationService, KnnRecommendationService>();
