@@ -1296,7 +1296,9 @@ namespace LearnLink.Controllers
                 foreach (var item in items.EnumerateArray())
                 {
                     var volumeInfo = item.GetProperty("volumeInfo");
-                    var title = volumeInfo.TryGetProperty("title", out var t) ? t.GetString() : "Unknown Title";
+                    var rawTitle = volumeInfo.TryGetProperty("title", out var t) ? t.GetString() : "Unknown Title";
+                    var title = rawTitle;
+                    if (title != null && title.Length > 95) title = title.Substring(0, 95) + "..."; // Title max length is 100
                     
                     // Prevent exact duplicates
                     if (await _context.Resources.AnyAsync(r => r.Title == title && r.ResourceType == "Book" && r.SchoolId == currentUser.SchoolId))
@@ -1307,6 +1309,7 @@ namespace LearnLink.Controllers
                     
                     var previewLink = volumeInfo.TryGetProperty("previewLink", out var pl) ? pl.GetString() : "";
                     if (string.IsNullOrEmpty(previewLink)) continue; // Can't add without a link
+                    if (previewLink.Length > 490) previewLink = previewLink.Substring(0, 490); // FilePath max length is 500
 
                     var newResource = new Resource
                     {
@@ -1341,7 +1344,8 @@ namespace LearnLink.Controllers
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = $"An error occurred while importing books: {ex.Message}";
+                var innerMsg = ex.InnerException != null ? ex.InnerException.Message : "";
+                TempData["ErrorMessage"] = $"An error occurred while importing books: {ex.Message} {innerMsg}";
             }
 
             return RedirectToAction("Dashboard");
