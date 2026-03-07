@@ -46,21 +46,44 @@
     var fmt = Normal(resource.FileFormat);
     var isOffice = fmt == "DOCX" || fmt == "DOC" || fmt == "PPTX" || fmt == "PPT" || fmt == "XLSX" || fmt == "XLS";
     var hasFile = canPreview && !string.IsNullOrWhiteSpace(fileUrl);
+    var isDriveFile = !string.IsNullOrEmpty(ViewBag.DriveFileId as string);
+    var drivePreviewUrl = ViewBag.DrivePreviewUrl as string ?? "";
     var canUseGoogleViewer = fileUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase);
     var previewAction = isPublicView ? "PublicDownload" : "DownloadResource";
-    var proxyUrl = Url.Action(previewAction, "Home", new { id = resource.Id, inline = true }) ?? fileUrl;
-    string readUrl = proxyUrl;
-    if (isOffice && canUseGoogleViewer)
+
+    string viewerUrl = "";
+    if (hasFile)
     {
-        readUrl = "https://docs.google.com/viewer?url=" + Uri.EscapeDataString(fileUrl);
+        if (isDriveFile)
+        {
+            // Use Drive's own preview embed for all formats
+            viewerUrl = drivePreviewUrl;
+        }
+        else if (fmt == "PDF")
+        {
+            viewerUrl = Url.Action(previewAction, "Home", new { id = resource.Id, inline = true }) + "#view=FitH";
+        }
+        else if (isOffice && canUseGoogleViewer)
+        {
+            viewerUrl = "https://docs.google.com/gview?url=" + Uri.EscapeDataString(fileUrl) + "&embedded=true";
+        }
+        else
+        {
+            viewerUrl = Url.Action(previewAction, "Home", new { id = resource.Id, inline = true }) ?? "";
+        }
     }
 
+    // "Read Now" should open the viewer in a new tab, not download
     string readNowUrl = "";
     if (hasFile)
     {
-        if (isOffice && canUseGoogleViewer)
+        if (isDriveFile)
         {
-            readNowUrl = readUrl + "&embedded=true";
+            readNowUrl = drivePreviewUrl;
+        }
+        else if (isOffice && canUseGoogleViewer)
+        {
+            readNowUrl = "https://docs.google.com/gview?url=" + Uri.EscapeDataString(fileUrl) + "&embedded=true";
         }
         else
         {
@@ -279,14 +302,9 @@
                     <p>No file has been attached to this resource yet.</p>
                 </div>
             }
-            else if (fmt == "PDF")
+            else if (!string.IsNullOrEmpty(viewerUrl))
             {
-                <iframe src="@Url.Action(previewAction, "Home", new { id = resource.Id, inline = true })#view=FitH"
-                        title="PDF Viewer"></iframe>
-            }
-            else if (isOffice)
-            {
-                <iframe src="@readUrl&embedded=true" title="Document Viewer"></iframe>
+                <iframe src="@viewerUrl" title="Document Viewer" allow="autoplay"></iframe>
             }
             else
             {

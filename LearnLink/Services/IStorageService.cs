@@ -16,4 +16,8 @@ public interface IStorageService
 {
     Task<StorageResult> UploadAsync(Stream stream, string fileName, string contentType);
     Task<bool> DeleteAsync(string fileId);
+    Task<Stream?> DownloadAsync(string fileId);
+    string? ExtractFileId(string filePath);
+    string GetPreviewUrl(string fileId, string fileFormat);
+    string GetDirectDownloadUrl(string fileId);
 }
