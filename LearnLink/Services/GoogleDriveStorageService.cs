@@ -3,6 +3,7 @@ using Google.Apis.Drive.v3;
 using Google.Apis.Drive.v3.Data;
 using Google.Apis.Services;
 using Microsoft.Extensions.Options;
+using System.Text.RegularExpressions;
 using DriveFile = Google.Apis.Drive.v3.Data.File;
 
 namespace LearnLink.Services;
@@ -112,5 +113,53 @@ public class GoogleDriveStorageService : IStorageService
             _logger.LogError(ex, "Error deleting file {FileId} from Google Drive", fileId);
             return false;
         }
+    }
+
+    public async Task<Stream?> DownloadAsync(string fileId)
+    {
+        try
+        {
+            var stream = new MemoryStream();
+            var request = _driveService.Files.Get(fileId);
+            await request.DownloadAsync(stream);
+            stream.Position = 0;
+            return stream;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error downloading file {FileId} from Google Drive", fileId);
+            return null;
+        }
+    }
+
+    public string? ExtractFileId(string filePath)
+    {
+        if (string.IsNullOrEmpty(filePath)) return null;
+
+        // Match /d/{fileId}/ pattern from webViewLink
+        var match = Regex.Match(filePath, @"/d/([a-zA-Z0-9_-]+)");
+        if (match.Success) return match.Groups[1].Value;
+
+        // Match ?id={fileId} pattern from webContentLink
+        match = Regex.Match(filePath, @"[?&]id=([a-zA-Z0-9_-]+)");
+        if (match.Success) return match.Groups[1].Value;
+
+        return null;
+    }
+
+    public string GetPreviewUrl(string fileId, string fileFormat)
+    {
+        var fmt = fileFormat?.TrimStart('.').Trim().ToUpperInvariant() ?? "";
+        if (fmt == "PDF")
+        {
+            return $"https://drive.google.com/file/d/{fileId}/preview";
+        }
+        // Office formats: use Google Docs Viewer
+        return $"https://docs.google.com/gview?url=https://drive.google.com/uc?id={fileId}%26export=download&embedded=true";
+    }
+
+    public string GetDirectDownloadUrl(string fileId)
+    {
+        return $"https://drive.google.com/uc?id={fileId}&export=download";
     }
 }

@@ -1958,21 +1958,39 @@ namespace LearnLink.Controllers
             ViewBag.Resource = vm;
             ViewBag.CurrentUserId = currentUser?.Id;
 
-            // Local file preview/download
-            string localUrl = string.Empty;
+            // File preview/download URL
+            string fileUrl = string.Empty;
             bool canPreview = false;
 
             if (!string.IsNullOrEmpty(resource.FilePath))
             {
-                // Normalize file format for comparison
-                var fmt = resource.FileFormat?.TrimStart('.').Trim().ToUpperInvariant() ?? "";
-                
-                localUrl = $"/uploads/{resource.FilePath}";
-                canPreview = true;
+                if (resource.FilePath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Google Drive URL — extract file ID for proper embed/preview URLs
+                    var driveFileId = _storage.ExtractFileId(resource.FilePath);
+                    if (!string.IsNullOrEmpty(driveFileId))
+                    {
+                        var fmt = resource.FileFormat?.TrimStart('.').Trim().ToUpperInvariant() ?? "";
+                        fileUrl = _storage.GetDirectDownloadUrl(driveFileId);
+                        ViewBag.DriveFileId = driveFileId;
+                        ViewBag.DrivePreviewUrl = _storage.GetPreviewUrl(driveFileId, fmt);
+                    }
+                    else
+                    {
+                        fileUrl = resource.FilePath;
+                    }
+                    canPreview = true;
+                }
+                else
+                {
+                    // Legacy local file
+                    fileUrl = $"/uploads/{resource.FilePath}";
+                    canPreview = true;
+                }
             }
 
-            ViewBag.CloudUrl = localUrl;
-            ViewBag.FileUrl = localUrl;
+            ViewBag.CloudUrl = fileUrl;
+            ViewBag.FileUrl = fileUrl;
             ViewBag.CanPreview = canPreview;
 
             // Pass resource owner's policy flags to the view
@@ -2315,7 +2333,37 @@ namespace LearnLink.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // Fetch local file
+            string contentType = GetContentType(resource.FileFormat);
+            string downloadName = $"{resource.Title}.{resource.FileFormat?.ToLower() ?? "bin"}";
+
+            // Check if file is stored on Google Drive (URL starts with http)
+            if (resource.FilePath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                var driveFileId = _storage.ExtractFileId(resource.FilePath);
+                if (!string.IsNullOrEmpty(driveFileId))
+                {
+                    var stream = await _storage.DownloadAsync(driveFileId);
+                    if (stream == null)
+                    {
+                        if (inline) return NotFound();
+                        TempData["ErrorMessage"] = "Error downloading file from cloud storage.";
+                        return RedirectToAction("ResourceDetail", new { id });
+                    }
+
+                    if (inline)
+                    {
+                        Response.Headers.Append("Content-Disposition", new System.Net.Mime.ContentDisposition
+                        {
+                            FileName = downloadName,
+                            Inline = true
+                        }.ToString());
+                        return File(stream, contentType);
+                    }
+                    return File(stream, "application/octet-stream", downloadName);
+                }
+            }
+
+            // Legacy local file
             var filepath = Path.Combine(_environment.WebRootPath, "uploads", resource.FilePath);
             if (!System.IO.File.Exists(filepath))
             {
@@ -2325,9 +2373,6 @@ namespace LearnLink.Controllers
             }
             
             var content = await System.IO.File.ReadAllBytesAsync(filepath);
-            
-            string contentType = GetContentType(resource.FileFormat);
-            string downloadName = $"{resource.Title}.{resource.FileFormat?.ToLower() ?? "bin"}";
 
             if (inline) 
             {
@@ -2365,16 +2410,40 @@ namespace LearnLink.Controllers
             if (string.IsNullOrEmpty(resource.FilePath))
                 return NotFound();
 
+            resource.DownloadCount++;
+            await _context.SaveChangesAsync();
+
+            string contentType = GetContentType(resource.FileFormat);
+            string downloadName = $"{resource.Title}.{resource.FileFormat?.ToLower() ?? "bin"}";
+
+            // Google Drive file
+            if (resource.FilePath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                var driveFileId = _storage.ExtractFileId(resource.FilePath);
+                if (!string.IsNullOrEmpty(driveFileId))
+                {
+                    var stream = await _storage.DownloadAsync(driveFileId);
+                    if (stream == null) return NotFound();
+
+                    if (inline)
+                    {
+                        Response.Headers.Append("Content-Disposition", new System.Net.Mime.ContentDisposition
+                        {
+                            FileName = downloadName,
+                            Inline = true
+                        }.ToString());
+                        return File(stream, contentType);
+                    }
+                    return File(stream, "application/octet-stream", downloadName);
+                }
+            }
+
+            // Legacy local file
             var filepath = Path.Combine(_environment.WebRootPath, "uploads", resource.FilePath);
             if (!System.IO.File.Exists(filepath))
                 return NotFound();
 
-            resource.DownloadCount++;
-            await _context.SaveChangesAsync();
-
             var content = await System.IO.File.ReadAllBytesAsync(filepath);
-            string contentType = GetContentType(resource.FileFormat);
-            string downloadName = $"{resource.Title}.{resource.FileFormat?.ToLower() ?? "bin"}";
 
             if (inline)
             {
