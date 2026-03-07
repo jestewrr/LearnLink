@@ -105,6 +105,7 @@ namespace LearnLink.Models
         public int ResourceCount { get; set; }
         public string? SuspensionReason { get; set; }
         public DateTime? SuspensionDate { get; set; }
+        public int? SchoolId { get; set; }
     }
 
     public class ActivityViewModel

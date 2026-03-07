@@ -4076,6 +4076,7 @@ namespace LearnLink.Controllers
                 BaseUrl = Url.Action("Users", "Home"),
                 QueryParams = BuildUsersQuery(search, role, status)
             };
+            ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
             return View();
         }
 
@@ -4104,11 +4105,25 @@ namespace LearnLink.Controllers
             var lastName = names.Length > 1 ? names[1] : "";
             var initials = model.Name.Length >= 2 ? model.Name.Substring(0, 2).ToUpper() : "U";
 
-            // Manager can only add users to their own school; SuperAdmin uses effective school
-            var targetSchoolId = User.IsInRole("Manager") ? currentUser?.SchoolId : GetEffectiveSchoolId();
+            // Determine target school based on role
+            int? targetSchoolId;
+            var role = model.Role ?? "Student";
+
+            if (role == "Manager" && model.SchoolId.HasValue)
+            {
+                // SuperAdmin assigning a Manager to a specific school
+                targetSchoolId = model.SchoolId.Value;
+            }
+            else if (User.IsInRole("Manager") && !User.IsInRole("SuperAdmin"))
+            {
+                targetSchoolId = currentUser?.SchoolId;
+            }
+            else
+            {
+                targetSchoolId = GetEffectiveSchoolId();
+            }
 
             // Manager cannot assign SuperAdmin role
-            var role = model.Role ?? "Student";
             if (User.IsInRole("Manager") && !User.IsInRole("SuperAdmin") && role == "SuperAdmin")
             {
                 TempData["ErrorMessage"] = "Managers cannot assign the SuperAdmin role.";
@@ -4136,7 +4151,61 @@ namespace LearnLink.Controllers
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(user, role);
-                TempData["SuccessMessage"] = $"{model.Name} has been added successfully! (Temporary password: {password})";
+
+                // Send Gmail invitation email
+                try
+                {
+                    if (_emailService.IsConfigured)
+                    {
+                        var schoolName = "";
+                        if (targetSchoolId.HasValue)
+                        {
+                            var school = await _context.Schools.FindAsync(targetSchoolId.Value);
+                            schoolName = school?.Name ?? "";
+                        }
+
+                        var htmlBody = $@"
+                        <div style='font-family: Inter, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);'>
+                            <div style='background: linear-gradient(135deg, #3B7DD8, #2563eb); padding: 32px 24px; text-align: center;'>
+                                <h1 style='color: #ffffff; margin: 0; font-size: 28px; font-weight: 800;'>LearnLink</h1>
+                                <p style='color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;'>Your Learning Resource Hub</p>
+                            </div>
+                            <div style='padding: 32px 24px;'>
+                                <h2 style='color: #1e293b; font-size: 20px; margin: 0 0 16px;'>Welcome, {firstName}! 🎉</h2>
+                                <p style='color: #475569; font-size: 15px; line-height: 1.6;'>
+                                    Your <strong>{role}</strong> account has been created on LearnLink{(string.IsNullOrEmpty(schoolName) ? "" : $" for <strong>{schoolName}</strong>")}. Use the credentials below to log in:
+                                </p>
+                                <div style='background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 20px 0;'>
+                                    <table style='width: 100%; border-collapse: collapse;'>
+                                        <tr>
+                                            <td style='padding: 8px 0; color: #94a3b8; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;'>Email</td>
+                                            <td style='padding: 8px 0; color: #1e293b; font-size: 15px; font-weight: 600;'>{model.Email}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style='padding: 8px 0; color: #94a3b8; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;'>Password</td>
+                                            <td style='padding: 8px 0; color: #1e293b; font-size: 15px; font-weight: 600;'>{password}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <p style='color: #ef4444; font-size: 13px;'><strong>⚠️ Important:</strong> Please change your password after your first login for security purposes.</p>
+                            </div>
+                            <div style='background: #f8fafc; padding: 20px 24px; text-align: center; border-top: 1px solid #e2e8f0;'>
+                                <p style='color: #94a3b8; font-size: 12px; margin: 0;'>© {DateTime.Now.Year} LearnLink. All rights reserved.</p>
+                            </div>
+                        </div>";
+
+                        await _emailService.SendAsync(model.Email, "Welcome to LearnLink — Your Account is Ready!", htmlBody);
+                        TempData["SuccessMessage"] = $"{model.Name} has been added successfully and an invitation email has been sent!";
+                    }
+                    else
+                    {
+                        TempData["SuccessMessage"] = $"{model.Name} has been added successfully! (Temporary password: {password}) — Email not sent: SMTP credentials not configured.";
+                    }
+                }
+                catch (Exception emailEx)
+                {
+                    TempData["SuccessMessage"] = $"{model.Name} has been added successfully! (Temporary password: {password}) — Email could not be sent: {emailEx.Message}";
+                }
             }
             else
             {
