@@ -24,6 +24,7 @@ namespace LearnLink.Controllers
         private readonly ISchoolContext _schoolContext;
         private readonly IRecommendationService _recommendationService;
         private readonly IEmailService _emailService;
+        private readonly IStorageService _storage;
         private readonly bool _googleAuthEnabled;
 
         public HomeController(
@@ -34,7 +35,8 @@ namespace LearnLink.Controllers
             ISchoolContext schoolContext,
             GoogleAuthFlag googleAuth,
             IRecommendationService recommendationService,
-            IEmailService emailService)
+            IEmailService emailService,
+            IStorageService storage)
         {
             _context = context;
             _signInManager = signInManager;
@@ -44,6 +46,7 @@ namespace LearnLink.Controllers
             _googleAuthEnabled = googleAuth.IsEnabled;
             _recommendationService = recommendationService;
             _emailService = emailService;
+            _storage = storage;
         }
 
         // ==================== Helpers ====================
@@ -1794,24 +1797,27 @@ namespace LearnLink.Controllers
                 }
             }
 
-            string uniqueFileName = string.Empty;
-            string extension = string.Empty;
+            string externalFileId = string.Empty;
+            string externalUrl = string.Empty;
+            string fileFormat = string.Empty;
+            string fileSize = string.Empty;
 
+            // Upload to Google Drive if file provided
             if (file != null && file.Length > 0)
             {
-                extension = Path.GetExtension(file.FileName);
-                uniqueFileName = Guid.NewGuid().ToString("N") + extension;
-
-                string uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads");
-                if (!Directory.Exists(uploadsFolder))
+                using (var stream = file.OpenReadStream())
                 {
-                    Directory.CreateDirectory(uploadsFolder);
-                }
+                    var result = await _storage.UploadAsync(stream, file.FileName, file.ContentType);
+                    if (!result.Success)
+                    {
+                        TempData["ErrorMessage"] = $"File upload failed: {result.Message}";
+                        return RedirectToAction("Upload");
+                    }
 
-                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
-                {
-                    await file.CopyToAsync(fileStream);
+                    externalFileId = result.FileId ?? "";
+                    externalUrl = result.WebViewLink ?? result.WebContentLink ?? "";
+                    fileFormat = Path.GetExtension(file.FileName).TrimStart('.').ToUpperInvariant();
+                    fileSize = result.FileSize ?? "";
                 }
             }
 
@@ -1823,9 +1829,9 @@ namespace LearnLink.Controllers
                 GradeLevel = gradeLevel ?? string.Empty,
                 ResourceType = resourceType ?? string.Empty,
                 Quarter = quarter ?? string.Empty,
-                FilePath = string.IsNullOrWhiteSpace(uniqueFileName) ? "" : uniqueFileName,
-                FileFormat = string.IsNullOrWhiteSpace(extension) ? "" : extension.TrimStart('.').ToUpperInvariant(),
-                FileSize = file != null ? $"{file.Length / 1024d / 1024d:0.0} MB" : "",
+                FilePath = externalUrl, // Store the external URL
+                FileFormat = fileFormat,
+                FileSize = fileSize,
                 Status = isDraft ? "Draft" : "Pending",
                 UserId = currentUser.Id,
                 SchoolId = currentUser.SchoolId,

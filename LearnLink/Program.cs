@@ -67,6 +67,10 @@ builder.Services.AddSingleton(new GoogleAuthFlag { IsEnabled = googleAuthEnabled
 builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
+// Google Drive Storage
+builder.Services.Configure<GoogleDriveOptions>(builder.Configuration.GetSection("GoogleDrive"));
+builder.Services.AddScoped<IStorageService, GoogleDriveStorageService>();
+
 // KNN Recommendation Engine
 builder.Services.AddScoped<IRecommendationService, KnnRecommendationService>();
 
