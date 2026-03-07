@@ -1,0 +1,117 @@
+@{
+    var currentTag = (string)(ViewBag.Tag ?? "");
+    ViewData["Title"] = string.IsNullOrWhiteSpace(currentTag) ? "Related Resources" : $"Related to {currentTag}";
+    ViewData["ActivePage"] = "Repository";
+
+    var resources = ViewBag.Resources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
+    var resultCount = (int)(ViewBag.ResultCount ?? resources.Count);
+    var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
+
+    string Normal(string format) => format?.TrimStart('.').ToUpperInvariant() ?? "";
+
+    string GetThumbnailGradient(string format) => Normal(format) switch
+    {
+        "PDF" => "background: linear-gradient(145deg, #ef4444 0%, #b91c1c 100%)",
+        "DOCX" or "DOC" => "background: linear-gradient(145deg, #3b82f6 0%, #1d4ed8 100%)",
+        "PPTX" or "PPT" => "background: linear-gradient(145deg, #f59e0b 0%, #b45309 100%)",
+        "XLSX" or "XLS" => "background: linear-gradient(145deg, #10b981 0%, #047857 100%)",
+        _ => "background: linear-gradient(145deg, #64748b 0%, #374151 100%)"
+    };
+
+    string GetThumbnailIcon(string format) => Normal(format) switch
+    {
+        "PDF" => "bi-file-earmark-pdf",
+        "DOCX" or "DOC" => "bi-file-earmark-word",
+        "PPTX" or "PPT" => "bi-file-earmark-ppt",
+        "XLSX" or "XLS" => "bi-file-earmark-excel",
+        _ => "bi-file-earmark"
+    };
+
+    string GetDetailUrl(int id) => isAuthenticated
+        ? Url.Action("ResourceDetail", "Home", new { id }) ?? "#"
+        : Url.Action("PublicResourceDetail", "Home", new { id }) ?? "#";
+}
+
+<div class="ll-page-header">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <h1 class="ll-page-title">
+                <i class="bi bi-hash me-2" style="color: var(--ll-primary);"></i>Related to @currentTag
+            </h1>
+            <div class="ll-breadcrumb">
+                <a href="@Url.Action("Repository", "Home")">Knowledge Repository</a>
+                <i class="bi bi-chevron-right small"></i>
+                <span>@currentTag</span>
+                <span class="ms-2 badge rounded-pill" style="background: var(--ll-primary); font-size: .7rem;">@resultCount.ToString("N0") matches</span>
+            </div>
+        </div>
+        <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline">
+            <i class="bi bi-arrow-left"></i> Back to Repository
+        </a>
+    </div>
+</div>
+
+<div class="ll-card mb-4">
+    <div class="p-4 p-lg-5">
+        <div class="d-flex flex-column gap-2">
+            <span class="ll-scribd-tag ll-scribd-tag-hash">#@currentTag</span>
+            <h2 class="mb-0" style="font-size: 1.4rem; color: #0f172a;">Resources related to @currentTag</h2>
+            <p class="text-muted mb-0">Every published resource whose subject or saved tag matches this label appears here.</p>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    @if (!resources.Any())
+    {
+        <div class="col-12">
+            <div class="ll-card text-center p-5">
+                <i class="bi bi-search display-5 text-muted d-block mb-3"></i>
+                <h5 class="mb-2">No resources found for @currentTag</h5>
+                <p class="text-muted mb-3">Try another tag or browse the full repository.</p>
+                <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-primary">Browse Repository</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        @foreach (var resource in resources)
+        {
+            <div class="col-sm-6 col-lg-4 col-xl-3">
+                <div class="ll-resource-card h-100 d-flex flex-column">
+                    <a href="@GetDetailUrl(resource.Id)" class="ll-resource-card-link text-decoration-none">
+                        <div class="ll-resource-thumbnail" style="@GetThumbnailGradient(resource.FileFormat)">
+                            <i class="bi @GetThumbnailIcon(resource.FileFormat)"></i>
+                            @if (!string.IsNullOrEmpty(resource.FileFormat))
+                            {
+                                <span class="ll-resource-type">@resource.FileFormat</span>
+                            }
+                        </div>
+                    </a>
+                    <div class="ll-resource-content d-flex flex-column flex-grow-1">
+                        <a href="@GetDetailUrl(resource.Id)" class="text-decoration-none text-reset">
+                            <h5 class="ll-resource-title">@resource.Title</h5>
+                        </a>
+                        <p class="text-muted small mb-2">Added by @resource.Uploader</p>
+                        <div class="ll-resource-meta mb-3">
+                            <span><i class="bi bi-download"></i> @resource.DownloadCount.ToString("N0")</span>
+                            <span><i class="bi bi-eye"></i> @resource.ViewCount.ToString("N0")</span>
+                            @if (resource.Rating > 0)
+                            {
+                                <span><i class="bi bi-star-fill text-warning"></i> @resource.Rating.ToString("0.0")</span>
+                            }
+                        </div>
+                        <div class="ll-resource-tags mt-auto d-flex flex-wrap gap-2">
+                            <a href="@Url.Action("Tag", "Home", new { tag = resource.Subject })" class="ll-tag ll-tag-link">@resource.Subject</a>
+                            <span class="ll-tag">@resource.GradeLevel</span>
+                            @foreach (var tagName in resource.Tags.Take(3))
+                            {
+                                <a href="@Url.Action("Tag", "Home", new { tag = tagName })" class="ll-tag ll-tag-link">#@tagName</a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
