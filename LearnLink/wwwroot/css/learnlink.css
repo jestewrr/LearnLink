@@ -4963,6 +4963,20 @@ a.ll-resource-card-link:hover {
     color: #475569;
     background: #f8fafc;
 }
+.ll-scribd-tag-link,
+.ll-tag-link {
+    text-decoration: none;
+    color: inherit;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.ll-scribd-tag-link:hover,
+.ll-tag-link:hover {
+    text-decoration: none;
+    color: inherit;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+    border-color: #93c5fd;
+}
 .ll-scribd-tag-cat {
     background: #fef3c7;
     color: #92400e;

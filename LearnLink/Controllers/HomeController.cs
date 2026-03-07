@@ -134,7 +134,7 @@ namespace LearnLink.Controllers
 
 
 
-        private ResourceViewModel MapResource(Resource r)
+        private static ResourceViewModel MapResource(Resource r)
         {
             return new ResourceViewModel
             {
@@ -227,6 +227,72 @@ namespace LearnLink.Controllers
                 IsLiked = isLiked,
                 CreatedAt = p.DatePosted
             };
+        }
+
+        private IQueryable<Resource> BuildAccessiblePublishedResourceQuery(ApplicationUser? currentUser)
+        {
+            var query = _context.Resources
+                .Include(r => r.User)
+                .Where(r => r.Status == "Published");
+
+            query = query.Where(r => r.AccessDuration != "Custom" || r.AccessExpiresAt == null || r.AccessExpiresAt > DateTime.Now);
+
+            if (currentUser == null)
+                return query.Where(r => r.AccessLevel == "Public");
+
+            if (User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
+                return query;
+
+            var userId = currentUser.Id;
+            var grantedResourceIds = _context.ResourceAccessGrants
+                .Where(g => g.UserId == userId)
+                .Select(g => g.ResourceId);
+
+            return query.Where(r =>
+                r.UserId == userId ||
+                r.AccessLevel == "Public" ||
+                r.AccessLevel == "Registered" ||
+                (r.AccessLevel == "Restricted" && grantedResourceIds.Contains(r.ResourceId)));
+        }
+
+        private async Task PopulateResourceMetadataAsync(IList<ResourceViewModel> resources)
+        {
+            if (resources.Count == 0)
+                return;
+
+            var resourceIds = resources.Select(r => r.Id).Distinct().ToList();
+
+            var tagsByResource = await _context.ResourceTags
+                .Where(rt => resourceIds.Contains(rt.ResourceId))
+                .Include(rt => rt.Tag)
+                .GroupBy(rt => rt.ResourceId)
+                .ToDictionaryAsync(
+                    group => group.Key,
+                    group => group
+                        .Select(rt => rt.Tag!.TagName)
+                        .Where(tagName => !string.IsNullOrWhiteSpace(tagName))
+                        .Distinct()
+                        .OrderBy(tagName => tagName)
+                        .ToList());
+
+            var categoriesByResource = await _context.ResourceCategoryMaps
+                .Where(map => resourceIds.Contains(map.ResourceId))
+                .Include(map => map.Category)
+                .GroupBy(map => map.ResourceId)
+                .ToDictionaryAsync(
+                    group => group.Key,
+                    group => group
+                        .Select(map => map.Category!.CategoryName)
+                        .Where(categoryName => !string.IsNullOrWhiteSpace(categoryName))
+                        .Distinct()
+                        .OrderBy(categoryName => categoryName)
+                        .ToList());
+
+            foreach (var resource in resources)
+            {
+                resource.Tags = tagsByResource.TryGetValue(resource.Id, out var tags) ? tags : new List<string>();
+                resource.Categories = categoriesByResource.TryGetValue(resource.Id, out var categories) ? categories : new List<string>();
+            }
         }
 
         private static string GetRoleBadge(string role) => role switch
@@ -1454,27 +1520,7 @@ namespace LearnLink.Controllers
         {
             await LoadSchoolSettingsToViewBag();
             var currentUser = await GetCurrentUserAsync();
-            var baseQuery = _context.Resources.Include(r => r.User).Where(r => r.Status == "Published").AsQueryable();
-
-            // Filter out expired resources
-            baseQuery = baseQuery.Where(r => r.AccessDuration != "Custom" || r.AccessExpiresAt == null || r.AccessExpiresAt > DateTime.Now);
-
-            // Filter by access level for non-admin users
-            if (currentUser != null && !User.IsInRole("SuperAdmin") && !User.IsInRole("Manager"))
-            {
-                // Show: Public, Registered, and Restricted (only if granted)
-                var userId = currentUser.Id;
-                var grantedResourceIds = _context.ResourceAccessGrants
-                    .Where(g => g.UserId == userId)
-                    .Select(g => g.ResourceId);
-
-                baseQuery = baseQuery.Where(r =>
-                    r.UserId == userId ||
-                    r.AccessLevel == "Public" ||
-                    r.AccessLevel == "Registered" ||
-                    (r.AccessLevel == "Restricted" && grantedResourceIds.Contains(r.ResourceId))
-                );
-            }
+            var baseQuery = BuildAccessiblePublishedResourceQuery(currentUser);
 
             bool isFiltered = !string.IsNullOrWhiteSpace(search) || !string.IsNullOrWhiteSpace(subject) ||
                               !string.IsNullOrWhiteSpace(grade) || !string.IsNullOrWhiteSpace(type);
@@ -1580,6 +1626,38 @@ namespace LearnLink.Controllers
                 BaseUrl = Url.Action("Repository", "Home"),
                 QueryParams = BuildQueryString(search, subject, grade, type, sort)
             };
+            return View();
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public async Task<IActionResult> Tag(string tag)
+        {
+            await LoadSchoolSettingsToViewBag();
+
+            if (string.IsNullOrWhiteSpace(tag))
+                return RedirectToAction("Repository");
+
+            var currentUser = await GetCurrentUserAsync();
+            var normalizedTag = tag.Trim();
+            var normalizedTagLower = normalizedTag.ToLowerInvariant();
+
+            var matchingTagResourceIds = _context.ResourceTags
+                .Where(rt => rt.Tag != null && rt.Tag.TagName.ToLower() == normalizedTagLower)
+                .Select(rt => rt.ResourceId);
+
+            var resources = await BuildAccessiblePublishedResourceQuery(currentUser)
+                .Where(r => r.Subject.ToLower() == normalizedTagLower || matchingTagResourceIds.Contains(r.ResourceId))
+                .OrderByDescending(r => r.DateUploaded)
+                .ToListAsync();
+
+            var mappedResources = resources.Select(MapResource).ToList();
+            await PopulateResourceMetadataAsync(mappedResources);
+
+            ViewBag.Tag = normalizedTag;
+            ViewBag.ResultCount = mappedResources.Count;
+            ViewBag.Resources = mappedResources;
+
             return View();
         }
 

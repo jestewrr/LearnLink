@@ -610,6 +610,12 @@ function getIcon(fmt) {
     }
 }
 
+function buildTagLink(tag, extraClass, iconHtml) {
+    var classes = 'll-scribd-tag ll-scribd-tag-link';
+    if (extraClass) classes += ' ' + extraClass;
+    return '<a class="' + classes + '" href="@Url.Action("Tag", "Home")?tag=' + encodeURIComponent(tag) + '">' + (iconHtml || '') + escHtml(tag) + '</a>';
+}
+
 async function openPreviewModal(id) {
     _previewId = id;
     var overlay = document.getElementById('previewOverlay');
@@ -666,12 +672,12 @@ async function openPreviewModal(id) {
         document.getElementById('previewUploader').innerHTML = 'Uploaded by <strong>' + escHtml(d.uploader) + '</strong>';
 
         // Tags
-        var tagsHtml = '<span class="ll-scribd-tag">' + escHtml(d.subject) + '</span>';
+        var tagsHtml = buildTagLink(d.subject);
         tagsHtml += '<span class="ll-scribd-tag">' + escHtml(d.gradeLevel) + '</span>';
         if (d.quarter) tagsHtml += '<span class="ll-scribd-tag">' + escHtml(d.quarter) + '</span>';
         tagsHtml += '<span class="ll-scribd-tag">' + escHtml(d.resourceType) + '</span>';
         (d.categories || []).forEach(function(c) { tagsHtml += '<span class="ll-scribd-tag ll-scribd-tag-cat"><i class="bi bi-folder me-1"></i>' + escHtml(c) + '</span>'; });
-        (d.tags || []).forEach(function(t) { tagsHtml += '<span class="ll-scribd-tag ll-scribd-tag-hash"><i class="bi bi-hash"></i>' + escHtml(t) + '</span>'; });
+        (d.tags || []).forEach(function(t) { tagsHtml += buildTagLink(t, 'll-scribd-tag-hash', '<i class="bi bi-hash"></i>'); });
         document.getElementById('previewTags').innerHTML = tagsHtml;
 
         // Description

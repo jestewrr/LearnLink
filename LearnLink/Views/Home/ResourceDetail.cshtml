@@ -116,7 +116,7 @@
 
         <!-- Tags -->
         <div class="ll-scribd-tags" style="margin-bottom:14px;">
-            <span class="ll-scribd-tag">@resource.Subject</span>
+            <a class="ll-scribd-tag ll-scribd-tag-link" href="@Url.Action("Tag", "Home", new { tag = resource.Subject })">@resource.Subject</a>
             <span class="ll-scribd-tag">@resource.GradeLevel</span>
             @if (!string.IsNullOrEmpty(resource.Quarter))
             {
@@ -129,7 +129,7 @@
             }
             @foreach (var tag in resource.Tags)
             {
-                <span class="ll-scribd-tag ll-scribd-tag-hash"><i class="bi bi-hash"></i>@tag</span>
+                <a class="ll-scribd-tag ll-scribd-tag-hash ll-scribd-tag-link" href="@Url.Action("Tag", "Home", new { tag })"><i class="bi bi-hash"></i>@tag</a>
             }
         </div>
 
