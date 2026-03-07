@@ -300,12 +300,27 @@
                     </div>
                     <div class="ll-form-group">
                         <label class="ll-form-label">Role</label>
-                        <select class="ll-form-control ll-form-select" name="Role" required>
+                        <select class="ll-form-control ll-form-select" name="Role" id="addUserRoleSelect" required>
                             <option value="">Select role</option>
                             <option value="Manager">Manager</option>
                             <option value="Contributor">Contributor</option>
                             <option value="Student">Student</option>
                         </select>
+                    </div>
+                    <!-- School Assignment (visible only for Manager) -->
+                    <div class="ll-form-group" id="addUserSchoolGroup" style="display: none;">
+                        <label class="ll-form-label">Assign to School</label>
+                        <select class="ll-form-control ll-form-select" name="SchoolId" id="addUserSchoolSelect">
+                            <option value="">Select school...</option>
+                            @{
+                                var schools = ViewBag.Schools as List<LearnLink.Models.School> ?? new List<LearnLink.Models.School>();
+                            }
+                            @foreach (var school in schools)
+                            {
+                                <option value="@school.SchoolId">@school.Name (@school.Code)</option>
+                            }
+                        </select>
+                        <small class="text-muted mt-1 d-block">The manager will only be able to manage users and resources within this school.</small>
                     </div>
                     <div class="ll-form-group">
                         <label class="ll-form-label">Grade/Position</label>
@@ -507,6 +522,23 @@
 @section Scripts {
 <script>
     (function() {
+        // Toggle school dropdown when Manager role is selected
+        var roleSelect = document.getElementById('addUserRoleSelect');
+        var schoolGroup = document.getElementById('addUserSchoolGroup');
+        var schoolSelect = document.getElementById('addUserSchoolSelect');
+        if (roleSelect && schoolGroup) {
+            roleSelect.addEventListener('change', function() {
+                if (this.value === 'Manager') {
+                    schoolGroup.style.display = 'block';
+                    schoolSelect.required = true;
+                } else {
+                    schoolGroup.style.display = 'none';
+                    schoolSelect.required = false;
+                    schoolSelect.value = '';
+                }
+            });
+        }
+
         // Select all checkbox
         document.getElementById('selectAllUsers').addEventListener('change', function() {
             var checked = this.checked;
