@@ -1885,12 +1885,19 @@ namespace LearnLink.Controllers
             // Load comments
             if (resource.AllowComments)
             {
-                ViewBag.Comments = await _context.ResourceComments
-                    .Where(c => c.ResourceId == resource.ResourceId && c.ParentCommentId == null)
-                    .Include(c => c.User)
-                    .Include(c => c.Replies).ThenInclude(r => r.User)
-                    .OrderByDescending(c => c.DatePosted)
-                    .ToListAsync();
+                try
+                {
+                    ViewBag.Comments = await _context.ResourceComments
+                        .Where(c => c.ResourceId == resource.ResourceId && c.ParentCommentId == null)
+                        .Include(c => c.User)
+                        .Include(c => c.Replies).ThenInclude(r => r.User)
+                        .OrderByDescending(c => c.DatePosted)
+                        .ToListAsync();
+                }
+                catch (Exception)
+                {
+                    ViewBag.Comments = new List<ResourceComment>();
+                }
             }
 
             if (resource.EnableVersionHistory)
@@ -2530,12 +2537,19 @@ namespace LearnLink.Controllers
             // Load comments (read-only for public)
             if (resource.AllowComments)
             {
-                ViewBag.Comments = await _context.ResourceComments
-                    .Where(c => c.ResourceId == resource.ResourceId && c.ParentCommentId == null)
-                    .Include(c => c.User)
-                    .Include(c => c.Replies).ThenInclude(r => r.User)
-                    .OrderByDescending(c => c.DatePosted)
-                    .ToListAsync();
+                try
+                {
+                    ViewBag.Comments = await _context.ResourceComments
+                        .Where(c => c.ResourceId == resource.ResourceId && c.ParentCommentId == null)
+                        .Include(c => c.User)
+                        .Include(c => c.Replies).ThenInclude(r => r.User)
+                        .OrderByDescending(c => c.DatePosted)
+                        .ToListAsync();
+                }
+                catch (Exception)
+                {
+                    ViewBag.Comments = new List<ResourceComment>();
+                }
             }
 
             if (resource.EnableVersionHistory)
