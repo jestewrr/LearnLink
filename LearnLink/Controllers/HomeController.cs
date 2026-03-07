@@ -1259,6 +1259,98 @@ namespace LearnLink.Controllers
             return View();
         }
 
+        [Authorize(Roles = "Admin,Teacher,SuperAdmin,Manager")]
+        [HttpPost]
+        public async Task<IActionResult> ImportGoogleBooks(string subject, string grade)
+        {
+            if (string.IsNullOrEmpty(subject) || string.IsNullOrEmpty(grade))
+            {
+                TempData["ErrorMessage"] = "Subject and Grade Level are required to import books.";
+                return RedirectToAction("Dashboard");
+            }
+
+            try
+            {
+                using var client = new HttpClient();
+                var query = $"subject:{Uri.EscapeDataString(subject)}+grade:{Uri.EscapeDataString(grade)}".Replace(" ", "+");
+                var response = await client.GetAsync($"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=10");
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    TempData["ErrorMessage"] = "Failed to fetch data from Google Books API.";
+                    return RedirectToAction("Dashboard");
+                }
+
+                var json = await response.Content.ReadAsStringAsync();
+                var data = System.Text.Json.JsonDocument.Parse(json);
+                
+                if (!data.RootElement.TryGetProperty("items", out var items))
+                {
+                    TempData["WarningMessage"] = $"No books found for '{subject}' - '{grade}'.";
+                    return RedirectToAction("Dashboard");
+                }
+
+                var currentUser = await GetCurrentUserAsync();
+                int importCount = 0;
+
+                foreach (var item in items.EnumerateArray())
+                {
+                    var volumeInfo = item.GetProperty("volumeInfo");
+                    var rawTitle = volumeInfo.TryGetProperty("title", out var t) ? t.GetString() : "Unknown Title";
+                    var title = rawTitle;
+                    if (title != null && title.Length > 95) title = title.Substring(0, 95) + "..."; // Title max length is 100
+                    
+                    // Prevent exact duplicates
+                    if (await _context.Resources.AnyAsync(r => r.Title == title && r.ResourceType == "Book" && r.SchoolId == currentUser.SchoolId))
+                        continue;
+
+                    var desc = volumeInfo.TryGetProperty("description", out var d) ? d.GetString() : "No description available.";
+                    if (desc != null && desc.Length > 490) desc = desc.Substring(0, 490) + "..."; // Enforce length limit
+                    
+                    var previewLink = volumeInfo.TryGetProperty("previewLink", out var pl) ? pl.GetString() : "";
+                    if (string.IsNullOrEmpty(previewLink)) continue; // Can't add without a link
+                    if (previewLink.Length > 490) previewLink = previewLink.Substring(0, 490); // FilePath max length is 500
+
+                    var newResource = new Resource
+                    {
+                        Title = title ?? "Unknown Book",
+                        Description = desc ?? "",
+                        Subject = subject,
+                        GradeLevel = grade,
+                        ResourceType = "Book",
+                        FileFormat = "Link",
+                        FilePath = previewLink,
+                        UserId = currentUser.Id,
+                        SchoolId = currentUser.SchoolId,
+                        IsSharedCrossSchool = true, // Open educational materials can be shared
+                        Status = "Published",
+                        AccessLevel = "Registered",
+                        AllowDownloads = false // Disallow downloading external links
+                    };
+
+                    _context.Resources.Add(newResource);
+                    importCount++;
+                }
+
+                if (importCount > 0)
+                {
+                    await _context.SaveChangesAsync();
+                    TempData["SuccessMessage"] = $"Successfully imported {importCount} books for {subject} {grade} from Google Books!";
+                }
+                else
+                {
+                    TempData["WarningMessage"] = "No new books were imported. They might already exist in the database.";
+                }
+            }
+            catch (Exception ex)
+            {
+                var innerMsg = ex.InnerException != null ? ex.InnerException.Message : "";
+                TempData["ErrorMessage"] = $"An error occurred while importing books: {ex.Message} {innerMsg}";
+            }
+
+            return RedirectToAction("Dashboard");
+        }
+
         private static string GetTimeAgo(DateTime dt)
         {
             var diff = DateTime.Now - dt;

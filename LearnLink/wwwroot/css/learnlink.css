@@ -3656,13 +3656,13 @@ select.ll-form-select.ll-select-hidden {
 
 /* ═══════════ READER RESPONSIVE ═══════════ */
 
-@@media (max-width: 1200px) {
+@media (max-width: 1200px) {
     .ll-reader-layout {
         grid-template-columns: 240px 1fr 240px;
     }
 }
 
-@@media (max-width: 991px) {
+@media (max-width: 991px) {
     .ll-reader-layout {
         grid-template-columns: 1fr;
     }
@@ -3701,7 +3701,7 @@ select.ll-form-select.ll-select-hidden {
     }
 }
 
-@@media (max-width: 575px) {
+@media (max-width: 575px) {
     .ll-reader-hero {
         padding: 0.75rem 1rem;
     }
@@ -4599,6 +4599,7 @@ a.ll-resource-card-link:hover {
     margin: 0 0 4px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -4768,6 +4769,7 @@ a.ll-resource-card-link:hover {
     line-height: 1.3;
     display: -webkit-box;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
     color: #334155;
@@ -5485,6 +5487,7 @@ a.ll-resource-card-link:hover {
     display: flex;
     flex-direction: column;
     position: relative;
+    min-height: 80vh;
 }
 .ll-reader-toolbar {
     background: #1e293b;
@@ -5554,15 +5557,16 @@ a.ll-resource-card-link:hover {
 .ll-reader-viewer-frame {
     flex: 1;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
     padding: 16px;
-    min-height: 0;
+    min-height: 85vh;
 }
 .ll-reader-viewer-frame iframe,
 .ll-reader-viewer-frame video {
     width: 100%;
     height: 100%;
+    min-height: 80vh;
     border: none;
     border-radius: 4px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.12);
@@ -5634,6 +5638,7 @@ a.ll-resource-card-link:hover {
     letter-spacing: 0;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -5779,7 +5784,7 @@ a.ll-resource-card-link:hover {
         min-height: 70vh;
     }
     .ll-reader-viewer-frame {
-        min-height: 60vh;
+        min-height: 75vh;
     }
     .ll-reader-layout {
         margin: 0;
