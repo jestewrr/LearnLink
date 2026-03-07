@@ -5555,15 +5555,16 @@ a.ll-resource-card-link:hover {
 .ll-reader-viewer-frame {
     flex: 1;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
     padding: 16px;
-    min-height: 0;
+    min-height: 85vh;
 }
 .ll-reader-viewer-frame iframe,
 .ll-reader-viewer-frame video {
     width: 100%;
     height: 100%;
+    min-height: 80vh;
     border: none;
     border-radius: 4px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.12);
@@ -5780,7 +5781,7 @@ a.ll-resource-card-link:hover {
         min-height: 70vh;
     }
     .ll-reader-viewer-frame {
-        min-height: 60vh;
+        min-height: 75vh;
     }
     .ll-reader-layout {
         margin: 0;
