@@ -5485,6 +5485,7 @@ a.ll-resource-card-link:hover {
     display: flex;
     flex-direction: column;
     position: relative;
+    min-height: 80vh;
 }
 .ll-reader-toolbar {
     background: #1e293b;
