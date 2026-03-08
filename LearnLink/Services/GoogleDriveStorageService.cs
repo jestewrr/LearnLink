@@ -149,14 +149,7 @@ public class GoogleDriveStorageService : IStorageService
 
     public string GetPreviewUrl(string fileId, string fileFormat)
     {
-        var fmt = fileFormat?.TrimStart('.').Trim().ToUpperInvariant() ?? "";
-        if (fmt == "PDF")
-        {
-            return $"https://drive.google.com/file/d/{fileId}/preview";
-        }
-        // Office formats: use Google Docs Viewer with the Drive export URL
-        var driveUrl = Uri.EscapeDataString($"https://drive.google.com/uc?id={fileId}&export=download");
-        return $"https://docs.google.com/gview?url={driveUrl}&embedded=true";
+        return $"https://drive.google.com/file/d/{fileId}/preview";
     }
 
     public string GetDirectDownloadUrl(string fileId)

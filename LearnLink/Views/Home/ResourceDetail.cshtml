@@ -67,27 +67,15 @@
         {
             viewerUrl = "https://docs.google.com/gview?url=" + Uri.EscapeDataString(fileUrl) + "&embedded=true";
         }
-        else
+        else if (fmt == "JPG" || fmt == "JPEG" || fmt == "PNG" || fmt == "GIF" || fmt == "TXT" || fmt == "MP4" || fmt == "MP3")
         {
+            // Formats that most browsers can natively render inline
             viewerUrl = Url.Action(previewAction, "Home", new { id = resource.Id, inline = true }) ?? "";
         }
-    }
-
-    // "Read Now" should open the viewer in a new tab, not download
-    string readNowUrl = "";
-    if (hasFile)
-    {
-        if (isDriveFile)
-        {
-            readNowUrl = drivePreviewUrl;
-        }
-        else if (isOffice && canUseGoogleViewer)
-        {
-            readNowUrl = "https://docs.google.com/gview?url=" + Uri.EscapeDataString(fileUrl) + "&embedded=true";
-        }
         else
         {
-            readNowUrl = Url.Action(previewAction, "Home", new { id = resource.Id, inline = true }) ?? "";
+            // Cannot be natively previewed, leave blank to show the "cannot preview" UI
+            viewerUrl = "";
         }
     }
 }

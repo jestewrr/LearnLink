@@ -76,6 +76,20 @@ namespace LearnLink.Controllers
         /// Loads the dynamic school settings (subjects, grades, etc.) for the current school context.
         /// Falls back to defaults if no settings are found.
         /// </summary>
+        private List<string> ParseSettingOrDefault(string? json, List<string> defaultList)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return defaultList;
+            try
+            {
+                var list = JsonSerializer.Deserialize<List<string>>(json);
+                return list != null && list.Any() ? list : defaultList;
+            }
+            catch
+            {
+                return defaultList;
+            }
+        }
+
         private async Task LoadSchoolSettingsToViewBag()
         {
             var schoolId = GetEffectiveSchoolId();
@@ -88,21 +102,17 @@ namespace LearnLink.Controllers
                     .FirstOrDefaultAsync(s => s.SchoolId == schoolId.Value);
             }
 
-            ViewBag.SchoolSubjects = settings != null
-                ? JsonSerializer.Deserialize<List<string>>(settings.Subjects) ?? new List<string>()
-                : new List<string> { "Mathematics", "Science", "English", "Filipino", "Araling Panlipunan", "MAPEH", "TLE", "Values Education" };
+            ViewBag.SchoolSubjects = ParseSettingOrDefault(settings?.Subjects, 
+                new List<string> { "Mathematics", "Science", "English", "Filipino", "Araling Panlipunan", "MAPEH", "TLE", "Values Education" });
 
-            ViewBag.SchoolGradeLevels = settings != null
-                ? JsonSerializer.Deserialize<List<string>>(settings.GradeLevels) ?? new List<string>()
-                : new List<string> { "Grade 7", "Grade 8", "Grade 9", "Grade 10" };
+            ViewBag.SchoolGradeLevels = ParseSettingOrDefault(settings?.GradeLevels, 
+                new List<string> { "Grade 7", "Grade 8", "Grade 9", "Grade 10" });
 
-            ViewBag.SchoolResourceTypes = settings != null
-                ? JsonSerializer.Deserialize<List<string>>(settings.ResourceTypes) ?? new List<string>()
-                : new List<string> { "Reviewer/Study Guide", "Lesson Plan", "Activity Sheet", "Assessment/Quiz", "Presentation", "Video Tutorial", "Reading Material", "Reference Document" };
+            ViewBag.SchoolResourceTypes = ParseSettingOrDefault(settings?.ResourceTypes, 
+                new List<string> { "Reviewer/Study Guide", "Lesson Plan", "Activity Sheet", "Assessment/Quiz", "Presentation", "Video Tutorial", "Reading Material", "Reference Document" });
 
-            ViewBag.SchoolQuarters = settings != null
-                ? JsonSerializer.Deserialize<List<string>>(settings.Quarters) ?? new List<string>()
-                : new List<string> { "1st Quarter", "2nd Quarter", "3rd Quarter", "4th Quarter", "All Quarters" };
+            ViewBag.SchoolQuarters = ParseSettingOrDefault(settings?.Quarters, 
+                new List<string> { "1st Quarter", "2nd Quarter", "3rd Quarter", "4th Quarter", "All Quarters" });
 
             // School context info for layout
             ViewBag.CurrentSchoolId = schoolId;
