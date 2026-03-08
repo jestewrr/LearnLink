@@ -1262,26 +1262,32 @@ namespace LearnLink.Controllers
             return View();
         }
 
-        [Authorize(Roles = "Admin,Teacher,SuperAdmin,Manager")]
+        [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
         public async Task<IActionResult> ImportGoogleBooks(string subject, string grade)
         {
             if (string.IsNullOrEmpty(subject) || string.IsNullOrEmpty(grade))
             {
                 TempData["ErrorMessage"] = "Subject and Grade Level are required to import books.";
-                return RedirectToAction("Dashboard");
+                return RedirectToAction("Settings");
             }
 
             try
             {
                 using var client = new HttpClient();
-                var query = $"subject:{Uri.EscapeDataString(subject)}+grade:{Uri.EscapeDataString(grade)}".Replace(" ", "+");
-                var response = await client.GetAsync($"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=10");
+                client.Timeout = TimeSpan.FromSeconds(15);
+                
+                // Build a natural-language query that Google Books API understands
+                var query = Uri.EscapeDataString($"{subject} {grade} junior high school textbook education");
+                var url = $"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=10&printType=books&langRestrict=en";
+                
+                var response = await client.GetAsync(url);
                 
                 if (!response.IsSuccessStatusCode)
                 {
-                    TempData["ErrorMessage"] = "Failed to fetch data from Google Books API.";
-                    return RedirectToAction("Dashboard");
+                    var statusCode = (int)response.StatusCode;
+                    TempData["ErrorMessage"] = $"Google Books API returned status {statusCode}. Please try again later.";
+                    return RedirectToAction("Settings");
                 }
 
                 var json = await response.Content.ReadAsStringAsync();
@@ -1289,8 +1295,8 @@ namespace LearnLink.Controllers
                 
                 if (!data.RootElement.TryGetProperty("items", out var items))
                 {
-                    TempData["WarningMessage"] = $"No books found for '{subject}' - '{grade}'.";
-                    return RedirectToAction("Dashboard");
+                    TempData["WarningMessage"] = $"No books found for '{subject}' - '{grade}'. Try a different subject or grade.";
+                    return RedirectToAction("Settings");
                 }
 
                 var currentUser = await GetCurrentUserAsync();
@@ -1310,7 +1316,12 @@ namespace LearnLink.Controllers
                     var desc = volumeInfo.TryGetProperty("description", out var d) ? d.GetString() : "No description available.";
                     if (desc != null && desc.Length > 490) desc = desc.Substring(0, 490) + "..."; // Enforce length limit
                     
+                    // Try previewLink first, then infoLink as fallback
                     var previewLink = volumeInfo.TryGetProperty("previewLink", out var pl) ? pl.GetString() : "";
+                    if (string.IsNullOrEmpty(previewLink))
+                    {
+                        previewLink = volumeInfo.TryGetProperty("infoLink", out var il) ? il.GetString() : "";
+                    }
                     if (string.IsNullOrEmpty(previewLink)) continue; // Can't add without a link
                     if (previewLink.Length > 490) previewLink = previewLink.Substring(0, 490); // FilePath max length is 500
 
@@ -1338,12 +1349,16 @@ namespace LearnLink.Controllers
                 if (importCount > 0)
                 {
                     await _context.SaveChangesAsync();
-                    TempData["SuccessMessage"] = $"Successfully imported {importCount} books for {subject} {grade} from Google Books!";
+                    TempData["SuccessMessage"] = $"Successfully imported {importCount} books for {subject} ({grade}) from Google Books!";
                 }
                 else
                 {
                     TempData["WarningMessage"] = "No new books were imported. They might already exist in the database.";
                 }
+            }
+            catch (TaskCanceledException)
+            {
+                TempData["ErrorMessage"] = "The request to Google Books timed out. Please try again.";
             }
             catch (Exception ex)
             {
@@ -1351,7 +1366,7 @@ namespace LearnLink.Controllers
                 TempData["ErrorMessage"] = $"An error occurred while importing books: {ex.Message} {innerMsg}";
             }
 
-            return RedirectToAction("Dashboard");
+            return RedirectToAction("Settings");
         }
 
         private static string GetTimeAgo(DateTime dt)
@@ -4502,7 +4517,6 @@ namespace LearnLink.Controllers
         [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
         public async Task<IActionResult> SaveSettings(string institutionName, string adminEmail,
-            string timeZone, string dateFormat, string language,
             string subjects, string gradeLevels, string resourceTypes, string quarters)
         {
             var schoolId = GetEffectiveSchoolId();
@@ -4524,9 +4538,6 @@ namespace LearnLink.Controllers
 
             settings.InstitutionName = institutionName ?? "";
             settings.AdminEmail = adminEmail ?? "";
-            settings.TimeZone = timeZone ?? "Asia/Manila";
-            settings.DateFormat = dateFormat ?? "MM/dd/yyyy";
-            settings.Language = language ?? "English";
 
             // Parse comma-separated values to JSON arrays
             if (!string.IsNullOrWhiteSpace(subjects))
