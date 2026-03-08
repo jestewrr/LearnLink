@@ -3449,30 +3449,22 @@ namespace LearnLink.Controllers
             resource.AllowRatings = allowComments; // ratings follow comments toggle
             resource.EnableVersionHistory = enableVersionHistory;
 
-            // Handle file upload — save local file
+            // Handle file upload — save to Google Drive
             if (file != null && file.Length > 0)
             {
-                var ext = Path.GetExtension(file.FileName).TrimStart('.').ToLower();
-                
-                string uniqueFileName = Guid.NewGuid().ToString("N") + "." + ext;
-                string uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads");
-                
-                if (!Directory.Exists(uploadsFolder))
+                using (var stream = file.OpenReadStream())
                 {
-                    Directory.CreateDirectory(uploadsFolder);
-                }
+                    var result = await _storage.UploadAsync(stream, file.FileName, file.ContentType);
+                    if (!result.Success)
+                    {
+                        TempData["ErrorMessage"] = $"File upload failed: {result.Message}";
+                        return RedirectToAction("Upload", new { id = resource.ResourceId });
+                    }
 
-                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
-                {
-                    await file.CopyToAsync(fileStream);
+                    resource.FilePath = result.WebViewLink ?? result.WebContentLink ?? "";
+                    resource.FileFormat = Path.GetExtension(file.FileName).TrimStart('.').ToUpperInvariant();
+                    resource.FileSize = result.FileSize ?? "";
                 }
-               
-                resource.FilePath = uniqueFileName;
-                resource.FileFormat = ext.ToUpper();
-                resource.FileSize = file.Length < 1024 * 1024
-                    ? $"{file.Length / 1024.0:F1} KB"
-                    : $"{file.Length / (1024.0 * 1024.0):F1} MB";
 
                 if (resource.EnableVersionHistory)
                 {
@@ -3488,8 +3480,8 @@ namespace LearnLink.Controllers
                         Resource = resource,
                         VersionNumber = versionNumber,
                         VersionNotes = versionNotes,
-                        FilePath = uniqueFileName,
-                        FileFormat = ext.ToUpper(),
+                        FilePath = resource.FilePath,
+                        FileFormat = resource.FileFormat,
                         FileSize = resource.FileSize,
                         DateUpdated = DateTime.Now
                     };
@@ -3711,15 +3703,20 @@ namespace LearnLink.Controllers
                 {
                     if (file.Length == 0) continue;
 
-                    var ext = Path.GetExtension(file.FileName).TrimStart('.').ToLower();
-                    var uniqueFileName = Guid.NewGuid().ToString("N") + "." + ext;
-                    var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads");
-                    if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+                    string externalFileUrl = string.Empty;
+                    string ext = Path.GetExtension(file.FileName).TrimStart('.').ToUpperInvariant();
+                    string fileSize = string.Empty;
 
-                    var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                    using (var fs = new FileStream(filePath, FileMode.Create))
+                    using (var stream = file.OpenReadStream())
                     {
-                        await file.CopyToAsync(fs);
+                        var result = await _storage.UploadAsync(stream, file.FileName, file.ContentType);
+                        if (!result.Success)
+                        {
+                            // Skip this file if it fails to upload, continue with the rest
+                            continue;
+                        }
+                        externalFileUrl = result.WebViewLink ?? result.WebContentLink ?? "";
+                        fileSize = result.FileSize ?? "";
                     }
 
                     var fileTitle = files.Count > 1
@@ -3734,11 +3731,9 @@ namespace LearnLink.Controllers
                         GradeLevel = gradeLevel ?? "",
                         ResourceType = resourceType ?? "",
                         Quarter = quarter ?? "",
-                        FilePath = uniqueFileName,
-                        FileFormat = ext.ToUpper(),
-                        FileSize = file.Length < 1024 * 1024
-                            ? $"{file.Length / 1024.0:F1} KB"
-                            : $"{file.Length / (1024.0 * 1024.0):F1} MB",
+                        FilePath = externalFileUrl,
+                        FileFormat = ext,
+                        FileSize = fileSize,
                         UserId = currentUser.Id,
                         SchoolId = currentUser.SchoolId,
                         DateUploaded = DateTime.Now,
