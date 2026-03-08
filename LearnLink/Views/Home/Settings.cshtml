@@ -8,10 +8,10 @@
     var adminEmail = settings?.AdminEmail ?? "";
 
     // Parse JSON arrays back to comma-separated strings for the form
-    var subjectsList = ViewBag.Subjects as List<string> ?? new List<string>();
-    var gradesList = ViewBag.GradeLevels as List<string> ?? new List<string>();
-    var typesList = ViewBag.ResourceTypes as List<string> ?? new List<string>();
-    var quartersList = ViewBag.Quarters as List<string> ?? new List<string>();
+    var subjectsList = ViewBag.SchoolSubjects as List<string> ?? new List<string>();
+    var gradesList = ViewBag.SchoolGradeLevels as List<string> ?? new List<string>();
+    var typesList = ViewBag.SchoolResourceTypes as List<string> ?? new List<string>();
+    var quartersList = ViewBag.SchoolQuarters as List<string> ?? new List<string>();
 
     var subjectsStr = string.Join(", ", subjectsList);
     var gradesStr = string.Join(", ", gradesList);

@@ -3,8 +3,8 @@
     ViewData["ActivePage"] = "Repository";
 
     var resources = ViewBag.Resources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
-    var subjects = ViewBag.Subjects as List<string> ?? new List<string> { "Mathematics", "Science", "English", "Filipino", "Araling Panlipunan", "MAPEH", "TLE", "Values Education" };
-    var gradeLevels = ViewBag.GradeLevels as List<string> ?? new List<string> { "Grade 7", "Grade 8", "Grade 9", "Grade 10" };
+    var subjects = ViewBag.SchoolSubjects as List<string> ?? new List<string> { "Mathematics", "Science", "English", "Filipino", "Araling Panlipunan", "MAPEH", "TLE", "Values Education" };
+    var gradeLevels = ViewBag.SchoolGradeLevels as List<string> ?? new List<string> { "Grade 7", "Grade 8", "Grade 9", "Grade 10" };
     var fileTypes = new List<string> { "PDF", "DOCX", "PPTX", "XLSX" };
 
     var currentSearch = (string)(ViewBag.CurrentSearch ?? "");

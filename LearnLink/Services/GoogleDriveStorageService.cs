@@ -154,8 +154,9 @@ public class GoogleDriveStorageService : IStorageService
         {
             return $"https://drive.google.com/file/d/{fileId}/preview";
         }
-        // Office formats: use Google Docs Viewer
-        return $"https://docs.google.com/gview?url=https://drive.google.com/uc?id={fileId}%26export=download&embedded=true";
+        // Office formats: use Google Docs Viewer with the Drive export URL
+        var driveUrl = Uri.EscapeDataString($"https://drive.google.com/uc?id={fileId}&export=download");
+        return $"https://docs.google.com/gview?url={driveUrl}&embedded=true";
     }
 
     public string GetDirectDownloadUrl(string fileId)

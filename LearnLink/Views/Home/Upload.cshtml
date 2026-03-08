@@ -4,10 +4,10 @@
     ViewData["ActivePage"] = "Upload";
 
     var recentUploads = ViewBag.RecentUploads as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
-    var subjects = ViewBag.Subjects as List<string> ?? new List<string> { "Mathematics", "Science", "English", "Filipino", "Araling Panlipunan", "MAPEH", "TLE", "Values Education" };
-    var gradeLevels = ViewBag.GradeLevels as List<string> ?? new List<string> { "Grade 7", "Grade 8", "Grade 9", "Grade 10" };
-    var resourceTypes = ViewBag.ResourceTypes as List<string> ?? new List<string> { "Reviewer/Study Guide", "Lesson Plan", "Activity Sheet", "Assessment/Quiz", "Presentation", "Video Tutorial", "Reading Material", "Reference Document" };
-    var quarters = ViewBag.Quarters as List<string> ?? new List<string> { "1st Quarter", "2nd Quarter", "3rd Quarter", "4th Quarter", "All Quarters" };
+    var subjects = ViewBag.SchoolSubjects as List<string> ?? new List<string> { "Mathematics", "Science", "English", "Filipino", "Araling Panlipunan", "MAPEH", "TLE", "Values Education" };
+    var gradeLevels = ViewBag.SchoolGradeLevels as List<string> ?? new List<string> { "Grade 7", "Grade 8", "Grade 9", "Grade 10" };
+    var resourceTypes = ViewBag.SchoolResourceTypes as List<string> ?? new List<string> { "Reviewer/Study Guide", "Lesson Plan", "Activity Sheet", "Assessment/Quiz", "Presentation", "Video Tutorial", "Reading Material", "Reference Document" };
+    var quarters = ViewBag.SchoolQuarters as List<string> ?? new List<string> { "1st Quarter", "2nd Quarter", "3rd Quarter", "4th Quarter", "All Quarters" };
     var allCategories = ViewBag.AllCategories as List<LearnLink.Models.ResourceCategory> ?? new List<LearnLink.Models.ResourceCategory>();
     var existingTags = ViewBag.ExistingTags as string ?? "";
     var existingCategoryIds = ViewBag.ExistingCategoryIds as List<int> ?? new List<int>();
