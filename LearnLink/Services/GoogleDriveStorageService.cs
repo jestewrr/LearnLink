@@ -161,8 +161,9 @@ public class GoogleDriveStorageService : IStorageService
 
     public string GetPreviewUrl(string fileId, string fileFormat)
     {
-        // Google Drive's native preview handles all formats (PDF, Office, images, etc.)
-        return $"https://drive.google.com/file/d/{fileId}/preview";
+        // Use Google Docs Viewer for embedded document preview (PDF, Office, etc.)
+        var downloadUrl = GetDirectDownloadUrl(fileId);
+        return $"https://docs.google.com/gview?url={Uri.EscapeDataString(downloadUrl)}&embedded=true";
     }
 
     public string GetDirectDownloadUrl(string fileId)

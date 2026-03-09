@@ -63,6 +63,16 @@ namespace LearnLink.Controllers
         private async Task<ApplicationUser?> GetCurrentUserAsync()
             => await _userManager.GetUserAsync(User);
 
+        private IActionResult RedirectToUploadForm(int? resourceId = null)
+        {
+            if (resourceId.HasValue && resourceId.Value > 0)
+            {
+                return RedirectToAction("Upload", new { id = resourceId.Value });
+            }
+
+            return RedirectToAction("Upload");
+        }
+
         /// <summary>
         /// Returns the effective school ID for the current user session.
         /// SuperAdmin sees all if no school is switched; otherwise returns the switched/user school.
@@ -3500,7 +3510,7 @@ namespace LearnLink.Controllers
             if (currentUser == null) return RedirectToAction("Login");
 
             Resource? resource = null;
-            if (id.HasValue)
+            if (id.HasValue && id.Value > 0)
             {
                 resource = await _context.Resources.FirstOrDefaultAsync(r => r.ResourceId == id.Value);
                 if (resource == null || (!User.IsInRole("SuperAdmin") && !User.IsInRole("Manager") && resource.UserId != currentUser.Id))
@@ -3619,7 +3629,7 @@ namespace LearnLink.Controllers
                     if (!result.Success)
                     {
                         TempData["ErrorMessage"] = $"File upload failed: {result.Message}";
-                        return RedirectToAction("Upload", new { id = resource.ResourceId });
+                        return RedirectToUploadForm(resourceId);
                     }
 
                     resource.FilePath = result.WebViewLink ?? result.WebContentLink ?? "";
@@ -3657,7 +3667,7 @@ namespace LearnLink.Controllers
             catch (Exception ex)
             {
                 TempData["ErrorMessage"] = $"Failed to save resource: {ex.InnerException?.Message ?? ex.Message}";
-                return RedirectToAction("Upload");
+                return RedirectToUploadForm(resourceId);
             }
 
             // --- Process Tags ---

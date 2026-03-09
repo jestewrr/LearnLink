@@ -62,9 +62,14 @@
             var driveId = ViewBag.DriveFileId as string;
             directImageUrl = $"https://drive.google.com/uc?export=view&id={driveId}";
         }
+        else if (isDriveFile && fmt == "PDF")
+        {
+            // PDFs from Drive: serve inline through server — browser renders natively
+            viewerUrl = Url.Action(previewAction, "Home", new { id = resource.Id, inline = true }) + "#view=FitH";
+        }
         else if (isDriveFile)
         {
-            // All Drive files: use Google Drive's native preview (PDF, Office, etc.)
+            // Office files from Drive: use Google Docs Viewer for embedded preview
             viewerUrl = drivePreviewUrl;
         }
         else if (fmt == "PDF")
