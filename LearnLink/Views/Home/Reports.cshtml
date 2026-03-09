@@ -22,6 +22,9 @@
     var engagementTrends = ViewBag.EngagementTrendCounts as int[] ?? new int[30];
     var maxTrend = engagementTrends.Any() ? engagementTrends.Max() : 1; // Avoid division by zero
 
+    var schoolStats = ViewBag.SchoolStats as IEnumerable<dynamic> ?? new List<dynamic>();
+    var totalSystemUsers = (int)(ViewBag.TotalSystemUsers ?? 0);
+
     string KpiChange(int current, int yesterday)
     {
         var diff = current - yesterday;
@@ -276,6 +279,100 @@
                     <div class="text-primary fw-bold">#@(i + 1)</div>
                 </div>
                 }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ SCHOOL STATISTICS ═══════════ -->
+<div class="row g-4 mt-2">
+    <div class="col-12">
+        <div class="ll-card">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title"><i class="bi bi-building me-2"></i>School Statistics</h5>
+                <span class="badge bg-primary rounded-pill" style="font-size: 0.85rem;">@totalSystemUsers Total Users</span>
+            </div>
+            <div class="ll-card-body p-0">
+                <div class="table-responsive-xl">
+                    <table class="ll-table">
+                        <thead>
+                            <tr>
+                                <th>School</th>
+                                <th>Code</th>
+                                <th>Users</th>
+                                <th>Resources</th>
+                                <th>Most Read Resource</th>
+                                <th>Reads</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var school in schoolStats)
+                            {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;">
+                                            <i class="bi bi-building" style="color:white;font-size:0.9rem;"></i>
+                                        </div>
+                                        <span class="fw-medium">@school.SchoolName</span>
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-light text-dark" style="font-size:0.8rem;">@school.SchoolCode</span></td>
+                                <td>
+                                    <span class="fw-bold">@school.UserCount</span>
+                                    <span class="text-muted small">users</span>
+                                </td>
+                                <td>@school.ResourceCount</td>
+                                <td>
+                                    @if (school.MostReadTitle == "No activity yet")
+                                    {
+                                        <span class="text-muted fst-italic">No activity yet</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="fw-medium">@school.MostReadTitle</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (school.MostReadCount > 0)
+                                    {
+                                        <span class="badge bg-success bg-opacity-10 text-success" style="font-size:0.8rem;">@school.MostReadCount reads</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                            </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Mobile: Card list view for school stats -->
+                <div class="ll-mobile-card-list">
+                    @foreach (var school in schoolStats)
+                    {
+                    <div class="ll-mobile-card-item">
+                        <div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="bi bi-building" style="color:white;font-size:1rem;"></i>
+                        </div>
+                        <div class="ll-mobile-card-info">
+                            <div class="ll-mobile-card-title">@school.SchoolName <span class="badge bg-light text-dark ms-1" style="font-size:0.7rem;">@school.SchoolCode</span></div>
+                            <div class="ll-mobile-card-sub">@school.UserCount users · @school.ResourceCount resources</div>
+                            <div class="small mt-1">
+                                @if (school.MostReadTitle != "No activity yet")
+                                {
+                                    <span class="text-primary"><i class="bi bi-book me-1"></i>@school.MostReadTitle (@school.MostReadCount reads)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted fst-italic">No reading activity</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    }
+                </div>
             </div>
         </div>
     </div>

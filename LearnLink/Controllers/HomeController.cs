@@ -4990,6 +4990,57 @@ namespace LearnLink.Controllers
             
             ViewBag.EngagementTrendCounts = trends;
 
+            // ===== School Statistics =====
+            var allSchools = await _context.Schools.Where(s => s.IsActive).ToListAsync();
+            var allSchoolUsers = await _userManager.Users.ToListAsync();
+            
+            var schoolStats = new List<dynamic>();
+            int totalSystemUsers = allSchoolUsers.Count;
+
+            foreach (var school in allSchools)
+            {
+                var schoolUserCount = allSchoolUsers.Count(u => u.SchoolId == school.SchoolId);
+
+                // Most-read resource for this school
+                var schoolUserIds = allSchoolUsers.Where(u => u.SchoolId == school.SchoolId).Select(u => u.Id).ToList();
+                
+                var mostReadResource = await _context.ReadingHistories
+                    .Where(rh => schoolUserIds.Contains(rh.UserId))
+                    .GroupBy(rh => rh.ResourceId)
+                    .Select(g => new { ResourceId = g.Key, ReadCount = g.Count() })
+                    .OrderByDescending(g => g.ReadCount)
+                    .FirstOrDefaultAsync();
+
+                string mostReadTitle = "No activity yet";
+                int mostReadCount = 0;
+                if (mostReadResource != null)
+                {
+                    var res = await _context.Resources.IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(r => r.ResourceId == mostReadResource.ResourceId);
+                    if (res != null)
+                    {
+                        mostReadTitle = res.Title;
+                        mostReadCount = mostReadResource.ReadCount;
+                    }
+                }
+
+                var schoolResourceCount = await _context.Resources.IgnoreQueryFilters()
+                    .CountAsync(r => r.SchoolId == school.SchoolId && r.Status == "Published");
+
+                schoolStats.Add(new
+                {
+                    SchoolName = school.Name,
+                    SchoolCode = school.Code,
+                    UserCount = schoolUserCount,
+                    ResourceCount = schoolResourceCount,
+                    MostReadTitle = mostReadTitle,
+                    MostReadCount = mostReadCount
+                });
+            }
+
+            ViewBag.SchoolStats = schoolStats.OrderByDescending(s => s.UserCount).ToList();
+            ViewBag.TotalSystemUsers = totalSystemUsers;
+
             return View();
         }
 
