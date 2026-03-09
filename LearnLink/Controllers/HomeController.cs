@@ -1293,11 +1293,13 @@ namespace LearnLink.Controllers
 
             try
             {
-                var query = Uri.EscapeDataString($"{subject} {grade} junior high school textbook education");
-                string cacheKey = $"GoogleBooks_{query}";
+                var searchTerms = $"{subject} {grade} junior high school textbook education";
+                var query = Uri.EscapeDataString(searchTerms);
+                string cacheKey = $"BookImport_{query}";
 
                 string? json = null;
-                
+                string source = "cache";
+
                 // 1. Check if the response is cached
                 if (_cache.TryGetValue(cacheKey, out string? cachedJson) && !string.IsNullOrEmpty(cachedJson))
                 {
@@ -1305,68 +1307,59 @@ namespace LearnLink.Controllers
                 }
                 else
                 {
-                    // 2. Not cached - we need to make an API call
                     await _googleBooksSemaphore.WaitAsync();
                     try
                     {
-                        // 3. Throttle request (at least 1 second between requests)
                         var timeSinceLast = DateTime.UtcNow - _lastGoogleBooksRequest;
                         if (timeSinceLast.TotalSeconds < 1.0)
-                        {
                             await Task.Delay(TimeSpan.FromSeconds(1.0 - timeSinceLast.TotalSeconds));
-                        }
 
                         using var client = new HttpClient();
                         client.Timeout = TimeSpan.FromSeconds(15);
-                        
-                        var apiKey = _configuration["GoogleBooks:ApiKey"];
-                        var url = $"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=10&printType=books&langRestrict=en";
-                        if (!string.IsNullOrEmpty(apiKey))
-                        {
-                            url += $"&key={apiKey}";
-                        }
-                        
-                        HttpResponseMessage? response = null;
-                        int maxRetries = 3;
-                        int delayMs = 1000; // start 1s but grows exponentially
+                        client.DefaultRequestHeaders.Add("User-Agent", "LearnLink/1.0");
 
-                        // 4. Implement Retry Logic with Exponential Backoff
-                        for (int i = 0; i < maxRetries; i++)
+                        // --- Try Google Books API first ---
+                        var apiKey = _configuration["GoogleBooks:ApiKey"];
+                        var googleUrl = $"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=10&printType=books&langRestrict=en";
+                        if (!string.IsNullOrEmpty(apiKey))
+                            googleUrl += $"&key={apiKey}";
+
+                        bool googleSuccess = false;
+                        try
                         {
-                            response = await client.GetAsync(url);
+                            var response = await client.GetAsync(googleUrl);
                             _lastGoogleBooksRequest = DateTime.UtcNow;
 
                             if (response.IsSuccessStatusCode)
                             {
-                                break;
+                                json = await response.Content.ReadAsStringAsync();
+                                source = "google";
+                                googleSuccess = true;
                             }
-                            else if ((int)response.StatusCode == 429) // 429 Too Many Requests
+                        }
+                        catch { /* Google Books failed, will try fallback */ }
+
+                        // --- Fallback: Open Library API (free, no key required) ---
+                        if (!googleSuccess)
+                        {
+                            var openLibUrl = $"https://openlibrary.org/search.json?q={query}&limit=10&fields=key,title,author_name,first_sentence,subject,cover_i,number_of_pages_median,first_publish_year";
+                            var olResponse = await client.GetAsync(openLibUrl);
+
+                            if (olResponse.IsSuccessStatusCode)
                             {
-                                if (i == maxRetries - 1)
-                                {
-                                    TempData["ErrorMessage"] = "API request limit has been reached. Action throttled by Google Books. Please wait 1-2 minutes before trying again.";
-                                    return RedirectToAction("Settings");
-                                }
-                                await Task.Delay(delayMs);
-                                delayMs *= 2; // exponential backoff
+                                json = await olResponse.Content.ReadAsStringAsync();
+                                source = "openlibrary";
                             }
                             else
                             {
-                                break;
+                                TempData["ErrorMessage"] = "Unable to fetch books from any source. Please try again later.";
+                                return RedirectToAction("Settings");
                             }
                         }
-                        
-                        if (response == null || !response.IsSuccessStatusCode)
-                        {
-                            var statusCode = response != null ? (int)response.StatusCode : 0;
-                            TempData["ErrorMessage"] = $"Google Books API returned status {statusCode}. Please try again later.";
-                            return RedirectToAction("Settings");
-                        }
 
-                        json = await response.Content.ReadAsStringAsync();
-                        
-                        // Cache the successful JSON response for 24 hours to prevent repeated identical calls
-                        _cache.Set(cacheKey, json, TimeSpan.FromHours(24));
+                        // Cache successful response for 24 hours
+                        if (!string.IsNullOrEmpty(json))
+                            _cache.Set(cacheKey, json, TimeSpan.FromHours(24));
                     }
                     finally
                     {
@@ -1374,13 +1367,17 @@ namespace LearnLink.Controllers
                     }
                 }
 
-                // Parse the JSON
-                var data = System.Text.Json.JsonDocument.Parse(json);
-                
-                if (!data.RootElement.TryGetProperty("items", out var items))
+                if (string.IsNullOrEmpty(json))
                 {
-                    TempData["WarningMessage"] = $"No books found for '{subject}' - '{grade}'. Try a different subject or grade.";
+                    TempData["ErrorMessage"] = "No response received from book APIs.";
                     return RedirectToAction("Settings");
+                }
+
+                // Detect source from cached data if needed
+                if (source == "cache")
+                {
+                    var peek = System.Text.Json.JsonDocument.Parse(json);
+                    source = peek.RootElement.TryGetProperty("docs", out _) ? "openlibrary" : "google";
                 }
 
                 var currentUser = await GetCurrentUserAsync();
@@ -1389,63 +1386,29 @@ namespace LearnLink.Controllers
 
                 int importCount = 0;
 
-                foreach (var item in items.EnumerateArray())
+                if (source == "google")
                 {
-                    var volumeInfo = item.GetProperty("volumeInfo");
-                    var rawTitle = volumeInfo.TryGetProperty("title", out var t) ? t.GetString() : "Unknown Title";
-                    var title = rawTitle;
-                    if (title != null && title.Length > 95) title = title.Substring(0, 95) + "..."; // Title max length is 100
-                    
-                    // Prevent exact duplicates
-                    if (await _context.Resources.AnyAsync(r => r.Title == title && r.ResourceType == "Book" && r.SchoolId == currentUser.SchoolId))
-                        continue;
-
-                    var desc = volumeInfo.TryGetProperty("description", out var d) ? d.GetString() : "No description available.";
-                    if (desc != null && desc.Length > 490) desc = desc.Substring(0, 490) + "..."; // Enforce length limit
-                    
-                    // Try previewLink first, then infoLink as fallback
-                    var previewLink = volumeInfo.TryGetProperty("previewLink", out var pl) ? pl.GetString() : "";
-                    if (string.IsNullOrEmpty(previewLink))
-                    {
-                        previewLink = volumeInfo.TryGetProperty("infoLink", out var il) ? il.GetString() : "";
-                    }
-                    if (string.IsNullOrEmpty(previewLink)) continue; // Can't add without a link
-                    if (previewLink.Length > 490) previewLink = previewLink.Substring(0, 490); // FilePath max length is 500
-
-                    var newResource = new Resource
-                    {
-                        Title = title ?? "Unknown Book",
-                        Description = desc ?? "",
-                        Subject = subject,
-                        GradeLevel = grade,
-                        ResourceType = "Book",
-                        FileFormat = "Link",
-                        FilePath = previewLink,
-                        UserId = currentUser.Id,
-                        SchoolId = currentUser.SchoolId,
-                        IsSharedCrossSchool = true, // Open educational materials can be shared
-                        Status = "Published",
-                        AccessLevel = "Registered",
-                        AllowDownloads = false // Disallow downloading external links
-                    };
-
-                    _context.Resources.Add(newResource);
-                    importCount++;
+                    importCount = await ImportFromGoogleBooksJson(json, subject, grade, currentUser);
+                }
+                else
+                {
+                    importCount = await ImportFromOpenLibraryJson(json, subject, grade, currentUser);
                 }
 
                 if (importCount > 0)
                 {
                     await _context.SaveChangesAsync();
-                    TempData["SuccessMessage"] = $"Successfully imported {importCount} books for {subject} ({grade}) from Google Books!";
+                    var sourceLabel = source == "google" ? "Google Books" : "Open Library";
+                    TempData["SuccessMessage"] = $"Successfully imported {importCount} books for {subject} ({grade}) from {sourceLabel}!";
                 }
                 else
                 {
-                    TempData["WarningMessage"] = "No new books were imported. They might already exist in the database.";
+                    TempData["WarningMessage"] = "No new books were imported. They might already exist or no results were found for this query.";
                 }
             }
             catch (TaskCanceledException)
             {
-                TempData["ErrorMessage"] = "The request to Google Books timed out. Please try again.";
+                TempData["ErrorMessage"] = "The request timed out. Please try again.";
             }
             catch (Exception ex)
             {
@@ -1454,6 +1417,110 @@ namespace LearnLink.Controllers
             }
 
             return RedirectToAction("Settings");
+        }
+
+        private async Task<int> ImportFromGoogleBooksJson(string json, string subject, string grade, ApplicationUser currentUser)
+        {
+            var data = System.Text.Json.JsonDocument.Parse(json);
+            if (!data.RootElement.TryGetProperty("items", out var items))
+                return 0;
+
+            int count = 0;
+            foreach (var item in items.EnumerateArray())
+            {
+                var volumeInfo = item.GetProperty("volumeInfo");
+                var title = volumeInfo.TryGetProperty("title", out var t) ? t.GetString() : "Unknown Title";
+                if (title != null && title.Length > 95) title = title.Substring(0, 95) + "...";
+
+                if (await _context.Resources.AnyAsync(r => r.Title == title && r.ResourceType == "Book" && r.SchoolId == currentUser.SchoolId))
+                    continue;
+
+                var desc = volumeInfo.TryGetProperty("description", out var d) ? d.GetString() : "No description available.";
+                if (desc != null && desc.Length > 490) desc = desc.Substring(0, 490) + "...";
+
+                var previewLink = volumeInfo.TryGetProperty("previewLink", out var pl) ? pl.GetString() : "";
+                if (string.IsNullOrEmpty(previewLink))
+                    previewLink = volumeInfo.TryGetProperty("infoLink", out var il) ? il.GetString() : "";
+                if (string.IsNullOrEmpty(previewLink)) continue;
+                if (previewLink.Length > 490) previewLink = previewLink.Substring(0, 490);
+
+                _context.Resources.Add(new Resource
+                {
+                    Title = title ?? "Unknown Book",
+                    Description = desc ?? "",
+                    Subject = subject,
+                    GradeLevel = grade,
+                    ResourceType = "Book",
+                    FileFormat = "Link",
+                    FilePath = previewLink,
+                    UserId = currentUser.Id,
+                    SchoolId = currentUser.SchoolId,
+                    IsSharedCrossSchool = true,
+                    Status = "Published",
+                    AccessLevel = "Registered",
+                    AllowDownloads = false
+                });
+                count++;
+            }
+            return count;
+        }
+
+        private async Task<int> ImportFromOpenLibraryJson(string json, string subject, string grade, ApplicationUser currentUser)
+        {
+            var data = System.Text.Json.JsonDocument.Parse(json);
+            if (!data.RootElement.TryGetProperty("docs", out var docs))
+                return 0;
+
+            int count = 0;
+            foreach (var doc in docs.EnumerateArray())
+            {
+                var title = doc.TryGetProperty("title", out var t) ? t.GetString() : "Unknown Title";
+                if (title != null && title.Length > 95) title = title.Substring(0, 95) + "...";
+
+                if (await _context.Resources.AnyAsync(r => r.Title == title && r.ResourceType == "Book" && r.SchoolId == currentUser.SchoolId))
+                    continue;
+
+                // Build description from available fields
+                var desc = "";
+                if (doc.TryGetProperty("author_name", out var authors) && authors.GetArrayLength() > 0)
+                {
+                    var authorList = new List<string>();
+                    foreach (var a in authors.EnumerateArray())
+                        authorList.Add(a.GetString() ?? "");
+                    desc = $"By {string.Join(", ", authorList)}. ";
+                }
+                if (doc.TryGetProperty("first_sentence", out var sentences) && sentences.ValueKind == System.Text.Json.JsonValueKind.Array && sentences.GetArrayLength() > 0)
+                {
+                    desc += sentences[0].GetString() ?? "";
+                }
+                if (string.IsNullOrWhiteSpace(desc)) desc = "No description available.";
+                if (desc.Length > 490) desc = desc.Substring(0, 490) + "...";
+
+                // Build Open Library link from key (e.g., /works/OL12345W)
+                var key = doc.TryGetProperty("key", out var k) ? k.GetString() : null;
+                if (string.IsNullOrEmpty(key)) continue;
+                var link = $"https://openlibrary.org{key}";
+                if (link.Length > 490) link = link.Substring(0, 490);
+
+                _context.Resources.Add(new Resource
+                {
+                    Title = title ?? "Unknown Book",
+                    Description = desc,
+                    Subject = subject,
+                    GradeLevel = grade,
+                    ResourceType = "Book",
+                    FileFormat = "Link",
+                    FilePath = link,
+                    UserId = currentUser.Id,
+                    SchoolId = currentUser.SchoolId,
+                    IsSharedCrossSchool = true,
+                    Status = "Published",
+                    AccessLevel = "Registered",
+                    AllowDownloads = false
+                });
+                count++;
+            }
+            return count;
         }
 
         private static string GetTimeAgo(DateTime dt)
@@ -2192,6 +2259,22 @@ namespace LearnLink.Controllers
                 _ => "Document"
             };
 
+            // Compute preview URL for embedded viewer
+            string? previewUrl = null;
+            if (!string.IsNullOrEmpty(resource.FilePath) && resource.FilePath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                var driveFileId = _storage.ExtractFileId(resource.FilePath);
+                if (!string.IsNullOrEmpty(driveFileId))
+                {
+                    var fmt = resource.FileFormat?.TrimStart('.').Trim().ToUpperInvariant() ?? "";
+                    var isImage = fmt is "JPG" or "JPEG" or "PNG" or "GIF" or "WEBP" or "BMP" or "SVG";
+                    if (isImage)
+                        previewUrl = $"https://drive.google.com/uc?export=view&id={driveFileId}";
+                    else
+                        previewUrl = _storage.GetPreviewUrl(driveFileId, fmt);
+                }
+            }
+
             return Json(new
             {
                 id = vm.Id,
@@ -2218,7 +2301,8 @@ namespace LearnLink.Controllers
                 tags = vm.Tags,
                 categories = vm.Categories,
                 createdAt = vm.CreatedAt.ToString("MMM dd, yyyy"),
-                detailUrl = Url.Action("ResourceDetail", "Home", new { id = vm.Id })
+                detailUrl = Url.Action("ResourceDetail", "Home", new { id = vm.Id }),
+                previewUrl = previewUrl
             });
         }
 

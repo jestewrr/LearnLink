@@ -58,12 +58,13 @@
     {
         if (isDriveFile && isImage)
         {
-            // Images from Drive: use direct download URL in an <img> tag
-            directImageUrl = fileUrl;
+            // Images from Drive: use export=view URL for inline display
+            var driveId = ViewBag.DriveFileId as string;
+            directImageUrl = $"https://drive.google.com/uc?export=view&id={driveId}";
         }
         else if (isDriveFile)
         {
-            // PDF / Office from Drive: use the computed preview URL
+            // All Drive files: use Google Drive's native preview (PDF, Office, etc.)
             viewerUrl = drivePreviewUrl;
         }
         else if (fmt == "PDF")

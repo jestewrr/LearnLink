@@ -499,8 +499,8 @@ else
         <!-- Close button -->
         <button class="ll-preview-close" onclick="closePreviewModal()" title="Close"><i class="bi bi-x-lg"></i></button>
 
-        <!-- Preview strip placeholder -->
-        <div class="ll-preview-strip" id="previewStrip"></div>
+        <!-- Preview strip / Document viewer -->
+        <div class="ll-preview-strip" id="previewStrip" style="min-height:200px;"></div>
 
         <!-- Content area -->
         <div class="ll-preview-content">
@@ -636,25 +636,26 @@ async function openPreviewModal(id) {
         if (!res.ok) throw new Error('Not found');
         var d = await res.json();
 
-        // Page strip
-        var stripHtml = '';
-        for (var p = 0; p < 6; p++) {
+        // Document preview: embed actual file viewer
+        var stripEl = document.getElementById('previewStrip');
+        var fmtUpper = (d.fileFormat || '').toUpperCase();
+        var isImage = ['JPG','JPEG','PNG','GIF','WEBP','BMP','SVG'].indexOf(fmtUpper) >= 0;
+
+        if (d.previewUrl && isImage) {
+            stripEl.innerHTML = '<div style="width:100%;height:350px;display:flex;align-items:center;justify-content:center;overflow:auto;background:#f8fafc;border-radius:12px;">' +
+                '<img src="' + escHtml(d.previewUrl) + '" alt="' + escHtml(d.title) + '" style="max-width:100%;max-height:100%;object-fit:contain;" />' +
+                '</div>';
+        } else if (d.previewUrl) {
+            stripEl.innerHTML = '<iframe src="' + escHtml(d.previewUrl) + '" title="Document Preview" allow="autoplay" ' +
+                'style="width:100%;height:350px;border:none;border-radius:12px;background:#f8fafc;"></iframe>';
+        } else {
+            // Fallback: show file icon
             var grad = getGradient(d.fileFormat);
             var ico = getIcon(d.fileFormat);
-            stripHtml += '<div class="ll-scribd-page-thumb ll-scribd-page-doc">';
-            stripHtml += '<div class="ll-scribd-page-accent" style="' + grad + '"></div>';
-            if (p === 0) {
-                stripHtml += '<div class="ll-scribd-page-title-preview"><div class="ll-scribd-page-badge" style="' + grad + '"><i class="bi ' + ico + '"></i></div><span class="ll-scribd-page-title-text">' + escHtml(d.title) + '</span></div>';
-            } else {
-                stripHtml += '<div class="ll-scribd-page-lines">';
-                for (var ln = 0; ln < 4 + (p % 3); ln++) {
-                    stripHtml += '<div class="ll-scribd-line" style="width:' + (55 + (p * ln * 9) % 40) + '%"></div>';
-                }
-                stripHtml += '</div>';
-            }
-            stripHtml += '<span class="ll-scribd-page-num">' + (p + 1) + '</span></div>';
+            stripEl.innerHTML = '<div style="width:100%;height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8fafc;border-radius:12px;">' +
+                '<div style="' + grad + ';width:64px;height:80px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;"><i class="bi ' + ico + '" style="font-size:2rem;color:white;"></i></div>' +
+                '<span style="font-size:0.875rem;color:#64748b;">' + escHtml(d.formatLabel) + '</span></div>';
         }
-        document.getElementById('previewStrip').innerHTML = stripHtml;
 
         // Stats
         var statsHtml = '';
