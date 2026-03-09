@@ -87,7 +87,9 @@
                 // Microsoft Office Online Viewer cannot access localhost. Skip viewer to show secure fallback.
                 viewerUrl = "";
             } else {
-                var fullUrl = $"{req.Scheme}://{req.Host}{Url.Action(previewAction, "Home", new { id = resource.Id, inline = true })}";
+                // We MUST pass a static public URL for Microsoft Office Online Viewer because it accesses the URL anonymously.
+                // Action routes like DownloadResource with [Authorize] will cause a 302 to Login and break the viewer.
+                var fullUrl = $"{req.Scheme}://{req.Host}{fileUrl}";
                 viewerUrl = "https://view.officeapps.live.com/op/embed.aspx?src=" + Uri.EscapeDataString(fullUrl);
             }
         }
