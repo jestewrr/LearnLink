@@ -149,6 +149,16 @@ public class GoogleDriveStorageService : IStorageService
 
     public string GetPreviewUrl(string fileId, string fileFormat)
     {
+        var fmt = fileFormat?.TrimStart('.').Trim().ToUpperInvariant() ?? "";
+
+        // Office formats: use Microsoft Office Online viewer (most reliable)
+        if (fmt is "DOCX" or "DOC" or "PPTX" or "PPT" or "XLSX" or "XLS")
+        {
+            var downloadUrl = GetDirectDownloadUrl(fileId);
+            return $"https://view.officeapps.live.com/op/embed.aspx?src={Uri.EscapeDataString(downloadUrl)}";
+        }
+
+        // PDF and everything else: use Google Drive's native preview
         return $"https://drive.google.com/file/d/{fileId}/preview";
     }
 

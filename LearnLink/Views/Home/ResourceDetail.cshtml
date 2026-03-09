@@ -51,12 +51,19 @@
     var canUseGoogleViewer = fileUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase);
     var previewAction = isPublicView ? "PublicDownload" : "DownloadResource";
 
+    var isImage = fmt is "JPG" or "JPEG" or "PNG" or "GIF" or "WEBP" or "BMP" or "SVG";
     string viewerUrl = "";
+    string directImageUrl = "";
     if (hasFile)
     {
-        if (isDriveFile)
+        if (isDriveFile && isImage)
         {
-            // Use Drive's own preview embed for all formats
+            // Images from Drive: use direct download URL in an <img> tag
+            directImageUrl = fileUrl;
+        }
+        else if (isDriveFile)
+        {
+            // PDF / Office from Drive: use the computed preview URL
             viewerUrl = drivePreviewUrl;
         }
         else if (fmt == "PDF")
@@ -65,17 +72,15 @@
         }
         else if (isOffice && canUseGoogleViewer)
         {
-            viewerUrl = "https://docs.google.com/gview?url=" + Uri.EscapeDataString(fileUrl) + "&embedded=true";
+            viewerUrl = "https://view.officeapps.live.com/op/embed.aspx?src=" + Uri.EscapeDataString(fileUrl);
         }
-        else if (fmt == "JPG" || fmt == "JPEG" || fmt == "PNG" || fmt == "GIF" || fmt == "TXT" || fmt == "MP4" || fmt == "MP3")
+        else if (isImage)
         {
-            // Formats that most browsers can natively render inline
-            viewerUrl = Url.Action(previewAction, "Home", new { id = resource.Id, inline = true }) ?? "";
+            directImageUrl = Url.Action(previewAction, "Home", new { id = resource.Id, inline = true }) ?? "";
         }
         else
         {
-            // Cannot be natively previewed, leave blank to show the "cannot preview" UI
-            viewerUrl = "";
+            viewerUrl = Url.Action(previewAction, "Home", new { id = resource.Id, inline = true }) ?? "";
         }
     }
 }
@@ -290,9 +295,15 @@
                     <p>No file has been attached to this resource yet.</p>
                 </div>
             }
+            else if (!string.IsNullOrEmpty(directImageUrl))
+            {
+                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:auto;background:#f8fafc;">
+                    <img src="@directImageUrl" alt="@resource.Title" style="max-width:100%;max-height:100%;object-fit:contain;" />
+                </div>
+            }
             else if (!string.IsNullOrEmpty(viewerUrl))
             {
-                <iframe src="@viewerUrl" title="Document Viewer" allow="autoplay"></iframe>
+                <iframe src="@viewerUrl" title="Document Viewer" allow="autoplay" style="width:100%;height:100%;border:none;"></iframe>
             }
             else
             {
