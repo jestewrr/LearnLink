@@ -1,47 +1,6 @@
 @{
     ViewData["Title"] = "Reports & Analytics";
     ViewData["ActivePage"] = "Reports";
-
-    var totalEngagements = ViewBag.TotalEngagements ?? 0;
-    var totalDownloads = ViewBag.TotalDownloads ?? 0;
-    var avgRating = ViewBag.AvgRating ?? 0.0;
-    var newContributions = ViewBag.NewContributions ?? 0;
-    var topResources = ViewBag.TopResources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
-    var topContributors = ViewBag.TopContributors as List<LearnLink.Models.UserViewModel> ?? new List<LearnLink.Models.UserViewModel>();
-
-    // Yesterday comparison
-    var yEngagements = (int)(ViewBag.YesterdayEngagements ?? 0);
-    var yDownloads = (int)(ViewBag.YesterdayDownloads ?? 0);
-    var yAvgRating = (double)(ViewBag.YesterdayAvgRating ?? 0.0);
-    var yContributions = (int)(ViewBag.YesterdayContributions ?? 0);
-
-    // Subject Distribution data (Real)
-    var subjectDistribution = ViewBag.SubjectDistribution as IEnumerable<dynamic> ?? new List<dynamic>();
-    
-    // Engagement Trends (Real)
-    var engagementTrends = ViewBag.EngagementTrendCounts as int[] ?? new int[30];
-    var maxTrend = engagementTrends.Any() ? engagementTrends.Max() : 1; // Avoid division by zero
-
-    var schoolStats = ViewBag.SchoolStats as IEnumerable<dynamic> ?? new List<dynamic>();
-    var totalSystemUsers = (int)(ViewBag.TotalSystemUsers ?? 0);
-
-    string KpiChange(int current, int yesterday)
-    {
-        var diff = current - yesterday;
-        if (yesterday == 0) return diff > 0 ? $"+{diff} new today" : "No change";
-        var pct = Math.Abs((double)diff / yesterday * 100);
-        var dir = diff >= 0 ? "+" : "-";
-        return $"{dir}{pct:0.#}% vs yesterday";
-    }
-    string KpiChangeDouble(double current, double yesterday)
-    {
-        var diff = current - yesterday;
-        if (yesterday == 0) return diff > 0 ? $"+{diff:0.1} today" : "No change";
-        var dir = diff >= 0 ? "+" : "-";
-        return $"{dir}{Math.Abs(diff):0.1} vs yesterday";
-    }
-    bool KpiPositive(int current, int yesterday) => current >= yesterday;
-    bool KpiPositiveDouble(double current, double yesterday) => current >= yesterday;
 }
 
 <!-- Page Header -->
@@ -55,7 +14,11 @@
                 <span>Reports & Analytics</span>
             </div>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
+            <label class="fw-semibold small text-muted mb-0 d-none d-sm-inline">Filter by School:</label>
+            <select id="schoolFilter" class="form-select form-select-sm" style="min-width:220px;">
+                <option value="0">Overall (All Schools)</option>
+            </select>
         </div>
     </div>
 </div>
@@ -64,104 +27,63 @@
 <div class="row g-4 mb-4">
     <div class="col-6 col-sm-6 col-xl-3">
         <div class="ll-stat-card">
-            <div class="ll-stat-icon primary">
-                <i class="bi bi-graph-up-arrow"></i>
-            </div>
+            <div class="ll-stat-icon primary"><i class="bi bi-graph-up-arrow"></i></div>
             <div class="ll-stat-content">
-                <div class="ll-stat-value">@totalEngagements.ToString("N0")</div>
+                <div class="ll-stat-value" id="kpiEngagements">0</div>
                 <div class="ll-stat-label">Total Engagements</div>
-                <div class="ll-stat-change @(KpiPositive((int)totalEngagements, yEngagements) ? "positive" : "negative")">
-                    <i class="bi bi-arrow-@(KpiPositive((int)totalEngagements, yEngagements) ? "up" : "down")"></i>
-                    @KpiChange((int)totalEngagements, yEngagements)
-                </div>
+                <div class="ll-stat-change positive" id="kpiEngChange"><i class="bi bi-arrow-up"></i> No change</div>
             </div>
         </div>
     </div>
     <div class="col-6 col-sm-6 col-xl-3">
         <div class="ll-stat-card">
-            <div class="ll-stat-icon success">
-                <i class="bi bi-cloud-download"></i>
-            </div>
+            <div class="ll-stat-icon success"><i class="bi bi-cloud-download"></i></div>
             <div class="ll-stat-content">
-                <div class="ll-stat-value">@totalDownloads.ToString("N0")</div>
+                <div class="ll-stat-value" id="kpiDownloads">0</div>
                 <div class="ll-stat-label">Resource Downloads</div>
-                <div class="ll-stat-change @(KpiPositive((int)totalDownloads, yDownloads) ? "positive" : "negative")">
-                    <i class="bi bi-arrow-@(KpiPositive((int)totalDownloads, yDownloads) ? "up" : "down")"></i>
-                    @KpiChange((int)totalDownloads, yDownloads)
-                </div>
+                <div class="ll-stat-change positive" id="kpiDlChange"><i class="bi bi-arrow-up"></i> No change</div>
             </div>
         </div>
     </div>
     <div class="col-6 col-sm-6 col-xl-3">
         <div class="ll-stat-card">
-            <div class="ll-stat-icon warning">
-                <i class="bi bi-star"></i>
-            </div>
+            <div class="ll-stat-icon warning"><i class="bi bi-star"></i></div>
             <div class="ll-stat-content">
-                <div class="ll-stat-value">@(((double)avgRating).ToString("0.0"))</div>
+                <div class="ll-stat-value" id="kpiRating">0.0</div>
                 <div class="ll-stat-label">Avg. Resource Rating</div>
-                <div class="ll-stat-change @(KpiPositiveDouble((double)avgRating, yAvgRating) ? "positive" : "negative")">
-                    <i class="bi bi-arrow-@(KpiPositiveDouble((double)avgRating, yAvgRating) ? "up" : "down")"></i>
-                    @KpiChangeDouble((double)avgRating, yAvgRating)
-                </div>
+                <div class="ll-stat-change positive" id="kpiRatChange"><i class="bi bi-arrow-up"></i> No change</div>
             </div>
         </div>
     </div>
     <div class="col-6 col-sm-6 col-xl-3">
         <div class="ll-stat-card">
-            <div class="ll-stat-icon info">
-                <i class="bi bi-people"></i>
-            </div>
+            <div class="ll-stat-icon info"><i class="bi bi-people"></i></div>
             <div class="ll-stat-content">
-                <div class="ll-stat-value">@newContributions</div>
+                <div class="ll-stat-value" id="kpiContribs">0</div>
                 <div class="ll-stat-label">Published Resources</div>
-                <div class="ll-stat-change @(KpiPositive((int)newContributions, yContributions) ? "positive" : "negative")">
-                    <i class="bi bi-arrow-@(KpiPositive((int)newContributions, yContributions) ? "up" : "down")"></i>
-                    @KpiChange((int)newContributions, yContributions)
-                </div>
+                <div class="ll-stat-change positive" id="kpiContChange"><i class="bi bi-arrow-up"></i> No change</div>
             </div>
         </div>
     </div>
 </div>
 
 <div class="row g-4">
-    <!-- Usage Trends -->
+    <!-- Engagement Trends Chart -->
     <div class="col-lg-8">
         <div class="ll-card mb-4">
             <div class="ll-card-header">
-                <h5 class="ll-card-title">Engagement Trends</h5>
-                <div class="dropdown">
-                    <button class="btn btn-sm ll-btn-outline dropdown-toggle" type="button" data-bs-toggle="dropdown" id="dateRangeBtn">
-                        Last 30 Days
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item date-range-item" href="#" data-range="7">Last 7 Days</a></li>
-                        <li><a class="dropdown-item date-range-item active" href="#" data-range="30">Last 30 Days</a></li>
-                        <li><a class="dropdown-item date-range-item" href="#" data-range="90">Last 90 Days</a></li>
-                        <li><a class="dropdown-item date-range-item" href="#" data-range="365">Year to Date</a></li>
-                    </ul>
-                </div>
+                <h5 class="ll-card-title"><i class="bi bi-bar-chart-line me-2"></i>Engagement Trends</h5>
+                <span class="text-muted small">Last 30 Days</span>
             </div>
             <div class="ll-card-body">
-                <!-- Visual Chart (CSS-based bar chart) -->
-                <div style="height: 300px; position: relative;" class="d-flex align-items-end gap-2 pt-4" id="chartContainer">
-                    @{
-                        // Calculate heights relative to max
-                        var count = engagementTrends.Length;
-                    }
-                    @for (int i = 0; i < count; i++)
-                    {
-                        var val = engagementTrends[i];
-                        var heightPct = (int)((double)val / maxTrend * 100);
-                        heightPct = Math.Max(5, heightPct); // Min height 5%
-                    <div class="flex-fill bg-primary rounded-top chart-bar" style="height: @(heightPct)%; opacity: 0.7; transition: all 0.3s ease;" title="@DateTime.Now.AddDays(-30 + i).ToString("MMM dd"): @val engagements" data-bs-toggle="tooltip"></div>
-                    }
+                <div class="d-flex flex-wrap gap-3 mb-3 small" id="chartLegend">
+                    <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#3b82f6;margin-right:4px;"></span>Views</span>
+                    <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#10b981;margin-right:4px;"></span>Downloads</span>
+                    <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#f59e0b;margin-right:4px;"></span>Uploads</span>
+                    <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#8b5cf6;margin-right:4px;"></span>Comments</span>
                 </div>
-                <div class="d-flex justify-content-between mt-3 text-muted small">
-                    <span>@DateTime.Now.AddDays(-30).ToString("MMM dd")</span>
-                    <span>@DateTime.Now.AddDays(-20).ToString("MMM dd")</span>
-                    <span>@DateTime.Now.AddDays(-10).ToString("MMM dd")</span>
-                    <span>Today</span>
+                <div style="position:relative;height:300px;">
+                    <canvas id="engagementChart"></canvas>
                 </div>
             </div>
         </div>
@@ -169,7 +91,7 @@
         <!-- Top Performing Resources -->
         <div class="ll-card">
             <div class="ll-card-header">
-                <h5 class="ll-card-title">Top Performing Resources</h5>
+                <h5 class="ll-card-title"><i class="bi bi-trophy me-2"></i>Top Performing Resources</h5>
                 <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline ll-btn-sm">View Full List</a>
             </div>
             <div class="ll-card-body p-0">
@@ -177,62 +99,18 @@
                     <table class="ll-table">
                         <thead>
                             <tr>
+                                <th style="width:40px;">#</th>
                                 <th>Resource Name</th>
-                                <th>Downloads</th>
                                 <th>Views</th>
+                                <th>Downloads</th>
                                 <th>Rating</th>
-                                <th>Trend</th>
+                                <th>Engagement</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            @foreach (var resource in topResources)
-                            {
-                            <tr>
-                                <td>
-                                    <div class="fw-medium">@resource.Title</div>
-                                    <small class="text-muted">By @resource.Uploader</small>
-                                </td>
-                                <td>@resource.DownloadCount.ToString("N0")</td>
-                                <td>@resource.ViewCount.ToString("N0")</td>
-                                <td><span class="text-warning">⭐ @resource.Rating.ToString("0.0")</span></td>
-                                <td>
-                                    @if (resource.Rating >= 4.7)
-                                    {
-                                    <span class="text-success"><i class="bi bi-graph-up"></i></span>
-                                    }
-                                    else
-                                    {
-                                    <span class="text-muted"><i class="bi bi-dash"></i></span>
-                                    }
-                                </td>
-                            </tr>
-                            }
-                        </tbody>
+                        <tbody id="topResourcesBody"></tbody>
                     </table>
                 </div>
-                <!-- Mobile: Card list view -->
-                <div class="ll-mobile-card-list">
-                    @foreach (var resource in topResources)
-                    {
-                    <div class="ll-mobile-card-item"
-                         data-res-title="@resource.Title"
-                         data-res-uploader="@resource.Uploader"
-                         data-res-downloads="@resource.DownloadCount.ToString("N0")"
-                         data-res-views="@resource.ViewCount.ToString("N0")"
-                         data-res-rating="⭐ @resource.Rating.ToString("0.0")">
-                        <div class="ll-mobile-card-icon" style="background: @resource.IconBg;">
-                            <i class="bi @resource.IconClass @resource.IconColor"></i>
-                        </div>
-                        <div class="ll-mobile-card-info">
-                            <div class="ll-mobile-card-title">@resource.Title</div>
-                            <div class="ll-mobile-card-sub">⭐ @resource.Rating.ToString("0.0") • @resource.DownloadCount.ToString("N0") downloads</div>
-                        </div>
-                        <div class="ll-mobile-card-chevron">
-                            <i class="bi bi-chevron-right"></i>
-                        </div>
-                    </div>
-                    }
-                </div>
+                <div class="ll-mobile-card-list" id="topResourcesMobile"></div>
             </div>
         </div>
     </div>
@@ -243,54 +121,28 @@
         <div class="ll-card mb-4">
             <div class="ll-card-header">
                 <h5 class="ll-card-title">Subject Distribution</h5>
+                <button class="ll-btn ll-btn-outline ll-btn-sm" data-bs-toggle="modal" data-bs-target="#subjectModal">View All</button>
             </div>
-            <div class="ll-card-body">
-                @foreach (var subject in subjectDistribution)
-                {
-                    var barStyle = subject.ColorClass == "" ? "width: " + subject.Percent + "%; background: #f59e0b;" : "width: " + subject.Percent + "%;";
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between small mb-1">
-                        <span>@subject.Name</span>
-                        <span class="fw-bold">@(subject.Percent)%</span>
-                    </div>
-                    <div class="ll-progress @subject.ColorClass" style="height: 10px;">
-                        <div class="ll-progress-bar @subject.ColorClass" style="@barStyle"></div>
-                    </div>
-                </div>
-                }
-            </div>
+            <div class="ll-card-body" id="subjectDistContainer"></div>
         </div>
 
-        <!-- Top Contributors -->
+        <!-- Most Active Contributors -->
         <div class="ll-card">
             <div class="ll-card-header">
                 <h5 class="ll-card-title">Most Active Contributors</h5>
             </div>
-            <div class="ll-card-body">
-                @for (int i = 0; i < topContributors.Count; i++)
-                {
-                    var contributor = topContributors[i];
-                <div class="d-flex align-items-center gap-3 @(i < topContributors.Count - 1 ? "mb-4" : "")">
-                    <div class="ll-discussion-avatar" style="width: 48px; height: 48px; @(contributor.AvatarColor)">@contributor.Initials</div>
-                    <div class="flex-fill">
-                        <div class="fw-bold">@contributor.Name</div>
-                        <div class="small text-muted">@contributor.ResourceCount Resources</div>
-                    </div>
-                    <div class="text-primary fw-bold">#@(i + 1)</div>
-                </div>
-                }
-            </div>
+            <div class="ll-card-body" id="contributorsContainer"></div>
         </div>
     </div>
 </div>
 
-<!-- ═══════════ SCHOOL STATISTICS ═══════════ -->
-<div class="row g-4 mt-2">
+<!-- School Statistics (Overall only) -->
+<div class="row g-4 mt-2" id="schoolStatsSection" style="display:none;">
     <div class="col-12">
         <div class="ll-card">
             <div class="ll-card-header">
                 <h5 class="ll-card-title"><i class="bi bi-building me-2"></i>School Statistics</h5>
-                <span class="badge bg-primary rounded-pill" style="font-size: 0.85rem;">@totalSystemUsers Total Users</span>
+                <span class="badge bg-primary rounded-pill" style="font-size:0.85rem;" id="totalUsersBadge">0 Total Users</span>
             </div>
             <div class="ll-card-body p-0">
                 <div class="table-responsive-xl">
@@ -305,73 +157,40 @@
                                 <th>Reads</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            @foreach (var school in schoolStats)
-                            {
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;">
-                                            <i class="bi bi-building" style="color:white;font-size:0.9rem;"></i>
-                                        </div>
-                                        <span class="fw-medium">@school.SchoolName</span>
-                                    </div>
-                                </td>
-                                <td><span class="badge bg-light text-dark" style="font-size:0.8rem;">@school.SchoolCode</span></td>
-                                <td>
-                                    <span class="fw-bold">@school.UserCount</span>
-                                    <span class="text-muted small">users</span>
-                                </td>
-                                <td>@school.ResourceCount</td>
-                                <td>
-                                    @if (school.MostReadTitle == "No activity yet")
-                                    {
-                                        <span class="text-muted fst-italic">No activity yet</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="fw-medium">@school.MostReadTitle</span>
-                                    }
-                                </td>
-                                <td>
-                                    @if (school.MostReadCount > 0)
-                                    {
-                                        <span class="badge bg-success bg-opacity-10 text-success" style="font-size:0.8rem;">@school.MostReadCount reads</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">—</span>
-                                    }
-                                </td>
-                            </tr>
-                            }
-                        </tbody>
+                        <tbody id="schoolStatsBody"></tbody>
                     </table>
                 </div>
-                <!-- Mobile: Card list view for school stats -->
-                <div class="ll-mobile-card-list">
-                    @foreach (var school in schoolStats)
-                    {
-                    <div class="ll-mobile-card-item">
-                        <div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="bi bi-building" style="color:white;font-size:1rem;"></i>
-                        </div>
-                        <div class="ll-mobile-card-info">
-                            <div class="ll-mobile-card-title">@school.SchoolName <span class="badge bg-light text-dark ms-1" style="font-size:0.7rem;">@school.SchoolCode</span></div>
-                            <div class="ll-mobile-card-sub">@school.UserCount users · @school.ResourceCount resources</div>
-                            <div class="small mt-1">
-                                @if (school.MostReadTitle != "No activity yet")
-                                {
-                                    <span class="text-primary"><i class="bi bi-book me-1"></i>@school.MostReadTitle (@school.MostReadCount reads)</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted fst-italic">No reading activity</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-                    }
+                <div class="ll-mobile-card-list" id="schoolStatsMobile"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Subject Distribution Modal -->
+<div class="modal fade" id="subjectModal" tabindex="-1" aria-labelledby="subjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius:16px;border:0;">
+            <div class="modal-header" style="border-bottom:1px solid rgba(0,0,0,.08);">
+                <h5 class="modal-title" id="subjectModalLabel"><i class="bi bi-pie-chart me-2"></i>Complete Subject Ranking</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div style="position:relative;height:280px;padding:20px 20px 0;">
+                    <canvas id="subjectPieChart"></canvas>
+                </div>
+                <div class="table-responsive">
+                    <table class="ll-table">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">#</th>
+                                <th>Subject</th>
+                                <th>Resources</th>
+                                <th>Share</th>
+                                <th>Distribution</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subjectModalBody"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -379,7 +198,7 @@
 </div>
 
 <!-- Toast -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1080;">
     <div id="reportToast" class="toast" role="alert">
         <div class="toast-header bg-success text-white">
             <i class="bi bi-check-circle me-2"></i>
@@ -391,49 +210,240 @@
 </div>
 
 @section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
-    (function() {
-        // Date range selector
-        document.querySelectorAll('.date-range-item').forEach(item => {
-            item.addEventListener('click', function(e) {
-                e.preventDefault();
-                document.querySelectorAll('.date-range-item').forEach(i => i.classList.remove('active'));
-                this.classList.add('active');
-                document.getElementById('dateRangeBtn').textContent = this.textContent;
+(function () {
+    // ──────── DATA ────────
+    var D = @Html.Raw(ViewBag.InitialReportData);
+    var schools = @Html.Raw(ViewBag.SchoolsJson);
+    var engChart = null, pieChart = null;
+    var reportDataUrl = '@Url.Action("ReportData", "Home")';
 
-                // Animate chart bars with new random heights
-                document.querySelectorAll('.chart-bar').forEach(bar => {
-                    const newHeight = Math.floor(Math.random() * 80) + 20;
-                    bar.style.height = newHeight + '%';
-                    bar.title = 'Engagements: ' + (newHeight * 12);
-                });
-            });
-        });
+    // ──────── SCHOOL FILTER DROPDOWN ────────
+    var sel = document.getElementById('schoolFilter');
+    schools.forEach(function (s) {
+        var o = document.createElement('option');
+        o.value = s.schoolId;
+        o.textContent = s.name;
+        sel.appendChild(o);
+    });
+    sel.addEventListener('change', function () {
+        var sid = this.value;
+        sel.disabled = true;
+        fetch(reportDataUrl + '?schoolId=' + encodeURIComponent(sid))
+            .then(function (r) { return r.json(); })
+            .then(function (data) { D = data; render(); })
+            .finally(function () { sel.disabled = false; });
+    });
 
-        // Hover effect on bars
-        document.querySelectorAll('.chart-bar').forEach(bar => {
-            bar.style.cursor = 'pointer';
-            bar.addEventListener('mouseenter', function() {
-                this.style.opacity = '1';
-                this.style.filter = 'brightness(1.2)';
-            });
-            bar.addEventListener('mouseleave', function() {
-                this.style.filter = '';
-            });
-        });
+    // ──────── HELPERS ────────
+    function n(v) { return (v || 0).toLocaleString(); }
+    function kpiChange(cur, prev) {
+        var diff = cur - prev;
+        if (prev === 0) return diff > 0 ? '+' + diff + ' new today' : 'No change';
+        var pct = Math.abs(diff / prev * 100).toFixed(1);
+        return (diff >= 0 ? '+' : '-') + pct + '% vs yesterday';
+    }
+    function kpiChangeD(cur, prev) {
+        var diff = cur - prev;
+        if (prev === 0) return diff > 0 ? '+' + diff.toFixed(1) + ' today' : 'No change';
+        return (diff >= 0 ? '+' : '-') + Math.abs(diff).toFixed(1) + ' vs yesterday';
+    }
+    function setKpi(elId, changeId, val, prev, isFloat) {
+        document.getElementById(elId).textContent = isFloat ? val.toFixed(1) : n(val);
+        var ce = document.getElementById(changeId);
+        var pos = val >= prev;
+        ce.className = 'll-stat-change ' + (pos ? 'positive' : 'negative');
+        ce.innerHTML = '<i class="bi bi-arrow-' + (pos ? 'up' : 'down') + '"></i> ' + (isFloat ? kpiChangeD(val, prev) : kpiChange(val, prev));
+    }
+    var subjectColors = { primary: '#3b82f6', success: '#10b981', warning: '#f59e0b', info: '#06b6d4', danger: '#ef4444', secondary: '#6b7280' };
+    function sc(cls) { return subjectColors[cls] || subjectColors.secondary; }
 
-        // Export buttons
-        document.getElementById('exportPdfBtn').addEventListener('click', function() {
-            document.getElementById('reportToastBody').textContent = 'PDF report exported successfully!';
-            var toast = new bootstrap.Toast(document.getElementById('reportToast'));
-            toast.show();
-        });
+    // ──────── RENDER ────────
+    function render() {
+        // KPIs
+        setKpi('kpiEngagements', 'kpiEngChange', D.totalEngagements, D.yEngagements, false);
+        setKpi('kpiDownloads', 'kpiDlChange', D.totalDownloads, D.yDownloads, false);
+        setKpi('kpiRating', 'kpiRatChange', D.avgRating, D.yAvgRating, true);
+        setKpi('kpiContribs', 'kpiContChange', D.newContributions, D.yContributions, false);
 
-        document.getElementById('exportExcelBtn').addEventListener('click', function() {
-            document.getElementById('reportToastBody').textContent = 'Excel spreadsheet exported successfully!';
-            var toast = new bootstrap.Toast(document.getElementById('reportToast'));
-            toast.show();
+        // Engagement Chart
+        renderEngagementChart(D.engagementTrends);
+
+        // Subject Distribution
+        renderSubjects(D.subjectDistribution);
+
+        // Top Resources
+        renderTopResources(D.topResources);
+
+        // Top Contributors
+        renderContributors(D.topContributors);
+
+        // School Stats
+        renderSchoolStats(D.schoolStats, D.totalSystemUsers);
+    }
+
+    // ──────── ENGAGEMENT CHART ────────
+    function renderEngagementChart(t) {
+        var ctx = document.getElementById('engagementChart');
+        if (engChart) { engChart.destroy(); }
+        engChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: t.labels,
+                datasets: [
+                    { label: 'Views',     data: t.views,     backgroundColor: 'rgba(59,130,246,0.75)', borderRadius: 3, barPercentage: 0.8 },
+                    { label: 'Downloads', data: t.downloads, backgroundColor: 'rgba(16,185,129,0.75)', borderRadius: 3, barPercentage: 0.8 },
+                    { label: 'Uploads',   data: t.uploads,   backgroundColor: 'rgba(245,158,11,0.75)', borderRadius: 3, barPercentage: 0.8 },
+                    { label: 'Comments',  data: t.comments,  backgroundColor: 'rgba(139,92,246,0.75)', borderRadius: 3, barPercentage: 0.8 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+                scales: {
+                    x: { stacked: true, grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { size: 11 } } },
+                    y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { stepSize: 1, font: { size: 11 } } }
+                }
+            }
         });
-    })();
+    }
+
+    // ──────── SUBJECT DISTRIBUTION ────────
+    function renderSubjects(list) {
+        var c = document.getElementById('subjectDistContainer');
+        if (!list || !list.length) { c.innerHTML = '<p class="text-muted text-center py-3">No subject data available</p>'; return; }
+        var top5 = list.slice(0, 5);
+        var html = '';
+        top5.forEach(function (s) {
+            var bg = sc(s.colorClass);
+            html += '<div class="mb-3"><div class="d-flex justify-content-between small mb-1"><span>' + s.name + '</span><span class="fw-bold">' + s.percent + '% <span class="text-muted fw-normal">(' + s.count + ')</span></span></div>';
+            html += '<div class="ll-progress" style="height:10px;"><div class="ll-progress-bar" style="width:' + s.percent + '%;background:' + bg + ';"></div></div></div>';
+        });
+        c.innerHTML = html;
+
+        // Modal table
+        var mb = document.getElementById('subjectModalBody');
+        var mHtml = '';
+        list.forEach(function (s, i) {
+            var bg = sc(s.colorClass);
+            mHtml += '<tr><td class="fw-bold text-muted">' + (i + 1) + '</td>';
+            mHtml += '<td><span class="fw-medium">' + s.name + '</span></td>';
+            mHtml += '<td>' + s.count + '</td>';
+            mHtml += '<td>' + s.percent + '%</td>';
+            mHtml += '<td><div class="ll-progress" style="height:8px;"><div class="ll-progress-bar" style="width:' + s.percent + '%;background:' + bg + ';"></div></div></td></tr>';
+        });
+        mb.innerHTML = mHtml;
+
+        // Pie chart
+        renderSubjectPie(list);
+    }
+
+    function renderSubjectPie(list) {
+        var ctx = document.getElementById('subjectPieChart');
+        if (pieChart) { pieChart.destroy(); }
+        pieChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: list.map(function (s) { return s.name; }),
+                datasets: [{
+                    data: list.map(function (s) { return s.count; }),
+                    backgroundColor: list.map(function (s) { return sc(s.colorClass); }),
+                    borderWidth: 2, borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'right', labels: { boxWidth: 12, padding: 12, font: { size: 12 } } } },
+                cutout: '55%'
+            }
+        });
+    }
+
+    // ──────── TOP RESOURCES ────────
+    function renderTopResources(list) {
+        var tbody = document.getElementById('topResourcesBody');
+        var mob = document.getElementById('topResourcesMobile');
+        if (!list || !list.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No resource data available</td></tr>';
+            mob.innerHTML = '';
+            return;
+        }
+        var maxEng = Math.max.apply(null, list.map(function (r) { return r.engagementScore; })) || 1;
+        var html = '', mHtml = '';
+        list.forEach(function (r, i) {
+            var pct = Math.round(r.engagementScore / maxEng * 100);
+            html += '<tr>';
+            html += '<td><span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:0.8rem;width:28px;">' + (i + 1) + '</span></td>';
+            html += '<td><div class="fw-medium">' + r.title + '</div><small class="text-muted">By ' + r.uploader + '</small></td>';
+            html += '<td>' + n(r.views) + '</td>';
+            html += '<td>' + n(r.downloads) + '</td>';
+            html += '<td><span class="text-warning">\u2B50 ' + r.rating.toFixed(1) + '</span></td>';
+            html += '<td><div class="d-flex align-items-center gap-2"><div class="ll-progress flex-fill" style="height:6px;"><div class="ll-progress-bar primary" style="width:' + pct + '%;"></div></div><span class="small fw-bold text-muted">' + n(r.engagementScore) + '</span></div></td>';
+            html += '</tr>';
+
+            mHtml += '<div class="ll-mobile-card-item">';
+            mHtml += '<div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-weight:700;font-size:0.85rem;">' + (i + 1) + '</div>';
+            mHtml += '<div class="ll-mobile-card-info"><div class="ll-mobile-card-title">' + r.title + '</div>';
+            mHtml += '<div class="ll-mobile-card-sub">\u2B50 ' + r.rating.toFixed(1) + ' \u00B7 ' + n(r.views) + ' views \u00B7 ' + n(r.downloads) + ' downloads</div></div>';
+            mHtml += '<div class="ll-mobile-card-chevron"><span class="badge bg-primary bg-opacity-10 text-primary">' + n(r.engagementScore) + '</span></div></div>';
+        });
+        tbody.innerHTML = html;
+        mob.innerHTML = mHtml;
+    }
+
+    // ──────── CONTRIBUTORS ────────
+    function renderContributors(list) {
+        var c = document.getElementById('contributorsContainer');
+        if (!list || !list.length) { c.innerHTML = '<p class="text-muted text-center py-3">No contributor data</p>'; return; }
+        var top = list.slice(0, 5);
+        var maxR = Math.max.apply(null, top.map(function (u) { return u.resourceCount; })) || 1;
+        var html = '';
+        top.forEach(function (u, i) {
+            var pct = Math.round(u.resourceCount / maxR * 100);
+            html += '<div class="d-flex align-items-center gap-3 ' + (i < top.length - 1 ? 'mb-3' : '') + '">';
+            html += '<div class="ll-discussion-avatar" style="width:42px;height:42px;font-size:0.85rem;' + u.avatarColor + '">' + u.initials + '</div>';
+            html += '<div class="flex-fill">';
+            html += '<div class="d-flex justify-content-between align-items-center mb-1"><span class="fw-bold small">' + u.name + '</span><span class="text-primary fw-bold">#' + (i + 1) + '</span></div>';
+            html += '<div class="ll-progress" style="height:6px;"><div class="ll-progress-bar primary" style="width:' + pct + '%;"></div></div>';
+            html += '<div class="small text-muted mt-1">' + u.resourceCount + ' Resources \u00B7 ' + u.role + '</div>';
+            html += '</div></div>';
+        });
+        c.innerHTML = html;
+    }
+
+    // ──────── SCHOOL STATS ────────
+    function renderSchoolStats(stats, totalUsers) {
+        var sec = document.getElementById('schoolStatsSection');
+        if (!stats || !stats.length) { sec.style.display = 'none'; return; }
+        sec.style.display = '';
+        document.getElementById('totalUsersBadge').textContent = n(totalUsers) + ' Total Users';
+        var tbody = document.getElementById('schoolStatsBody');
+        var mob = document.getElementById('schoolStatsMobile');
+        var html = '', mHtml = '';
+        stats.forEach(function (s) {
+            html += '<tr>';
+            html += '<td><div class="d-flex align-items-center gap-2"><div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;"><i class="bi bi-building" style="color:white;font-size:0.9rem;"></i></div><span class="fw-medium">' + s.schoolName + '</span></div></td>';
+            html += '<td><span class="badge bg-light text-dark" style="font-size:0.8rem;">' + s.schoolCode + '</span></td>';
+            html += '<td><span class="fw-bold">' + s.userCount + '</span> <span class="text-muted small">users</span></td>';
+            html += '<td>' + s.resourceCount + '</td>';
+            html += '<td>' + (s.mostReadTitle === 'No activity yet' ? '<span class="text-muted fst-italic">No activity yet</span>' : '<span class="fw-medium">' + s.mostReadTitle + '</span>') + '</td>';
+            html += '<td>' + (s.mostReadCount > 0 ? '<span class="badge bg-success bg-opacity-10 text-success" style="font-size:0.8rem;">' + s.mostReadCount + ' reads</span>' : '<span class="text-muted">\u2014</span>') + '</td>';
+            html += '</tr>';
+
+            mHtml += '<div class="ll-mobile-card-item"><div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="bi bi-building" style="color:white;font-size:1rem;"></i></div>';
+            mHtml += '<div class="ll-mobile-card-info"><div class="ll-mobile-card-title">' + s.schoolName + ' <span class="badge bg-light text-dark ms-1" style="font-size:0.7rem;">' + s.schoolCode + '</span></div>';
+            mHtml += '<div class="ll-mobile-card-sub">' + s.userCount + ' users \u00B7 ' + s.resourceCount + ' resources</div>';
+            mHtml += '<div class="small mt-1">' + (s.mostReadTitle !== 'No activity yet' ? '<span class="text-primary"><i class="bi bi-book me-1"></i>' + s.mostReadTitle + ' (' + s.mostReadCount + ' reads)</span>' : '<span class="text-muted fst-italic">No reading activity</span>') + '</div>';
+            mHtml += '</div></div>';
+        });
+        tbody.innerHTML = html;
+        mob.innerHTML = mHtml;
+    }
+
+    // ──────── INIT ────────
+    render();
+})();
 </script>
 }

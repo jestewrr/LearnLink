@@ -4906,142 +4906,197 @@ namespace LearnLink.Controllers
 
         // ==================== Reports ====================
 
-        [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
-        public async Task<IActionResult> Reports()
+        private async Task<object> BuildReportData(int? schoolId)
         {
-            await LoadSchoolSettingsToViewBag();
-            var schoolId = GetEffectiveSchoolId();
-
-            // Resources auto-filtered by global query filter
-            var resources = await _context.Resources.Include(r => r.User)
-                .Where(r => r.Status == "Published")
-                .ToListAsync();
-
-            ViewBag.TotalEngagements = resources.Sum(r => r.ViewCount) + resources.Sum(r => r.DownloadCount);
-            ViewBag.TotalDownloads = resources.Sum(r => r.DownloadCount);
-            ViewBag.AvgRating = resources.Any() ? resources.Average(r => r.Rating) : 0;
-            ViewBag.NewContributions = resources.Count;
-
-            // Yesterday comparison for KPI cards
-            var yesterday = DateTime.Now.Date;
-            var yesterdayResources = resources.Where(r => r.DateUploaded < yesterday).ToList();
-            var yesterdayEngagements = yesterdayResources.Sum(r => r.ViewCount) + yesterdayResources.Sum(r => r.DownloadCount);
-            var yesterdayDownloads = yesterdayResources.Sum(r => r.DownloadCount);
-            var yesterdayAvgRating = yesterdayResources.Any() ? yesterdayResources.Average(r => r.Rating) : 0;
-            var yesterdayContributions = yesterdayResources.Count;
-            ViewBag.YesterdayEngagements = yesterdayEngagements;
-            ViewBag.YesterdayDownloads = yesterdayDownloads;
-            ViewBag.YesterdayAvgRating = yesterdayAvgRating;
-            ViewBag.YesterdayContributions = yesterdayContributions;
-            ViewBag.TopResources = resources.OrderByDescending(r => r.ViewCount).Take(5).Select(MapResource).ToList();
-
-            // Top contributors — school-scoped
             var allUsers = await _userManager.Users.ToListAsync();
-            var scopedUsers = schoolId.HasValue
-                ? allUsers.Where(u => u.SchoolId == schoolId.Value).ToList()
+            List<string>? scopedUserIds = null;
+            if (schoolId.HasValue && schoolId > 0)
+                scopedUserIds = allUsers.Where(u => u.SchoolId == schoolId).Select(u => u.Id).ToList();
+
+            // Resources – IgnoreQueryFilters so we can filter by any school
+            var resourcesQuery = _context.Resources.IgnoreQueryFilters()
+                .Include(r => r.User)
+                .Where(r => r.Status == "Published");
+            if (schoolId.HasValue && schoolId > 0)
+                resourcesQuery = resourcesQuery.Where(r => r.SchoolId == schoolId);
+            var resources = await resourcesQuery.ToListAsync();
+
+            // KPIs
+            var totalEngagements = resources.Sum(r => r.ViewCount) + resources.Sum(r => r.DownloadCount);
+            var totalDownloads = resources.Sum(r => r.DownloadCount);
+            var avgRating = resources.Any() ? Math.Round(resources.Average(r => r.Rating), 1) : 0;
+            var newContributions = resources.Count;
+
+            var yesterday = DateTime.Now.Date;
+            var yRes = resources.Where(r => r.DateUploaded < yesterday).ToList();
+            var yEngagements = yRes.Sum(r => r.ViewCount) + yRes.Sum(r => r.DownloadCount);
+            var yDownloads = yRes.Sum(r => r.DownloadCount);
+            var yAvgRating = yRes.Any() ? Math.Round(yRes.Average(r => r.Rating), 1) : 0;
+            var yContributions = yRes.Count;
+
+            // Engagement Trends (30 days) – broken out by type
+            var thirtyDaysAgo = DateTime.Now.AddDays(-30);
+            var logsQuery = _context.UserActivityLogs.AsQueryable();
+            if (scopedUserIds != null)
+                logsQuery = logsQuery.Where(l => scopedUserIds.Contains(l.UserId));
+            var logs = await logsQuery.Where(l => l.ActivityDate >= thirtyDaysAgo).ToListAsync();
+
+            var dates = Enumerable.Range(0, 30).Select(i => thirtyDaysAgo.AddDays(i).Date).ToList();
+
+            var commentsQuery = _context.ResourceComments.AsQueryable();
+            if (schoolId.HasValue && schoolId > 0)
+            {
+                var resourceIds = resources.Select(r => r.ResourceId).ToHashSet();
+                commentsQuery = commentsQuery.Where(c => resourceIds.Contains(c.ResourceId));
+            }
+            var recentComments = await commentsQuery.Where(c => c.DatePosted >= thirtyDaysAgo).ToListAsync();
+
+            // Subject Distribution
+            var subjectGroups = resources.GroupBy(r => r.Subject)
+                .Select(g => new { Name = g.Key, Count = g.Count() })
+                .OrderByDescending(x => x.Count).ToList();
+            var totalResources = resources.Count;
+
+            // Top Resources (10)
+            var topRes = resources.OrderByDescending(r => r.ViewCount + r.DownloadCount).Take(10).ToList();
+
+            // Top Contributors
+            var scopedUsers = (schoolId.HasValue && schoolId > 0)
+                ? allUsers.Where(u => u.SchoolId == schoolId).ToList()
                 : allUsers;
-            var contributors = new List<UserViewModel>();
+            var contributorList = new List<object>();
             foreach (var u in scopedUsers)
             {
                 var roles = await _userManager.GetRolesAsync(u);
                 var role = roles.FirstOrDefault() ?? "";
                 if (role == "Contributor" || role == "Manager")
                 {
-                    contributors.Add(new UserViewModel
+                    var resCount = resources.Count(r => r.UserId == u.Id);
+                    contributorList.Add(new
                     {
-                        Name = u.FullName,
-                        Email = u.Email ?? "",
-                        Initials = u.Initials,
-                        AvatarColor = u.AvatarColor,
-                        Role = role,
-                        RoleBadgeClass = GetRoleBadge(role),
-                        GradeOrPosition = u.GradeOrPosition,
-                        Status = u.Status,
-                        ResourceCount = await _context.Resources.CountAsync(r => r.UserId == u.Id)
+                        name = u.FullName,
+                        initials = u.Initials,
+                        avatarColor = u.AvatarColor,
+                        resourceCount = resCount,
+                        role
                     });
                 }
             }
-            ViewBag.TopContributors = contributors.Take(4).ToList();
 
-            // Subject Distribution
-            var subjectGroups = resources.GroupBy(r => r.Subject)
-                .Select(g => new { Name = g.Key, Count = g.Count() })
-                .OrderByDescending(x => x.Count)
-                .ToList();
-            
-            var totalResources = resources.Count;
-            ViewBag.SubjectDistribution = subjectGroups.Select(g => new 
+            // School Stats (only for Overall view)
+            List<object>? schoolStatsResult = null;
+            int totalSystemUsers = allUsers.Count;
+            if (!schoolId.HasValue || schoolId == 0)
             {
-                Name = g.Name,
-                Percent = totalResources > 0 ? (int)((double)g.Count / totalResources * 100) : 0,
-                ColorClass = GetSubjectColor(g.Name)
-            }).ToList();
-
-            // Engagement Trends (Last 30 Days)
-            var thirtyDaysAgo = DateTime.Now.AddDays(-30);
-            var logs = await _context.UserActivityLogs
-                .Where(l => l.ActivityDate >= thirtyDaysAgo && (l.ActivityType == "View" || l.ActivityType == "Download"))
-                .ToListAsync();
-
-            var trends = Enumerable.Range(0, 30)
-                .Select(i => thirtyDaysAgo.AddDays(i))
-                .Select(date => logs.Count(l => l.ActivityDate.Date == date.Date))
-                .ToArray();
-            
-            ViewBag.EngagementTrendCounts = trends;
-
-            // ===== School Statistics =====
-            var allSchools = await _context.Schools.Where(s => s.IsActive).ToListAsync();
-            var allSchoolUsers = await _userManager.Users.ToListAsync();
-            
-            var schoolStats = new List<dynamic>();
-            int totalSystemUsers = allSchoolUsers.Count;
-
-            foreach (var school in allSchools)
-            {
-                var schoolUserCount = allSchoolUsers.Count(u => u.SchoolId == school.SchoolId);
-
-                // Most-read resource for this school
-                var schoolUserIds = allSchoolUsers.Where(u => u.SchoolId == school.SchoolId).Select(u => u.Id).ToList();
-                
-                var mostReadResource = await _context.ReadingHistories
-                    .Where(rh => schoolUserIds.Contains(rh.UserId))
-                    .GroupBy(rh => rh.ResourceId)
-                    .Select(g => new { ResourceId = g.Key, ReadCount = g.Count() })
-                    .OrderByDescending(g => g.ReadCount)
-                    .FirstOrDefaultAsync();
-
-                string mostReadTitle = "No activity yet";
-                int mostReadCount = 0;
-                if (mostReadResource != null)
+                var allSchools = await _context.Schools.Where(s => s.IsActive).ToListAsync();
+                schoolStatsResult = new List<object>();
+                foreach (var school in allSchools)
                 {
-                    var res = await _context.Resources.IgnoreQueryFilters()
-                        .FirstOrDefaultAsync(r => r.ResourceId == mostReadResource.ResourceId);
-                    if (res != null)
+                    var schoolUserCount = allUsers.Count(u => u.SchoolId == school.SchoolId);
+                    var sUserIds = allUsers.Where(u => u.SchoolId == school.SchoolId).Select(u => u.Id).ToList();
+                    var mostRead = await _context.ReadingHistories
+                        .Where(rh => sUserIds.Contains(rh.UserId))
+                        .GroupBy(rh => rh.ResourceId)
+                        .Select(g => new { ResourceId = g.Key, ReadCount = g.Count() })
+                        .OrderByDescending(g => g.ReadCount)
+                        .FirstOrDefaultAsync();
+                    string mostReadTitle = "No activity yet";
+                    int mostReadCount = 0;
+                    if (mostRead != null)
                     {
-                        mostReadTitle = res.Title;
-                        mostReadCount = mostReadResource.ReadCount;
+                        var res = await _context.Resources.IgnoreQueryFilters()
+                            .FirstOrDefaultAsync(r => r.ResourceId == mostRead.ResourceId);
+                        if (res != null) { mostReadTitle = res.Title; mostReadCount = mostRead.ReadCount; }
                     }
+                    var schoolResCount = await _context.Resources.IgnoreQueryFilters()
+                        .CountAsync(r => r.SchoolId == school.SchoolId && r.Status == "Published");
+                    schoolStatsResult.Add(new
+                    {
+                        schoolName = school.Name,
+                        schoolCode = school.Code,
+                        userCount = schoolUserCount,
+                        resourceCount = schoolResCount,
+                        mostReadTitle,
+                        mostReadCount
+                    });
                 }
-
-                var schoolResourceCount = await _context.Resources.IgnoreQueryFilters()
-                    .CountAsync(r => r.SchoolId == school.SchoolId && r.Status == "Published");
-
-                schoolStats.Add(new
-                {
-                    SchoolName = school.Name,
-                    SchoolCode = school.Code,
-                    UserCount = schoolUserCount,
-                    ResourceCount = schoolResourceCount,
-                    MostReadTitle = mostReadTitle,
-                    MostReadCount = mostReadCount
-                });
             }
 
-            ViewBag.SchoolStats = schoolStats.OrderByDescending(s => s.UserCount).ToList();
-            ViewBag.TotalSystemUsers = totalSystemUsers;
+            return new
+            {
+                totalEngagements,
+                totalDownloads,
+                avgRating,
+                newContributions,
+                yEngagements,
+                yDownloads,
+                yAvgRating,
+                yContributions,
+                engagementTrends = new
+                {
+                    labels = dates.Select(d => d.ToString("MMM dd")).ToArray(),
+                    views = dates.Select(d => logs.Count(l => l.ActivityDate.Date == d && l.ActivityType == "View")).ToArray(),
+                    downloads = dates.Select(d => logs.Count(l => l.ActivityDate.Date == d && l.ActivityType == "Download")).ToArray(),
+                    uploads = dates.Select(d => logs.Count(l => l.ActivityDate.Date == d && l.ActivityType == "Upload")).ToArray(),
+                    comments = dates.Select(d => recentComments.Count(c => c.DatePosted.Date == d)).ToArray()
+                },
+                subjectDistribution = subjectGroups.Select(g => new
+                {
+                    name = g.Name,
+                    count = g.Count,
+                    percent = totalResources > 0 ? (int)((double)g.Count / totalResources * 100) : 0,
+                    colorClass = GetSubjectColor(g.Name)
+                }).ToList(),
+                topResources = topRes.Select(r => new
+                {
+                    title = r.Title,
+                    uploader = r.User?.FullName ?? "Unknown",
+                    uploaderInitials = r.User?.Initials ?? "?",
+                    uploaderColor = r.User?.AvatarColor ?? "",
+                    downloads = r.DownloadCount,
+                    views = r.ViewCount,
+                    rating = Math.Round(r.Rating, 1),
+                    ratingCount = r.RatingCount,
+                    engagementScore = r.ViewCount + r.DownloadCount
+                }).ToList(),
+                topContributors = contributorList
+                    .Cast<dynamic>()
+                    .OrderByDescending(c => (int)c.resourceCount)
+                    .Take(10)
+                    .Select(c => new { name = (string)c.name, initials = (string)c.initials, avatarColor = (string)c.avatarColor, resourceCount = (int)c.resourceCount, role = (string)c.role })
+                    .ToList(),
+                schoolStats = schoolStatsResult?.Cast<dynamic>()
+                    .OrderByDescending(s => (int)s.userCount)
+                    .Select(s => new { schoolName = (string)s.schoolName, schoolCode = (string)s.schoolCode, userCount = (int)s.userCount, resourceCount = (int)s.resourceCount, mostReadTitle = (string)s.mostReadTitle, mostReadCount = (int)s.mostReadCount })
+                    .ToList(),
+                totalSystemUsers
+            };
+        }
+
+        [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
+        public async Task<IActionResult> Reports()
+        {
+            await LoadSchoolSettingsToViewBag();
+
+            var data = await BuildReportData(null);
+            var jsonOpts = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            ViewBag.InitialReportData = JsonSerializer.Serialize(data, jsonOpts);
+
+            var schools = await _context.Schools.Where(s => s.IsActive)
+                .OrderBy(s => s.Name)
+                .Select(s => new { s.SchoolId, s.Name })
+                .ToListAsync();
+            ViewBag.SchoolsJson = JsonSerializer.Serialize(schools, jsonOpts);
 
             return View();
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
+        public async Task<IActionResult> ReportData(int? schoolId)
+        {
+            var data = await BuildReportData(schoolId);
+            return Json(data);
         }
 
 
