@@ -161,9 +161,9 @@ public class GoogleDriveStorageService : IStorageService
 
     public string GetPreviewUrl(string fileId, string fileFormat)
     {
-        // Use Google Docs Viewer for embedded document preview (PDF, Office, etc.)
-        var downloadUrl = GetDirectDownloadUrl(fileId);
-        return $"https://docs.google.com/gview?url={Uri.EscapeDataString(downloadUrl)}&embedded=true";
+        // For Google Drive files, the native preview iframe is the ONLY reliable method that works consistently.
+        // Google Docs Viewer (gview) often returns blank white pages.
+        return $"https://drive.google.com/file/d/{fileId}/preview";
     }
 
     public string GetDirectDownloadUrl(string fileId)

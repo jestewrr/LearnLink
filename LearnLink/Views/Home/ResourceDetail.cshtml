@@ -45,6 +45,7 @@
 @{
     var fmt = Normal(resource.FileFormat);
     var isOffice = fmt == "DOCX" || fmt == "DOC" || fmt == "PPTX" || fmt == "PPT" || fmt == "XLSX" || fmt == "XLS";
+    var isLink = fmt == "LINK";
     var hasFile = canPreview && !string.IsNullOrWhiteSpace(fileUrl);
     var isDriveFile = !string.IsNullOrEmpty(ViewBag.DriveFileId as string);
     var drivePreviewUrl = ViewBag.DrivePreviewUrl as string ?? "";
@@ -54,31 +55,41 @@
     var isImage = fmt is "JPG" or "JPEG" or "PNG" or "GIF" or "WEBP" or "BMP" or "SVG";
     string viewerUrl = "";
     string directImageUrl = "";
+    bool showExternalLinkBlock = false;
+
     if (hasFile)
     {
-        if (isDriveFile && isImage)
+        if (isLink)
+        {
+            showExternalLinkBlock = true;
+        }
+        else if (isDriveFile && isImage)
         {
             // Images from Drive: use export=view URL for inline display
             var driveId = ViewBag.DriveFileId as string;
             directImageUrl = $"https://drive.google.com/uc?export=view&id={driveId}";
         }
-        else if (isDriveFile && fmt == "PDF")
-        {
-            // PDFs from Drive: serve inline through server — browser renders natively
-            viewerUrl = Url.Action(previewAction, "Home", new { id = resource.Id, inline = true }) + "#view=FitH";
-        }
         else if (isDriveFile)
         {
-            // Office files from Drive: use Google Docs Viewer for embedded preview
+            // All Drive files: use Google Drive's native preview (handles PDF, Office, etc. reliably)
             viewerUrl = drivePreviewUrl;
         }
         else if (fmt == "PDF")
         {
             viewerUrl = Url.Action(previewAction, "Home", new { id = resource.Id, inline = true }) + "#view=FitH";
         }
-        else if (isOffice && canUseGoogleViewer)
+        else if (isOffice)
         {
-            viewerUrl = "https://view.officeapps.live.com/op/embed.aspx?src=" + Uri.EscapeDataString(fileUrl);
+            // Local Office files: DO NOT use inline download proxy directly in iframe! It triggers immediate download.
+            var req = Context.Request;
+            var isLocalhost = req.Host.Host == "localhost" || req.Host.Host == "127.0.0.1";
+            if (isLocalhost) {
+                // Microsoft Office Online Viewer cannot access localhost. Skip viewer to show secure fallback.
+                viewerUrl = "";
+            } else {
+                var fullUrl = $"{req.Scheme}://{req.Host}{Url.Action(previewAction, "Home", new { id = resource.Id, inline = true })}";
+                viewerUrl = "https://view.officeapps.live.com/op/embed.aspx?src=" + Uri.EscapeDataString(fullUrl);
+            }
         }
         else if (isImage)
         {
@@ -86,7 +97,9 @@
         }
         else
         {
-            viewerUrl = Url.Action(previewAction, "Home", new { id = resource.Id, inline = true }) ?? "";
+            // For unknown formats (zip, rar) or unavailable viewers, leave viewerUrl blank.
+            // This triggers the fallback "Cannot be previewed" UI instead of an automatic browser download.
+            viewerUrl = "";
         }
     }
 }
@@ -299,6 +312,19 @@
                 <div class="ll-reader-no-preview">
                     <i class="bi bi-cloud-slash"></i>
                     <p>No file has been attached to this resource yet.</p>
+                </div>
+            }
+            else if (showExternalLinkBlock)
+            {
+                <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8fafc;">
+                    <div style="background:linear-gradient(135deg,#3b82f6,#2563eb);width:80px;height:80px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem;box-shadow:0 10px 15px -3px rgba(59,130,246,0.3);">
+                        <i class="bi bi-link-45deg" style="font-size:3.5rem;color:white;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-2">External Link</h4>
+                    <p class="text-muted mb-4" style="max-width:400px;text-align:center;">This resource is hosted on an external platform (like Google Books or Open Library).</p>
+                    <a href="@fileUrl" target="_blank" class="ll-btn ll-btn-primary" style="text-decoration:none;padding:12px 24px;">
+                        Open Link <i class="bi bi-box-arrow-up-right ms-2"></i>
+                    </a>
                 </div>
             }
             else if (!string.IsNullOrEmpty(directImageUrl))
