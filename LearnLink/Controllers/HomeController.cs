@@ -4943,14 +4943,6 @@ namespace LearnLink.Controllers
 
             var dates = Enumerable.Range(0, 30).Select(i => thirtyDaysAgo.AddDays(i).Date).ToList();
 
-            var commentsQuery = _context.ResourceComments.AsQueryable();
-            if (schoolId.HasValue && schoolId > 0)
-            {
-                var resourceIds = resources.Select(r => r.ResourceId).ToHashSet();
-                commentsQuery = commentsQuery.Where(c => resourceIds.Contains(c.ResourceId));
-            }
-            var recentComments = await commentsQuery.Where(c => c.DatePosted >= thirtyDaysAgo).ToListAsync();
-
             // Subject Distribution
             var subjectGroups = resources.GroupBy(r => r.Subject)
                 .Select(g => new { Name = g.Key, Count = g.Count() })
@@ -5038,7 +5030,7 @@ namespace LearnLink.Controllers
                     views = dates.Select(d => logs.Count(l => l.ActivityDate.Date == d && l.ActivityType == "View")).ToArray(),
                     downloads = dates.Select(d => logs.Count(l => l.ActivityDate.Date == d && l.ActivityType == "Download")).ToArray(),
                     uploads = dates.Select(d => logs.Count(l => l.ActivityDate.Date == d && l.ActivityType == "Upload")).ToArray(),
-                    comments = dates.Select(d => recentComments.Count(c => c.DatePosted.Date == d)).ToArray()
+                    comments = dates.Select(d => logs.Count(l => l.ActivityDate.Date == d && l.ActivityType == "Comment")).ToArray()
                 },
                 subjectDistribution = subjectGroups.Select(g => new
                 {
