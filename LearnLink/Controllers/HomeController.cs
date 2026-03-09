@@ -1310,6 +1310,9 @@ namespace LearnLink.Controllers
                 }
 
                 var currentUser = await GetCurrentUserAsync();
+                if (currentUser == null)
+                    return Json(new { success = false, message = "Not authenticated." });
+
                 int importCount = 0;
 
                 foreach (var item in items.EnumerateArray())

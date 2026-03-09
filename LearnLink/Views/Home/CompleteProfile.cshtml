@@ -135,9 +135,9 @@
                                         <i class="bi bi-building ll-auth-input-icon"></i>
                                         <select name="schoolId" class="form-control form-select" required>
                                             <option value="" disabled selected>Select your school</option>
-                                            @if (ViewBag.Schools != null)
+                                            @if (ViewBag.Schools is List<LearnLink.Models.School> schools)
                                             {
-                                                foreach (var school in ViewBag.Schools as List<LearnLink.Models.School>)
+                                                foreach (var school in schools)
                                                 {
                                                     <option value="@school.SchoolId">@school.Name</option>
                                                 }

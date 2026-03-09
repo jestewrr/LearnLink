@@ -30,8 +30,10 @@ public class GoogleDriveStorageService : IStorageService
 
         try
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             var credential = GoogleCredential.FromJson(options.Value.ServiceAccountJson)
                 .CreateScoped(DriveService.Scope.Drive);
+#pragma warning restore CS0618 // Type or member is obsolete
 
             _driveService = new DriveService(new BaseClientService.Initializer()
             {
