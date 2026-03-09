@@ -10,6 +10,10 @@
 *.userosscache
 *.sln.docstates
 
+# Local app secrets
+LearnLink/appsettings.json
+LearnLink/appsettings.Production.json
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
