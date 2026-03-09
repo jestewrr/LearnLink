@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 using Resource = LearnLink.Models.Resource;
 
 namespace LearnLink.Controllers
@@ -26,6 +27,10 @@ namespace LearnLink.Controllers
         private readonly IEmailService _emailService;
         private readonly IStorageService _storage;
         private readonly bool _googleAuthEnabled;
+        private readonly IMemoryCache _cache;
+        private readonly IConfiguration _configuration;
+        private static readonly SemaphoreSlim _googleBooksSemaphore = new SemaphoreSlim(1, 1);
+        private static DateTime _lastGoogleBooksRequest = DateTime.MinValue;
 
         public HomeController(
             ApplicationDbContext context,
@@ -36,7 +41,9 @@ namespace LearnLink.Controllers
             GoogleAuthFlag googleAuth,
             IRecommendationService recommendationService,
             IEmailService emailService,
-            IStorageService storage)
+            IStorageService storage,
+            IMemoryCache cache,
+            IConfiguration configuration)
         {
             _context = context;
             _signInManager = signInManager;
@@ -47,6 +54,8 @@ namespace LearnLink.Controllers
             _recommendationService = recommendationService;
             _emailService = emailService;
             _storage = storage;
+            _cache = cache;
+            _configuration = configuration;
         }
 
         // ==================== Helpers ====================
@@ -1284,23 +1293,88 @@ namespace LearnLink.Controllers
 
             try
             {
-                using var client = new HttpClient();
-                client.Timeout = TimeSpan.FromSeconds(15);
-                
-                // Build a natural-language query that Google Books API understands
                 var query = Uri.EscapeDataString($"{subject} {grade} junior high school textbook education");
-                var url = $"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=10&printType=books&langRestrict=en";
+                string cacheKey = $"GoogleBooks_{query}";
+
+                string? json = null;
                 
-                var response = await client.GetAsync(url);
-                
-                if (!response.IsSuccessStatusCode)
+                // 1. Check if the response is cached
+                if (_cache.TryGetValue(cacheKey, out string? cachedJson) && !string.IsNullOrEmpty(cachedJson))
                 {
-                    var statusCode = (int)response.StatusCode;
-                    TempData["ErrorMessage"] = $"Google Books API returned status {statusCode}. Please try again later.";
-                    return RedirectToAction("Settings");
+                    json = cachedJson;
+                }
+                else
+                {
+                    // 2. Not cached - we need to make an API call
+                    await _googleBooksSemaphore.WaitAsync();
+                    try
+                    {
+                        // 3. Throttle request (at least 1 second between requests)
+                        var timeSinceLast = DateTime.UtcNow - _lastGoogleBooksRequest;
+                        if (timeSinceLast.TotalSeconds < 1.0)
+                        {
+                            await Task.Delay(TimeSpan.FromSeconds(1.0 - timeSinceLast.TotalSeconds));
+                        }
+
+                        using var client = new HttpClient();
+                        client.Timeout = TimeSpan.FromSeconds(15);
+                        
+                        var apiKey = _configuration["GoogleBooks:ApiKey"];
+                        var url = $"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=10&printType=books&langRestrict=en";
+                        if (!string.IsNullOrEmpty(apiKey))
+                        {
+                            url += $"&key={apiKey}";
+                        }
+                        
+                        HttpResponseMessage? response = null;
+                        int maxRetries = 3;
+                        int delayMs = 1000; // start 1s but grows exponentially
+
+                        // 4. Implement Retry Logic with Exponential Backoff
+                        for (int i = 0; i < maxRetries; i++)
+                        {
+                            response = await client.GetAsync(url);
+                            _lastGoogleBooksRequest = DateTime.UtcNow;
+
+                            if (response.IsSuccessStatusCode)
+                            {
+                                break;
+                            }
+                            else if ((int)response.StatusCode == 429) // 429 Too Many Requests
+                            {
+                                if (i == maxRetries - 1)
+                                {
+                                    TempData["ErrorMessage"] = "API request limit has been reached. Action throttled by Google Books. Please wait 1-2 minutes before trying again.";
+                                    return RedirectToAction("Settings");
+                                }
+                                await Task.Delay(delayMs);
+                                delayMs *= 2; // exponential backoff
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+                        
+                        if (response == null || !response.IsSuccessStatusCode)
+                        {
+                            var statusCode = response != null ? (int)response.StatusCode : 0;
+                            TempData["ErrorMessage"] = $"Google Books API returned status {statusCode}. Please try again later.";
+                            return RedirectToAction("Settings");
+                        }
+
+                        json = await response.Content.ReadAsStringAsync();
+                        
+                        // Cache the successful JSON response for 24 hours to prevent repeated identical calls
+                        _cache.Set(cacheKey, json, TimeSpan.FromHours(24));
+                    }
+                    finally
+                    {
+                        _googleBooksSemaphore.Release();
+                    }
                 }
 
-                var json = await response.Content.ReadAsStringAsync();
+                // Parse the JSON
                 var data = System.Text.Json.JsonDocument.Parse(json);
                 
                 if (!data.RootElement.TryGetProperty("items", out var items))

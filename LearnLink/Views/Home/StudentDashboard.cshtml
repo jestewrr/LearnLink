@@ -91,167 +91,142 @@
     </div>
 </div>
 
-<!-- Subject Progress + Recent Reading -->
+<!-- Active Learning + Gamification -->
 <div class="row g-4 mb-4">
-    <!-- Subject Progress Chart -->
-    <div class="col-lg-7">
-        <div class="ll-card">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title"><i class="bi bi-bar-chart me-2 text-primary"></i>Progress by Subject</h5>
+    <!-- Continue Reading (Wide) -->
+    <div class="col-lg-8">
+        <div class="ll-card h-100 border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="ll-card-header d-flex justify-content-between align-items-center bg-white border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="ll-card-title fw-bold mb-0" style="color: #1e293b;"><i class="bi bi-clock-history me-2" style="color: var(--ll-primary);"></i>Continue Reading</h5>
+                <a href="@Url.Action("ReadingHistory", "Home")" class="ll-btn ll-btn-outline-primary btn-sm rounded-pill px-3">View All</a>
             </div>
-            <div class="ll-card-body">
-                @if (Model.SubjectProgress.Any())
+            <div class="ll-card-body p-4">
+                @if (Model.RecentReading.Any())
                 {
-                <canvas id="subjectProgressChart" height="280"></canvas>
+                <div class="row g-3">
+                    @foreach (var item in Model.RecentReading.Take(4))
+                    {
+                    <div class="col-md-6">
+                        <a href="@Url.Action("ResourceDetail", "Home", new { id = item.ResourceId })" class="text-decoration-none d-block">
+                            <div class="p-3 rounded-4 transition-all hover-scale" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                                <div class="d-flex align-items-center gap-3 mb-2">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width:48px;height:48px;background:@item.IconBg;min-width:48px;">
+                                        <i class="bi @item.IconClass @item.IconColor fs-5"></i>
+                                    </div>
+                                    <div class="flex-grow-1 min-w-0">
+                                        <div class="fw-bold text-truncate" style="color: #0f172a; font-size: 1.05rem;" title="@item.Title">@item.Title</div>
+                                        <div class="small fw-medium" style="color: #64748b;">@item.Subject</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between mb-1 mt-3">
+                                    <span class="small fw-bold" style="color: #334155;">Progress</span>
+                                    <span class="small fw-bold @(item.IsCompleted ? "text-success" : "text-primary")">@item.ProgressPercent%</span>
+                                </div>
+                                <div class="progress rounded-pill bg-white shadow-sm" style="height: 6px; border: 1px solid #e2e8f0;">
+                                    <div class="progress-bar rounded-pill @(item.IsCompleted ? "bg-success" : "bg-primary")" style="width: @item.ProgressPercent%"></div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    }
+                </div>
                 }
                 else
                 {
-                <div class="text-center py-5 text-muted d-flex flex-column align-items-center justify-content-center h-100" style="min-height: 280px;">
-                    <i class="bi bi-bar-chart display-4 d-block mb-3 text-primary opacity-50"></i>
-                    <h5 class="text-dark">No Data Yet</h5>
-                    <p>Start reading resources to see your progress chart here!</p>
-                    <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-primary btn-sm mt-2">Browse Resources</a>
+                <div class="text-center py-5 text-muted border border-dashed rounded-4 bg-light">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 bg-white shadow-sm" style="width: 64px; height: 64px;">
+                        <i class="bi bi-book display-6 text-primary"></i>
+                    </div>
+                    <h5 class="fw-bold text-dark">No active reading</h5>
+                    <p class="mb-3">Start exploring topics to build your Continue Reading list!</p>
+                    <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-primary rounded-pill px-4">Browse Now</a>
                 </div>
                 }
             </div>
         </div>
     </div>
 
-    <!-- Streak & Quick Stats -->
-    <div class="col-lg-5">
-        <div class="ll-card mb-4">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title"><i class="bi bi-fire me-2 text-danger"></i>Learning Streak</h5>
+    <!-- Gamification Stack (Narrow) -->
+    <div class="col-lg-4 d-flex flex-column gap-4">
+        <!-- Learning Streak -->
+        <div class="ll-card border-0 shadow-sm flex-fill" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-radius: 16px;">
+            <div class="ll-card-header bg-transparent border-bottom-0 pb-0 pt-4 px-4 text-center">
+                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white shadow-sm mb-2" style="width: 50px; height: 50px;">
+                    <i class="bi bi-fire fs-4" style="color: #f59e0b;"></i>
+                </div>
+                <h5 class="ll-card-title fw-bold mb-0" style="color: #92400e;">Learning Streak</h5>
             </div>
-            <div class="ll-card-body text-center py-4">
-                <div class="d-flex justify-content-center gap-5">
+            <div class="ll-card-body text-center py-3 px-4">
+                <div class="d-flex justify-content-center gap-4 align-items-end mb-3">
                     <div>
-                        <div class="display-3 fw-bold text-primary">@Model.CurrentStreak</div>
-                        <small class="text-muted">Current Streak (days)</small>
+                        <div class="fw-black lh-1" style="font-size: 3.5rem; color: #b45309; letter-spacing: -2px;">@Model.CurrentStreak</div>
+                        <div class="fw-bold text-uppercase" style="font-size: 0.75rem; color: #d97706; letter-spacing: 1px;">Current Days</div>
                     </div>
+                    <div style="width: 2px; height: 40px; background: rgba(217,119,6,0.2);" class="mb-2"></div>
                     <div>
-                        <div class="display-3 fw-bold text-warning">@Model.BestStreak</div>
-                        <small class="text-muted">Best Streak (days)</small>
+                        <div class="fw-black lh-1" style="font-size: 2.5rem; color: #d97706; letter-spacing: -1px;">@Model.BestStreak</div>
+                        <div class="fw-bold text-uppercase" style="font-size: 0.75rem; color: #f59e0b; letter-spacing: 1px;">Best Days</div>
                     </div>
                 </div>
-                <div class="mt-3">
-                    <div class="progress" style="height: 8px;">
-                        @{
-                            var streakPercent = Model.BestStreak > 0 ? Math.Min(100, (int)Math.Round((double)Model.CurrentStreak / Model.BestStreak * 100)) : 0;
-                        }
-                        <div class="progress-bar bg-primary" style="width: @streakPercent%"></div>
-                    </div>
-                    <small class="text-muted mt-1 d-block">@streakPercent% of your best streak</small>
+                <div class="progress rounded-pill bg-white shadow-sm" style="height: 8px;">
+                    @{
+                        var streakPercent = Model.BestStreak > 0 ? Math.Min(100, (int)Math.Round((double)Model.CurrentStreak / Model.BestStreak * 100)) : 0;
+                    }
+                    <div class="progress-bar rounded-pill" style="width: @streakPercent%; background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);"></div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Overall Completion Ring -->
-        <div class="ll-card mb-4">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title"><i class="bi bi-pie-chart me-2 text-success"></i>Overall Completion</h5>
-            </div>
-            <div class="ll-card-body text-center py-3">
-                <div class="position-relative d-inline-block" style="width: 120px; height: 120px;">
-                    <canvas id="completionRing" width="120" height="120"></canvas>
-                    <div class="position-absolute top-50 start-50 translate-middle">
-                        <span class="fs-3 fw-bold text-primary">@Model.CompletionPercent%</span>
-                    </div>
-                </div>
-                <div class="mt-2">
-                    <small class="text-muted">@Model.ResourcesCompleted of @Model.ResourcesRead resources completed</small>
-                </div>
+                <div class="small fw-bold mt-2" style="color: #b45309;">@streakPercent% of your best streak</div>
             </div>
         </div>
 
         <!-- Weekly Target -->
-        <div class="ll-card">
-            <div class="ll-card-header d-flex justify-content-between align-items-center">
-                <h5 class="ll-card-title mb-0"><i class="bi bi-bullseye me-2 text-info"></i>Weekly Target</h5>
-                <span class="badge bg-primary bg-opacity-10 text-primary">@Model.WeeklyResourcesCompleted / @Model.WeeklyResourceGoal</span>
+        <div class="ll-card border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="ll-card-header d-flex justify-content-between align-items-center bg-white border-bottom-0 pb-0 pt-4 px-4">
+                <h6 class="ll-card-title fw-bold mb-0" style="color: #1e293b;"><i class="bi bi-bullseye me-2 text-info"></i>Weekly Target</h6>
+                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold rounded-pill px-3 py-2">@Model.WeeklyResourcesCompleted / @Model.WeeklyResourceGoal</span>
             </div>
-            <div class="ll-card-body py-4">
+            <div class="ll-card-body pb-4 pt-3 px-4">
                 <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted small fw-medium">Resources Read This Week</span>
-                    <span class="text-dark small fw-bold">@(Model.WeeklyResourcesCompleted >= Model.WeeklyResourceGoal ? "Goal Reached! 🎉" : $"{Model.WeeklyResourceGoal - Model.WeeklyResourcesCompleted} left")</span>
+                    <span class="fw-medium small" style="color: #64748b;">Resources Read</span>
+                    <span class="fw-bold small @(Model.WeeklyResourcesCompleted >= Model.WeeklyResourceGoal ? "text-success" : "text-dark")">
+                        @(Model.WeeklyResourcesCompleted >= Model.WeeklyResourceGoal ? "Goal Reached! 🎉" : $"{Model.WeeklyResourceGoal - Model.WeeklyResourcesCompleted} left")
+                    </span>
                 </div>
-                <div class="progress" style="height: 10px;">
+                <div class="progress rounded-pill bg-light" style="height: 10px; border: 1px solid #e2e8f0;">
                     @{
                         var weeklyGoalPercent = Model.WeeklyResourceGoal > 0 ? Math.Min(100, (int)Math.Round((double)Model.WeeklyResourcesCompleted / Model.WeeklyResourceGoal * 100)) : 0;
                     }
-                    <div class="progress-bar @(weeklyGoalPercent >= 100 ? "bg-success" : "bg-primary") progress-bar-striped @(weeklyGoalPercent >= 100 ? "" : "progress-bar-animated")" style="width: @weeklyGoalPercent%"></div>
+                    <div class="progress-bar rounded-pill @(weeklyGoalPercent >= 100 ? "bg-success" : "bg-primary") progress-bar-striped @(weeklyGoalPercent >= 100 ? "" : "progress-bar-animated")" style="width: @weeklyGoalPercent%"></div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Continue Reading + Recommended + Trending -->
+<!-- Discovery & Bookmarks -->
 <div class="row g-4 mb-4">
-    <!-- Continue Reading -->
-    <div class="col-lg-4">
-        <div class="ll-card h-100">
-            <div class="ll-card-header d-flex justify-content-between align-items-center">
-                <h5 class="ll-card-title mb-0"><i class="bi bi-clock-history me-2 text-info"></i>Continue Reading</h5>
-                <a href="@Url.Action("ReadingHistory", "Home")" class="ll-btn ll-btn-outline-primary btn-sm">View All</a>
-            </div>
-            <div class="ll-card-body p-0">
-                @if (Model.RecentReading.Any())
-                {
-                <div class="list-group list-group-flush">
-                    @foreach (var item in Model.RecentReading.Take(4))
-                    {
-                    <a href="@Url.Action("ResourceDetail", "Home", new { id = item.ResourceId })" class="list-group-item list-group-item-action border-0 px-3 py-3">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:42px;height:42px;background:@item.IconBg;min-width:42px;">
-                                <i class="bi @item.IconClass @item.IconColor"></i>
-                            </div>
-                            <div class="flex-grow-1 min-w-0">
-                                <div class="fw-semibold text-truncate">@item.Title</div>
-                                <small class="text-muted">@item.Subject</small>
-                                <div class="progress mt-1" style="height: 4px;">
-                                    <div class="progress-bar @(item.IsCompleted ? "bg-success" : "bg-primary")" style="width: @item.ProgressPercent%"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                    }
-                </div>
-                }
-                else
-                {
-                <div class="text-center py-4 text-muted border-top">
-                    <i class="bi bi-book display-4 d-block mb-2 text-info opacity-50"></i>
-                    <p class="mb-0">No reading history yet. Start exploring!</p>
-                </div>
-                }
-            </div>
-        </div>
-    </div>
-
     <!-- Recommended Resources -->
-    <div class="col-lg-4">
-        <div class="ll-card h-100">
-            <div class="ll-card-header d-flex justify-content-between align-items-center">
-                <h5 class="ll-card-title mb-0"><i class="bi bi-stars me-2 text-warning"></i>Recommended</h5>
-                <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline-primary btn-sm">All</a>
+    <div class="col-lg-6">
+        <div class="ll-card h-100 border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="ll-card-header d-flex justify-content-between align-items-center bg-white border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="ll-card-title fw-bold mb-0" style="color: #1e293b;"><i class="bi bi-stars me-2 text-warning"></i>Recommended</h5>
+                <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline-primary btn-sm rounded-pill px-3">All Resources</a>
             </div>
-            <div class="ll-card-body p-0">
+            <div class="ll-card-body px-4 pt-3 pb-4">
                 @if (Model.RecommendedResources.Any())
                 {
-                <div class="list-group list-group-flush">
+                <div class="list-group list-group-flush gap-2">
                     @foreach (var res in Model.RecommendedResources.Take(4))
                     {
-                    <a href="@Url.Action("ResourceDetail", "Home", new { id = res.Id })" class="list-group-item list-group-item-action border-0 px-3 py-3">
+                    <a href="@Url.Action("ResourceDetail", "Home", new { id = res.Id })" class="list-group-item list-group-item-action border border-light rounded-3 px-3 py-3 shadow-sm transition-all hover-scale" style="background: #fff;">
                         <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:42px;height:42px;background:@res.IconBg;min-width:42px;">
-                                <i class="bi @res.IconClass @res.IconColor"></i>
+                            <div class="rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width:42px;height:42px;background:@res.IconBg;min-width:42px;">
+                                <i class="bi @res.IconClass @res.IconColor fs-6"></i>
                             </div>
                             <div class="flex-grow-1 min-w-0">
-                                <div class="fw-semibold text-truncate" title="@res.Title">@res.Title</div>
-                                <small class="text-muted">@res.Subject</small>
+                                <div class="fw-bold text-truncate text-dark" style="font-size: 0.95rem;" title="@res.Title">@res.Title</div>
+                                <div class="small fw-medium" style="color: #64748b;">@res.Subject</div>
                             </div>
-                            <span class="badge bg-primary bg-opacity-10 text-primary">@res.ResourceType</span>
+                            <span class="badge bg-light text-dark border rounded-pill px-2 py-1 fw-medium" style="font-size: 0.7rem;">@res.ResourceType</span>
                         </div>
                     </a>
                     }
@@ -259,78 +234,43 @@
                 }
                 else
                 {
-                <div class="text-center py-4 text-muted border-top">
-                    <i class="bi bi-check-all display-4 d-block mb-2 text-warning opacity-50"></i>
-                    <p class="mb-0">You've explored all recommendations!</p>
+                <div class="text-center py-5 text-muted border border-dashed rounded-4 bg-light h-100 d-flex flex-column justify-content-center">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white shadow-sm mb-3 mx-auto" style="width: 56px; height: 56px;">
+                        <i class="bi bi-check-all fs-3 text-warning"></i>
+                    </div>
+                    <h6 class="fw-bold text-dark">You're all caught up!</h6>
+                    <p class="small mb-0">Check back later for more recommendations.</p>
                 </div>
                 }
             </div>
         </div>
     </div>
 
-    <!-- Trending Resources -->
-    <div class="col-lg-4">
-        <div class="ll-card h-100">
-            <div class="ll-card-header d-flex justify-content-between align-items-center">
-                <h5 class="ll-card-title mb-0"><i class="bi bi-graph-up-arrow me-2 text-danger"></i>Trending Now</h5>
-            </div>
-            <div class="ll-card-body p-0">
-                @if (Model.TrendingResources.Any())
-                {
-                <div class="list-group list-group-flush">
-                    @foreach (var res in Model.TrendingResources)
-                    {
-                    <a href="@Url.Action("ResourceDetail", "Home", new { id = res.Id })" class="list-group-item list-group-item-action border-0 px-3 py-3">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:42px;height:42px;background:@res.IconBg;min-width:42px;">
-                                <i class="bi @res.IconClass @res.IconColor"></i>
-                            </div>
-                            <div class="flex-grow-1 min-w-0">
-                                <div class="fw-semibold text-truncate" title="@res.Title">@res.Title</div>
-                                <small class="text-muted"><i class="bi bi-eye"></i> @res.ViewCount &middot; <i class="bi bi-download"></i> @res.DownloadCount</small>
-                            </div>
-                        </div>
-                    </a>
-                    }
-                </div>
-                }
-                else
-                {
-                <div class="text-center py-4 text-muted border-top">
-                    <i class="bi bi-graph-up-arrow display-4 d-block mb-2 text-danger opacity-50"></i>
-                    <p class="mb-0">No trending resources yet.</p>
-                </div>
-                }
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Bookmarks & Recent Activity -->
-<div class="row g-4 mb-4">
     <!-- Quick Access Bookmarks -->
     <div class="col-lg-6">
-        <div class="ll-card h-100">
-            <div class="ll-card-header d-flex justify-content-between align-items-center">
-                <h5 class="ll-card-title mb-0"><i class="bi bi-bookmark-fill me-2 text-primary"></i>Quick Access Bookmarks</h5>
-                <a href="@Url.Action("ReadingHistory", "Home", new { filter = "bookmarked" })" class="ll-btn ll-btn-outline-primary btn-sm">View All</a>
+        <div class="ll-card h-100 border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="ll-card-header d-flex justify-content-between align-items-center bg-white border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="ll-card-title fw-bold mb-0" style="color: #1e293b;"><i class="bi bi-bookmark-fill me-2 text-primary"></i>Bookmarks</h5>
+                <a href="@Url.Action("ReadingHistory", "Home", new { filter = "bookmarked" })" class="ll-btn ll-btn-outline-primary btn-sm rounded-pill px-3">View Saved</a>
             </div>
-            <div class="ll-card-body p-0">
+            <div class="ll-card-body px-4 pt-3 pb-4">
                 @if (Model.RecentBookmarks.Any())
                 {
-                <div class="list-group list-group-flush">
-                    @foreach (var res in Model.RecentBookmarks)
+                <div class="list-group list-group-flush gap-2">
+                    @foreach (var res in Model.RecentBookmarks.Take(4))
                     {
-                    <a href="@Url.Action("ResourceDetail", "Home", new { id = res.Id })" class="list-group-item list-group-item-action border-0 px-3 py-3">
+                    <a href="@Url.Action("ResourceDetail", "Home", new { id = res.Id })" class="list-group-item list-group-item-action border border-light rounded-3 px-3 py-3 shadow-sm transition-all hover-scale" style="background: #fff;">
                         <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:42px;height:42px;background:@res.IconBg;min-width:42px;">
-                                <i class="bi @res.IconClass @res.IconColor"></i>
+                            <div class="rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width:42px;height:42px;background:@res.IconBg;min-width:42px;">
+                                <i class="bi @res.IconClass @res.IconColor fs-6"></i>
                             </div>
                             <div class="flex-grow-1 min-w-0">
-                                <div class="fw-semibold text-truncate" title="@res.Title">@res.Title</div>
-                                <small class="text-muted">@res.Subject &middot; @res.Uploader</small>
+                                <div class="fw-bold text-truncate text-dark" style="font-size: 0.95rem;" title="@res.Title">@res.Title</div>
+                                <div class="small fw-medium" style="color: #64748b;">@res.Subject &middot; @res.Uploader</div>
                             </div>
-                            <i class="bi bi-chevron-right text-muted opacity-50"></i>
+                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                                <i class="bi bi-chevron-right text-primary small"></i>
+                            </div>
                         </div>
                     </a>
                     }
@@ -338,140 +278,28 @@
                 }
                 else
                 {
-                <div class="text-center py-4 text-muted border-top">
-                    <i class="bi bi-bookmark display-4 d-block mb-2 text-primary opacity-50"></i>
-                    <p class="mb-0">You haven't bookmarked any resources yet.</p>
-                </div>
-                }
-            </div>
-        </div>
-    </div>
-
-    <!-- Recent Activity -->
-    <div class="col-lg-6">
-        <div class="ll-card h-100">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title"><i class="bi bi-activity me-2 text-info"></i>Recent Activity</h5>
-            </div>
-            <div class="ll-card-body p-0">
-                @if (Model.RecentActivity.Any())
-                {
-                <div class="list-group list-group-flush">
-                    @foreach (var act in Model.RecentActivity.Take(5))
-                    {
-                    <div class="list-group-item border-0 px-3 py-3">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center bg-body-secondary" style="width:36px;height:36px;min-width:36px;">
-                                <i class="bi @act.IconClass @act.IconColor"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <span class="fw-medium">You</span>
-                                <span class="text-muted">@act.Action</span>
-                                <span class="fw-medium">@act.Target</span>
-                            </div>
-                            <small class="text-muted text-nowrap">@act.TimeAgo</small>
-                        </div>
+                <div class="text-center py-5 text-muted border border-dashed rounded-4 bg-light h-100 d-flex flex-column justify-content-center">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white shadow-sm mb-3 mx-auto" style="width: 56px; height: 56px;">
+                        <i class="bi bi-bookmark fs-3 text-primary"></i>
                     </div>
-                    }
-                </div>
-                }
-                else
-                {
-                <div class="text-center py-4 text-muted border-top">
-                    <i class="bi bi-activity display-4 d-block mb-2 text-info opacity-50"></i>
-                    <p class="mb-0">No activity yet. Start learning!</p>
+                    <h6 class="fw-bold text-dark">No bookmarks yet</h6>
+                    <p class="small mb-0">Save resources you want to read later.</p>
                 </div>
                 }
             </div>
         </div>
     </div>
 </div>
+<style>
+    .transition-all {
+        transition: all 0.2s ease-in-out;
+    }
+    .hover-scale:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+        border-color: #cbd5e1 !important;
+    }
+</style>
 
 @section Scripts {
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Subject Progress Chart
-    var subjectCanvas = document.getElementById('subjectProgressChart');
-    if (subjectCanvas) {
-        var subjects = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SubjectProgress.Select(s => s.Subject)));
-        var completed = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SubjectProgress.Select(s => s.Completed)));
-        var totals = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SubjectProgress.Select(s => s.Total)));
-        var remaining = totals.map((t, i) => t - completed[i]);
-        var colors = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SubjectProgress.Select(s => s.Color)));
-
-        new Chart(subjectCanvas, {
-            type: 'bar',
-            data: {
-                labels: subjects,
-                datasets: [
-                    {
-                        label: 'Completed',
-                        data: completed,
-                        backgroundColor: colors,
-                        borderRadius: 6,
-                        borderSkipped: false
-                    },
-                    {
-                        label: 'Remaining',
-                        data: remaining,
-                        backgroundColor: colors.map(c => c + '33'),
-                        borderRadius: 6,
-                        borderSkipped: false
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: true, position: 'top' },
-                    tooltip: {
-                        callbacks: {
-                            afterBody: function(ctx) {
-                                var i = ctx[0].dataIndex;
-                                var pct = totals[i] > 0 ? Math.round(completed[i] / totals[i] * 100) : 0;
-                                return pct + '% complete';
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        stacked: true,
-                        grid: { display: false }
-                    },
-                    y: {
-                        stacked: true,
-                        beginAtZero: true,
-                        ticks: { stepSize: 1 }
-                    }
-                }
-            }
-        });
-    }
-
-    // Completion Ring
-    var ringCanvas = document.getElementById('completionRing');
-    if (ringCanvas) {
-        var pct = @Model.CompletionPercent;
-        new Chart(ringCanvas, {
-            type: 'doughnut',
-            data: {
-                datasets: [{
-                    data: [pct, 100 - pct],
-                    backgroundColor: ['#4361ee', '#e9ecef'],
-                    borderWidth: 0,
-                    cutout: '78%'
-                }]
-            },
-            options: {
-                responsive: false,
-                plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                animation: { animateRotate: true }
-            }
-        });
-    }
-});
-</script>
 }

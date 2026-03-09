@@ -23,10 +23,13 @@ public class GoogleDriveStorageService : IStorageService
     public GoogleDriveStorageService(IOptions<GoogleDriveOptions> options, ILogger<GoogleDriveStorageService> logger)
     {
         _logger = logger;
-        _sharedFolderId = options.Value.SharedFolderId ?? throw new ArgumentNullException("GoogleDrive:SharedFolderId not configured");
+        _sharedFolderId = options.Value.SharedFolderId ?? "";
 
         if (string.IsNullOrEmpty(options.Value.ServiceAccountJson))
-            throw new ArgumentNullException("GoogleDrive:ServiceAccountJson not configured");
+        {
+            _logger.LogWarning("GoogleDrive:ServiceAccountJson not configured. Google Drive uploads will fail.");
+            return;
+        }
 
         try
         {
@@ -43,13 +46,16 @@ public class GoogleDriveStorageService : IStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to initialize Google Drive service");
-            throw;
+            _logger.LogError(ex, "Failed to initialize Google Drive service. Ensure credentials are valid JSON.");
+            // Do not throw, so the application continues to run
         }
     }
 
     public async Task<StorageResult> UploadAsync(Stream stream, string fileName, string contentType)
     {
+        if (_driveService == null)
+            return new StorageResult { Success = false, Message = "Google Drive is not configured correctly." };
+
         try
         {
             var fileMetadata = new DriveFile()
@@ -105,6 +111,8 @@ public class GoogleDriveStorageService : IStorageService
 
     public async Task<bool> DeleteAsync(string fileId)
     {
+        if (_driveService == null) return false;
+
         try
         {
             await _driveService.Files.Delete(fileId).ExecuteAsync();
@@ -119,6 +127,8 @@ public class GoogleDriveStorageService : IStorageService
 
     public async Task<Stream?> DownloadAsync(string fileId)
     {
+        if (_driveService == null) return null;
+
         try
         {
             var stream = new MemoryStream();
