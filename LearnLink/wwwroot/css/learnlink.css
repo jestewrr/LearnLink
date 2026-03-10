@@ -7950,10 +7950,10 @@ a.ll-resource-card-link:hover {
 [data-theme="dark"] .table th,
 [data-theme="dark"] .ll-table th,
 [data-theme="dark"] .ll-table thead th {
-    background-color: #1e293b !important;
-    color: #e2e8f0 !important;
-    border-color: #334155 !important;
-    border-bottom-color: #334155 !important;
+    background-color: #334155 !important;
+    color: #f1f5f9 !important;
+    border-color: #475569 !important;
+    border-bottom-color: #475569 !important;
 }
 [data-theme="dark"] td,
 [data-theme="dark"] .table td,
