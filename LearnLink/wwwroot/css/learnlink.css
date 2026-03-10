@@ -6662,3 +6662,536 @@ a.ll-resource-card-link:hover {
     color: #f1f5f9;
 }
 
+/* ── Repository Search Bar & Pills ── */
+[data-theme="dark"] .ll-repo-search-bar {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .ll-repo-search-input > input {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-repo-filter-select {
+    color: #e2e8f0;
+    border-left-color: #334155;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] .ll-repo-filter-select:focus {
+    background-color: #334155;
+}
+
+[data-theme="dark"] .ll-repo-pill {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .ll-repo-pill:hover {
+    background: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-repo-pill.active {
+    background: var(--ll-primary);
+    border-color: var(--ll-primary);
+    color: #fff;
+}
+
+[data-theme="dark"] .ll-repo-section-header {
+    border-bottom-color: #334155;
+}
+
+[data-theme="dark"] .ll-repo-section-title h2 {
+    color: #f1f5f9;
+}
+
+/* ── Scribd Preview Modal ── */
+[data-theme="dark"] .ll-scribd-detail {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-scribd-title {
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .ll-scribd-uploader {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .ll-scribd-uploader strong {
+    color: #e2e8f0;
+    text-decoration-color: #475569;
+}
+
+[data-theme="dark"] .ll-scribd-stats-bar {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .ll-scribd-tag {
+    background: #334155;
+    border-color: #475569;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .ll-scribd-tag-cat {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.3);
+}
+
+[data-theme="dark"] .ll-scribd-tag-hash {
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+[data-theme="dark"] .ll-scribd-description {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .ll-scribd-description::after {
+    background: linear-gradient(transparent, #1e293b);
+}
+
+[data-theme="dark"] .ll-scribd-save-btn,
+[data-theme="dark"] .ll-scribd-like-btn {
+    border-color: #475569;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .ll-scribd-save-btn:hover,
+[data-theme="dark"] .ll-scribd-like-btn:hover {
+    border-color: var(--ll-primary);
+    color: var(--ll-primary);
+    background: rgba(59, 125, 216, 0.1);
+}
+
+[data-theme="dark"] .ll-scribd-file-info {
+    border-top-color: #334155;
+}
+
+[data-theme="dark"] .ll-scribd-file-row {
+    border-bottom-color: #1e293b;
+}
+
+[data-theme="dark"] .ll-scribd-file-row:hover {
+    background: #334155;
+}
+
+[data-theme="dark"] .ll-scribd-file-row > span:first-child {
+    color: #64748b;
+}
+
+[data-theme="dark"] .ll-scribd-file-row > span:last-child {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-scribd-rating-widget {
+    background: rgba(251, 191, 36, 0.1);
+    border-color: rgba(251, 191, 36, 0.25);
+}
+
+[data-theme="dark"] .ll-scribd-rating-label,
+[data-theme="dark"] .ll-scribd-rating-info {
+    color: #fbbf24;
+}
+
+[data-theme="dark"] .ll-scribd-close {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .ll-scribd-close:hover {
+    background: #334155;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-scribd-dropdown {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .ll-scribd-dropdown-item {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-scribd-dropdown-item:hover {
+    background: #334155;
+    color: var(--ll-primary);
+}
+
+[data-theme="dark"] .ll-scribd-menu-btn:hover {
+    background: #334155;
+}
+
+[data-theme="dark"] .ll-scribd-versions {
+    border-color: #334155;
+}
+
+[data-theme="dark"] .ll-scribd-versions > summary {
+    background: #0f172a;
+    border-bottom-color: #334155;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-scribd-version-item {
+    border-bottom-color: #334155;
+}
+
+[data-theme="dark"] .ll-scribd-panel {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .ll-scribd-panel-title {
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .ll-scribd-viewer-section {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .ll-scribd-viewer-header {
+    background: #0f172a;
+    border-bottom-color: #334155;
+}
+
+[data-theme="dark"] .ll-scribd-viewer-body {
+    background: #0f172a;
+}
+
+[data-theme="dark"] .ll-scribd-page-fold {
+    border-color: transparent #1e293b transparent transparent;
+}
+
+/* ── Resource Detail / Reader Layout ── */
+[data-theme="dark"] .ll-reader-panel {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .ll-reader-meta-title {
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .ll-reader-meta-desc {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .ll-reader-meta-uploader {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .ll-reader-meta-uploader strong {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-reader-meta-divider {
+    border-top-color: #334155;
+}
+
+[data-theme="dark"] .ll-reader-action-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .ll-reader-action-btn:hover {
+    background: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-reader-related-card {
+    border-bottom-color: #334155;
+}
+
+[data-theme="dark"] .ll-reader-related-card:hover {
+    background: #334155;
+}
+
+[data-theme="dark"] .ll-reader-related-info h6 {
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .ll-reader-viewer-header {
+    background: #0f172a;
+    border-bottom-color: #334155;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-reader-description {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .comment-item:hover {
+    background-color: #334155;
+}
+
+/* ── Dashboard: Inline-style Overrides ── */
+[data-theme="dark"] [style*="background: #f8fafc"],
+[data-theme="dark"] [style*="background:#f8fafc"],
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background: #ffffff"],
+[data-theme="dark"] [style*="background:#ffffff"] {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] [style*="color: #1e293b"],
+[data-theme="dark"] [style*="color:#1e293b"] {
+    color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] [style*="color: #64748b"],
+[data-theme="dark"] [style*="color:#64748b"] {
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] [style*="color: #475569"],
+[data-theme="dark"] [style*="color:#475569"] {
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] [style*="color: #334155"],
+[data-theme="dark"] [style*="color:#334155"] {
+    color: #cbd5e1 !important;
+}
+
+/* Learning Streak & Yellow/Cream Gradient Banners */
+[data-theme="dark"] [style*="linear-gradient(135deg, #fffbeb"],
+[data-theme="dark"] [style*="linear-gradient(135deg, #fef3c7 0%, #fcd34d"],
+[data-theme="dark"] [style*="linear-gradient(135deg, #fef3c7, #fbbf24"] {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.08) 100%) !important;
+    color: #fbbf24 !important;
+}
+
+/* Green gradient banners (Contributor dashboard) */
+[data-theme="dark"] [style*="linear-gradient(135deg, #dcfce7"],
+[data-theme="dark"] [style*="linear-gradient(135deg, #d1fae5"] {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.08) 100%) !important;
+}
+
+/* Blue gradient banners */
+[data-theme="dark"] [style*="linear-gradient(135deg, #dbeafe"],
+[data-theme="dark"] [style*="linear-gradient(135deg, #e0e7ff 0%, #c7d2fe"] {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(99, 102, 241, 0.08) 100%) !important;
+}
+
+/* Pink gradient lessons */
+[data-theme="dark"] [style*="linear-gradient(135deg, #fce7f3"] {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.15) 0%, rgba(236, 72, 153, 0.08) 100%) !important;
+}
+
+/* Indigo gradient lessons */
+[data-theme="dark"] [style*="linear-gradient(135deg, #e0e7ff, #6366f1"] {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.08) 100%) !important;
+}
+
+/* Icon backgrounds in stat-icon circles */
+[data-theme="dark"] [style*="background: #dbeafe"] {
+    background: rgba(37, 99, 235, 0.2) !important;
+}
+
+[data-theme="dark"] [style*="background: #d1fae5"] {
+    background: rgba(5, 150, 105, 0.2) !important;
+}
+
+[data-theme="dark"] [style*="background: #fef3c7"] {
+    background: rgba(245, 158, 11, 0.2) !important;
+}
+
+[data-theme="dark"] [style*="background: #cffafe"] {
+    background: rgba(6, 182, 212, 0.2) !important;
+}
+
+[data-theme="dark"] [style*="background: #fce7f3"] {
+    background: rgba(236, 72, 153, 0.2) !important;
+}
+
+[data-theme="dark"] [style*="background: #e0e7ff"] {
+    background: rgba(99, 102, 241, 0.2) !important;
+}
+
+/* Progress bar backgrounds (e2e8f0 light gray) */
+[data-theme="dark"] [style*="background: #e2e8f0"],
+[data-theme="dark"] [style*="background:#e2e8f0"] {
+    background: #334155 !important;
+}
+
+/* Border overrides for inline-styled borders */
+[data-theme="dark"] [style*="border: 1px solid #e2e8f0"],
+[data-theme="dark"] [style*="border:1px solid #e2e8f0"],
+[data-theme="dark"] [style*="border: 1px solid #e8ecf1"] {
+    border-color: #334155 !important;
+}
+
+/* ── Lesson Sort Buttons & Filter Buttons ── */
+[data-theme="dark"] .lesson-sort-btn,
+[data-theme="dark"] .btn-white {
+    background: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .lesson-sort-btn:hover,
+[data-theme="dark"] .btn-white:hover {
+    background: #475569;
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .lesson-sort-btn.active {
+    background: var(--ll-primary);
+    border-color: var(--ll-primary);
+    color: #fff;
+}
+
+/* Lesson items */
+[data-theme="dark"] .lesson-item {
+    border-color: #334155;
+}
+
+/* ── Pagination ── */
+[data-theme="dark"] .ll-pagination .page-link {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .ll-pagination .page-link:hover {
+    background: #334155;
+    border-color: var(--ll-primary);
+    color: var(--ll-primary);
+}
+
+[data-theme="dark"] .ll-pagination .page-item.disabled .page-link {
+    background: #0f172a;
+    color: #475569;
+    border-color: #1e293b;
+}
+
+[data-theme="dark"] .page-link {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .page-link:hover {
+    background: #334155;
+    color: #e2e8f0;
+}
+
+/* ── Stat icon backgrounds for dark mode ── */
+[data-theme="dark"] .ll-stat-icon.success {
+    background: rgba(5, 150, 105, 0.2);
+}
+
+[data-theme="dark"] .ll-stat-icon.warning {
+    background: rgba(245, 158, 11, 0.2);
+}
+
+[data-theme="dark"] .ll-stat-icon.info {
+    background: rgba(6, 182, 212, 0.2);
+}
+
+/* ── Card shadow overrides ── */
+[data-theme="dark"] .shadow-sm {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ── Badge overrides ── */
+[data-theme="dark"] .badge {
+    color: inherit;
+}
+
+/* ── List group ── */
+[data-theme="dark"] .list-group-item,
+[data-theme="dark"] .list-group-item-action {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .list-group-item-action:hover,
+[data-theme="dark"] .list-group-item-action:focus {
+    background: #334155;
+    color: #f1f5f9;
+}
+
+/* ── Activity items ── */
+[data-theme="dark"] .ll-activity-item {
+    border-bottom-color: #334155;
+}
+
+[data-theme="dark"] .ll-table tr:hover td {
+    background: #334155;
+}
+
+/* Mobile responsive search bar in dark mode */
+@media (max-width: 991.98px) {
+    [data-theme="dark"] .ll-repo-search-input {
+        background: #334155;
+        border-color: #475569;
+    }
+    [data-theme="dark"] .ll-repo-filter-select {
+        border-color: #475569;
+        background-color: #334155;
+    }
+}
+
+/* ── Btn-outline in dark mode ── */
+[data-theme="dark"] .ll-btn-outline {
+    border-color: #475569;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-btn-outline:hover {
+    border-color: var(--ll-primary);
+    color: var(--ll-primary);
+}
+
+/* ── FB create-post & filter pills ── */
+[data-theme="dark"] .fb-create-post-input {
+    background: #334155;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .fb-create-action {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .fb-create-action:hover {
+    background: #334155;
+}
+
+[data-theme="dark"] .fb-filter-pill {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .fb-filter-pill:hover {
+    background: #334155;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .fb-filter-pill.active {
+    background: var(--ll-primary);
+    border-color: var(--ll-primary);
+    color: #fff;
+}
+
+/* ── Scribd page thumbnail strips ── */
+[data-theme="dark"] .ll-scribd-preview-strip {
+    background: #0f172a;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .ll-scribd-page-thumb {
+    border-color: #475569;
+}
+
