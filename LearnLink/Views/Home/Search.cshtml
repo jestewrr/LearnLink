@@ -108,7 +108,7 @@
 <script>
     (function() {
         // Embed resources as JSON for client-side search
-        const resources = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(allResources));
+        const resources = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(allResources, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
             const landingQuery = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(initialQuery));
             const urlParams = new URLSearchParams(window.location.search);
             const initialHeroQuery = (urlParams.get('q') || landingQuery || '').trim();

@@ -2600,7 +2600,7 @@ namespace LearnLink.Controllers
         public async Task<IActionResult> PublicDownload(int id, bool inline = false)
         {
             var resource = await _context.Resources.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.ResourceId == id);
-            if (resource == null || resource.Status != "Published" || resource.AccessLevel != "Public")
+            if (resource == null || (resource.Status != "Published" && resource.Status != "Pending") || resource.AccessLevel != "Public")
                 return NotFound();
 
             if (!resource.AllowDownloads)
@@ -2830,11 +2830,11 @@ namespace LearnLink.Controllers
             if (User.Identity?.IsAuthenticated ?? false)
                 return RedirectToAction("Repository");
 
-            // Only show PUBLIC resources (and not expired) to anonymous users
+            // Only show PUBLIC resources (both Published and Pending) to anonymous users
             var resources = await _context.Resources
                 .IgnoreQueryFilters()
                 .Include(r => r.User)
-                .Where(r => r.Status == "Published" && r.AccessLevel == "Public")
+                .Where(r => (r.Status == "Published" || r.Status == "Pending") && r.AccessLevel == "Public")
                 .Where(r => r.AccessDuration != "Custom" || r.AccessExpiresAt == null || r.AccessExpiresAt > DateTime.Now)
                 .OrderByDescending(r => r.DateUploaded)
                 .ToListAsync();
@@ -2856,7 +2856,7 @@ namespace LearnLink.Controllers
                 .Include(r => r.User)
                 .FirstOrDefaultAsync(r => r.ResourceId == id);
 
-            if (resource == null || resource.Status != "Published" || resource.AccessLevel != "Public")
+            if (resource == null || (resource.Status != "Published" && resource.Status != "Pending") || resource.AccessLevel != "Public")
             {
                 TempData["ErrorMessage"] = "This resource requires sign-in to access.";
                 return RedirectToAction("Login");
