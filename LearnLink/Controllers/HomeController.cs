@@ -3178,15 +3178,81 @@ namespace LearnLink.Controllers
         [Authorize]
         public async Task<IActionResult> BestPractices()
         {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return RedirectToAction("Login");
+
             var resources = await _context.Resources.Include(r => r.User)
                 .Where(r => r.Status == "Published")
                 .ToListAsync();
 
-            // KNN-powered recommendations for logged-in user
-            var currentUser = await GetCurrentUserAsync();
-            var recommendedList = new List<ResourceViewModel>();
-            if (currentUser != null)
+            ViewBag.Trending = resources.OrderByDescending(r => r.ViewCount + r.DownloadCount).Take(5).Select(MapResource).ToList();
+
+            if (User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
             {
+                // Admin / Manager Logic
+                var subjectStats = resources.GroupBy(r => r.Subject)
+                    .Select(g => new
+                    {
+                        Subject = g.Key,
+                        ResourceCount = g.Count(),
+                        TotalViews = g.Sum(r => r.ViewCount),
+                        AvgRating = g.Any(r => r.Rating > 0) ? g.Where(r => r.Rating > 0).Average(r => r.Rating) : 0,
+                        DemandScore = g.Count() > 0 ? (double)g.Sum(r => r.ViewCount) / g.Count() : 0 
+                    }).ToList();
+
+                // High Demand, Low Supply (Highest Demand Score)
+                ViewBag.ContentGaps = subjectStats.OrderByDescending(s => s.DemandScore).Take(4).ToList();
+                
+                // Needs Improvement (Lowest Rating but has ratings)
+                ViewBag.QualityNeeds = subjectStats.Where(s => s.ResourceCount > 0 && s.AvgRating > 0).OrderBy(s => s.AvgRating).Take(4).ToList();
+
+                // Top Contributors
+                var topContributors = resources.GroupBy(r => r.UserId)
+                    .Select(g => new
+                    {
+                        UserId = g.Key,
+                        User = g.First().User,
+                        TotalUploads = g.Count(),
+                        TotalViews = g.Sum(r => r.ViewCount)
+                    })
+                    .OrderByDescending(c => c.TotalViews)
+                    .Take(5).ToList();
+                ViewBag.TopContributors = topContributors;
+
+                return View();
+            }
+            else if (User.IsInRole("Contributor"))
+            {
+                // Contributor Logic
+                var myResources = resources.Where(r => r.UserId == currentUser.Id).ToList();
+                var mySubjectStats = myResources.GroupBy(r => r.Subject)
+                    .Select(g => new
+                    {
+                        Subject = g.Key,
+                        TotalViews = g.Sum(r => r.ViewCount),
+                        TotalDownloads = g.Sum(r => r.DownloadCount)
+                    })
+                    .OrderByDescending(s => s.TotalViews + s.TotalDownloads)
+                    .ToList();
+                
+                ViewBag.MyTopSubjects = mySubjectStats.Take(3).ToList();
+                ViewBag.TotalMyViews = myResources.Sum(r => r.ViewCount);
+                ViewBag.TotalMyDownloads = myResources.Sum(r => r.DownloadCount);
+
+                // System Hot Topics
+                var globalSubjectStats = resources.GroupBy(r => r.Subject)
+                    .Select(g => new { Subject = g.Key, DemandScore = g.Count() > 0 ? (double)g.Sum(r => r.ViewCount) / g.Count() : 0 })
+                    .OrderByDescending(s => s.DemandScore).Take(4).ToList();
+                ViewBag.SystemHotTopics = globalSubjectStats;
+
+                ViewBag.MyTopResources = myResources.OrderByDescending(r => r.ViewCount).Take(3).Select(MapResource).ToList();
+
+                return View();
+            }
+            else
+            {
+                // Student Logic
+                var recommendedList = new List<ResourceViewModel>();
                 try
                 {
                     var recIds = await _recommendationService.GetPersonalizedRecommendationsAsync(currentUser.Id, 4, GetEffectiveSchoolId());
@@ -3201,16 +3267,13 @@ namespace LearnLink.Controllers
                     }
                 }
                 catch { /* fallback below */ }
-            }
-            if (!recommendedList.Any())
-            {
-                recommendedList = resources.OrderByDescending(r => r.Rating).Take(4).Select(MapResource).ToList();
-            }
-            ViewBag.Recommendations = recommendedList;
-            ViewBag.Trending = resources.OrderByDescending(r => r.ViewCount).Take(5).Select(MapResource).ToList();
 
-            if (currentUser != null)
-            {
+                if (!recommendedList.Any())
+                {
+                    recommendedList = resources.OrderByDescending(r => r.Rating).Take(4).Select(MapResource).ToList();
+                }
+                ViewBag.Recommendations = recommendedList;
+
                 var continueReading = await _context.ReadingHistories
                     .Include(h => h.Resource).ThenInclude(r => r!.User)
                     .Where(h => h.UserId == currentUser.Id && h.ProgressStatus != "Completed")
@@ -3241,11 +3304,9 @@ namespace LearnLink.Controllers
                     Status = h.ProgressStatus
                 }).ToList();
 
-                // Calculate Learning Progress for current user
                 var userHistoryAll = await _context.ReadingHistories.Include(h => h.Resource).Where(h => h.UserId == currentUser.Id).ToListAsync();
-                var allResources = await _context.Resources.Where(r => r.Status == "Published").ToListAsync();
                 
-                 var progress = allResources.GroupBy(r => r.Subject)
+                 var progress = resources.GroupBy(r => r.Subject)
                     .Select(g => 
                     {
                         var subjectTotal = g.Count();
@@ -3262,16 +3323,10 @@ namespace LearnLink.Controllers
                     .ToList();
 
                 ViewBag.LearningProgress = progress;
-                ViewBag.TotalProgress = allResources.Any() ? (int)((double)userHistoryAll.Count(h => h.Resource != null) / allResources.Count * 100) : 0;
-            }
-            else
-            {
-                ViewBag.ContinueReading = new List<ReadingHistoryViewModel>();
-                ViewBag.LearningProgress = new List<object>();
-                ViewBag.TotalProgress = 0;
-            }
+                ViewBag.TotalProgress = resources.Any() ? (int)((double)userHistoryAll.Count(h => h.Resource != null) / resources.Count * 100) : 0;
 
-            return View();
+                return View();
+            }
         }
 
         // ==================== Knowledge Portal & Discussions ====================
