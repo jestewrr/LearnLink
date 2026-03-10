@@ -393,14 +393,77 @@
         <p class="text-muted mb-4 mx-auto" style="max-width:500px;">
             Did this resource help you understand a new concept or find a new teaching strategy? Share your insights with the community.
         </p>
-        <a href="@Url.Action("LessonsLearned", "Home")" class="ll-btn ll-btn-primary" style="padding:12px 30px;font-size:1.05rem;">
+        <button type="button" class="ll-btn ll-btn-primary" style="padding:12px 30px;font-size:1.05rem;" data-bs-toggle="modal" data-bs-target="#submitLessonModal">
             <i class="bi bi-plus-circle me-2"></i>Submit Lesson Learned
-        </a>
+        </button>
+    </div>
+</div>
+
+<!-- Submit Lesson Modal -->
+<div class="modal fade" id="submitLessonModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form asp-action="SubmitLesson" asp-controller="Home" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title">Submit a Lesson Learned</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="Category" value="General" />
+                    <input type="hidden" name="ResourceId" value="@resource.Id" />
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Related Resource</label>
+                        <input type="text" class="ll-form-control" value="@resource.Title" disabled>
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Title</label>
+                        <input type="text" class="ll-form-control" name="Title" placeholder="Give your lesson a clear title" required>
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Your Insight</label>
+                        <div id="rdLessonEditor" style="min-height: 120px;"></div>
+                        <input type="hidden" name="Content" id="rdLessonContentHidden" />
+                    </div>
+                    <div class="ll-form-group">
+                        <label class="ll-form-label">Tags</label>
+                        <input type="text" class="ll-form-control" name="Tags" placeholder="Add tags separated by commas" value="General">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="ll-btn ll-btn-primary">
+                        <i class="bi bi-send me-1"></i>Submit Lesson
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
 @section Scripts {
 <script>
+    // ── Quill editor for Submit Lesson modal ──
+    (function() {
+        var rdLessonQuill = new Quill('#rdLessonEditor', {
+            theme: 'snow',
+            placeholder: 'Share what you learned, what worked well, any tips for others...',
+            modules: { toolbar: [
+                [{ 'header': [2, 3, false] }],
+                ['bold', 'italic', 'underline'],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                ['link'],
+                ['clean']
+            ]}
+        });
+        var lessonForm = document.getElementById('rdLessonEditor')?.closest('form');
+        if (lessonForm) {
+            lessonForm.addEventListener('submit', function() {
+                var html = rdLessonQuill.root.innerHTML;
+                document.getElementById('rdLessonContentHidden').value = html === '<p><br></p>' ? '' : html;
+            });
+        }
+    })();
+
     // ── Description expand/collapse in left sidebar ──
     (function() {
         var desc = document.getElementById('readerDesc');
@@ -569,6 +632,36 @@
         btn.disabled = false;
     }
 
+    // ── Time-based reading progress tracking ──
+    (function() {
+        var resourceId = @(resource.Id);
+        var startProgress = @(ViewBag.CurrentProgress ?? 10);
+        var isCompleted = @((ViewBag.IsCompleted ?? false).ToString().ToLower());
+        if (isCompleted) return;
+
+        var secondsOnPage = 0;
+        var lastReported = startProgress;
+        // Estimated reading time: 5 minutes = 100% (adjustable)
+        var totalSecondsFor100 = 300;
+
+        var progressTimer = setInterval(function() {
+            if (document.hidden) return;
+            secondsOnPage++;
+            // Calculate progress based on time spent (starting from current progress)
+            var timeProgress = Math.min(95, Math.round((secondsOnPage / totalSecondsFor100) * 100) + startProgress);
+            if (timeProgress > lastReported && (timeProgress - lastReported) >= 5) {
+                lastReported = timeProgress;
+                var formData = new FormData();
+                formData.append('id', resourceId);
+                formData.append('progress', timeProgress);
+                fetch('@Url.Action("UpdateReadingProgress", "Home")', { method: 'POST', body: formData }).catch(function(){});
+            }
+        }, 1000);
+
+        window.addEventListener('beforeunload', function() {
+            clearInterval(progressTimer);
+        });
+    })();
 
 
 </script>

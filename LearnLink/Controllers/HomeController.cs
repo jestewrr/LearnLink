@@ -2118,6 +2118,8 @@ namespace LearnLink.Controllers
                 
                 var history = await _context.ReadingHistories.FirstOrDefaultAsync(h => h.UserId == currentUser.Id && h.ResourceId == resource.ResourceId);
                 vm.IsSaved = history?.IsBookmarked ?? false;
+                ViewBag.CurrentProgress = history?.ProgressPercent ?? 10;
+                ViewBag.IsCompleted = history?.ProgressStatus == "Completed";
             }
 
             // Map LikeCount
@@ -2686,6 +2688,44 @@ namespace LearnLink.Controllers
         }
 
         /// <summary>
+        /// Updates reading progress based on time spent reading.
+        /// </summary>
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> UpdateReadingProgress(int id, int progress)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Json(new { success = false });
+
+            progress = Math.Clamp(progress, 0, 99);
+
+            var history = await _context.ReadingHistories
+                .FirstOrDefaultAsync(h => h.UserId == currentUser.Id && h.ResourceId == id);
+
+            if (history != null && history.ProgressStatus != "Completed")
+            {
+                if (progress > history.ProgressPercent)
+                    history.ProgressPercent = progress;
+                history.LastAccessed = DateTime.Now;
+            }
+            else if (history == null)
+            {
+                history = new ReadingHistory
+                {
+                    UserId = currentUser.Id,
+                    ResourceId = id,
+                    LastAccessed = DateTime.Now,
+                    ProgressStatus = "In Progress",
+                    ProgressPercent = progress
+                };
+                _context.ReadingHistories.Add(history);
+            }
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true, progress = history!.ProgressPercent });
+        }
+
+        /// <summary>
         /// Marks a resource as 100% completed in reading history.
         /// </summary>
         [HttpPost]
@@ -3191,6 +3231,34 @@ namespace LearnLink.Controllers
                 Status = h.ProgressStatus
             }).ToList();
 
+            // Streaks (same logic as StudentDashboard)
+            var activityDates = history.Select(h => h.LastAccessed.Date).Distinct().OrderByDescending(d => d).ToList();
+            int currentStreak = 0, bestStreak = 0, streak = 0;
+            for (int i = 0; i < activityDates.Count; i++)
+            {
+                if (i == 0)
+                {
+                    if ((DateTime.Now.Date - activityDates[i]).TotalDays <= 1)
+                        streak = 1;
+                    else
+                        break;
+                }
+                else if ((activityDates[i - 1] - activityDates[i]).TotalDays == 1)
+                    streak++;
+                else
+                    break;
+            }
+            currentStreak = streak;
+            streak = 1;
+            bestStreak = activityDates.Count > 0 ? 1 : 0;
+            for (int i = 1; i < activityDates.Count; i++)
+            {
+                if ((activityDates[i - 1] - activityDates[i]).TotalDays == 1) { streak++; bestStreak = Math.Max(bestStreak, streak); }
+                else streak = 1;
+            }
+            ViewBag.CurrentStreak = currentStreak;
+            ViewBag.BestStreak = bestStreak;
+
             return View();
         }
 
@@ -3419,6 +3487,44 @@ namespace LearnLink.Controllers
                 .Select(x => new { Name = x.User.FullName, Initials = x.User.Initials ?? "?", Color = x.User.AvatarColor ?? "", Posts = x.Count })
                 .ToList();
             ViewBag.TopContributors = topContributors;
+
+            // Activity notifications for left sidebar (likes, comments on user's posts)
+            var activityNotifications = new List<dynamic>();
+            if (currentUser != null)
+            {
+                var userDiscussionIds = discussions.Where(d => d.UserId == currentUser.Id).Select(d => d.DiscussionId).ToList();
+
+                // Recent likes on user's discussions
+                var recentLikes = await _context.Likes
+                    .Where(l => l.TargetType == "Discussion" && userDiscussionIds.Contains(l.TargetId) && l.UserId != currentUser.Id)
+                    .Include(l => l.User)
+                    .OrderByDescending(l => l.CreatedAt)
+                    .Take(10)
+                    .ToListAsync();
+
+                foreach (var like in recentLikes)
+                {
+                    var disc = discussions.FirstOrDefault(d => d.DiscussionId == like.TargetId);
+                    activityNotifications.Add(new { Type = "like", UserName = like.User?.FullName ?? "Someone", Initials = like.User?.Initials ?? "?", Color = like.User?.AvatarColor ?? "", Title = disc?.Title ?? "", DiscussionId = like.TargetId, CreatedAt = like.CreatedAt });
+                }
+
+                // Recent replies on user's discussions
+                var recentReplies = await _context.DiscussionPosts
+                    .Where(p => userDiscussionIds.Contains(p.DiscussionId) && p.UserId != currentUser.Id)
+                    .Include(p => p.User)
+                    .OrderByDescending(p => p.DatePosted)
+                    .Take(10)
+                    .ToListAsync();
+
+                foreach (var reply in recentReplies)
+                {
+                    var disc = discussions.FirstOrDefault(d => d.DiscussionId == reply.DiscussionId);
+                    activityNotifications.Add(new { Type = "comment", UserName = reply.User?.FullName ?? "Someone", Initials = reply.User?.Initials ?? "?", Color = reply.User?.AvatarColor ?? "", Title = disc?.Title ?? "", DiscussionId = reply.DiscussionId, CreatedAt = reply.DatePosted });
+                }
+
+                activityNotifications = activityNotifications.OrderByDescending(a => (DateTime)a.CreatedAt).Take(15).ToList();
+            }
+            ViewBag.ActivityNotifications = activityNotifications;
 
             ViewBag.Discussions = discussions.Select(d => {
                 var vm = MapDiscussion(d, likedIds.Contains(d.DiscussionId));

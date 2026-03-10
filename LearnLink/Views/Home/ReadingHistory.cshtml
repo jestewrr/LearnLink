@@ -39,12 +39,6 @@
                 <span>Reading History</span>
             </div>
         </div>
-        <div class="d-flex gap-2">
-            <button class="ll-btn ll-btn-outline" id="clearHistoryBtn">
-                <i class="bi bi-trash"></i>
-                Clear History
-            </button>
-        </div>
     </div>
 </div>
 
@@ -196,6 +190,35 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Learning Streak -->
+        <div class="ll-card mb-4">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title"><i class="bi bi-fire text-warning me-2"></i>Learning Streak</h5>
+            </div>
+            <div class="ll-card-body text-center">
+                @{
+                    var currentStreak = (int)(ViewBag.CurrentStreak ?? 0);
+                    var bestStreak = (int)(ViewBag.BestStreak ?? 0);
+                    var streakPercent = bestStreak > 0 ? Math.Min(100, (int)Math.Round((double)currentStreak / bestStreak * 100)) : 0;
+                }
+                <div class="d-flex justify-content-center gap-4 align-items-end mb-3">
+                    <div>
+                        <div class="fw-bold lh-1" style="font-size: 3rem; color: #b45309;">@currentStreak</div>
+                        <div class="fw-bold text-uppercase small" style="color: #d97706; letter-spacing: 1px;">Current Days</div>
+                    </div>
+                    <div style="width: 2px; height: 30px; background: rgba(217,119,6,0.2);" class="mb-2"></div>
+                    <div>
+                        <div class="fw-bold lh-1" style="font-size: 2rem; color: #d97706;">@bestStreak</div>
+                        <div class="fw-bold text-uppercase small" style="color: #f59e0b; letter-spacing: 1px;">Best Days</div>
+                    </div>
+                </div>
+                <div class="progress rounded-pill bg-light" style="height: 8px;">
+                    <div class="progress-bar rounded-pill" style="width: @streakPercent%; background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);"></div>
+                </div>
+                <div class="small fw-bold mt-2" style="color: #b45309;">@streakPercent% of your best streak</div>
             </div>
         </div>
     </div>

@@ -5,6 +5,7 @@
     var discussions = ViewBag.Discussions as List<LearnLink.Models.DiscussionViewModel> ?? new List<LearnLink.Models.DiscussionViewModel>();
     var popularTags = ViewBag.PopularTags as List<string> ?? new List<string>();
     var topContributors = ViewBag.TopContributors as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var activityNotifications = ViewBag.ActivityNotifications as List<dynamic> ?? new List<dynamic>();
 }
 
 <div class="row g-4">
@@ -20,21 +21,39 @@
                 </div>
             </div>
 
-            <!-- Quick Navigation -->
+            <!-- Activity Notifications -->
             <div class="fb-card mb-3">
-                <div class="fb-card-body p-0">
-                    <a href="@Url.Action("KnowledgePortal", "Home")" class="fb-nav-item active">
-                        <i class="bi bi-house-door-fill"></i> News Feed
-                    </a>
-                    <a href="@Url.Action("Repository", "Home")" class="fb-nav-item">
-                        <i class="bi bi-folder2-open"></i> Knowledge Repository
-                    </a>
-                    <a href="@Url.Action("LessonsLearned", "Home")" class="fb-nav-item">
-                        <i class="bi bi-lightbulb"></i> Lessons Learned
-                    </a>
-                    <a href="@Url.Action("BestPractices", "Home")" class="fb-nav-item">
-                        <i class="bi bi-star"></i> Best Practices
-                    </a>
+                <div class="fb-card-body">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-bell-fill text-primary me-2"></i>Recent Activity</h6>
+                    @if (activityNotifications.Any())
+                    {
+                        @foreach (var notif in activityNotifications)
+                        {
+                            var notifMins = (DateTime.Now - (DateTime)notif.CreatedAt).TotalMinutes;
+                            var notifTime = notifMins < 1 ? "Just now"
+                                : notifMins < 60 ? (int)notifMins + "m ago"
+                                : notifMins < 1440 ? (int)(DateTime.Now - (DateTime)notif.CreatedAt).TotalHours + "h ago"
+                                : (int)(DateTime.Now - (DateTime)notif.CreatedAt).TotalDays + "d ago";
+                        <a href="@Url.Action("Discussions", "Home", new { id = (int)notif.DiscussionId })" class="d-flex gap-2 align-items-start text-decoration-none mb-3">
+                            <div class="fb-avatar-sm flex-shrink-0" style="@notif.Color">@notif.Initials</div>
+                            <div class="flex-fill">
+                                @if ((string)notif.Type == "like")
+                                {
+                                    <div class="small text-dark"><strong>@notif.UserName</strong> liked your post <strong>"@(((string)notif.Title).Length > 30 ? ((string)notif.Title).Substring(0, 30) + "..." : (string)notif.Title)"</strong></div>
+                                }
+                                else
+                                {
+                                    <div class="small text-dark"><strong>@notif.UserName</strong> commented on your post <strong>"@(((string)notif.Title).Length > 30 ? ((string)notif.Title).Substring(0, 30) + "..." : (string)notif.Title)"</strong></div>
+                                }
+                                <div class="small text-muted">@notifTime</div>
+                            </div>
+                        </a>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted small mb-0">No activity yet. Start posting to see reactions!</p>
+                    }
                 </div>
             </div>
 
@@ -179,7 +198,7 @@
                     <div class="fb-likes-summary" @(discussion.LikeCount > 0 ? $"onclick=\"showLikers({discussion.Id}, 'Discussion')\" style=\"cursor:pointer\"" : "")>
                         @if (discussion.LikeCount > 0)
                         {
-                            <span class="fb-like-icon-sm"><i class="bi bi-heart-fill"></i></span>
+                            <span class="fb-like-icon-sm"><i class="bi bi-hand-thumbs-up-fill"></i></span>
                             @if (discussion.LikerNames.Any())
                             {
                                 var firstName = discussion.LikerNames.First();
@@ -216,14 +235,11 @@
             <div class="fb-card-body py-1">
                 <div class="d-flex justify-content-around">
                     <button class="fb-action-btn portal-like-btn @(discussion.IsLiked ? "active" : "")" data-id="@discussion.Id">
-                        <i class="bi @(discussion.IsLiked ? "bi-heart-fill" : "bi-heart")"></i> Like
+                        <i class="bi @(discussion.IsLiked ? "bi-hand-thumbs-up-fill" : "bi-hand-thumbs-up")"></i> Like
                     </button>
                     <a href="@Url.Action("Discussions", "Home", new { id = discussion.Id })" class="fb-action-btn text-decoration-none">
                         <i class="bi bi-chat"></i> Comment
                     </a>
-                    <button class="fb-action-btn fb-share-btn" data-id="@discussion.Id" data-title="@discussion.Title">
-                        <i class="bi bi-share"></i> Share
-                    </button>
                 </div>
             </div>
 
@@ -553,17 +569,17 @@
                 .then(data => {
                     if (data.success) {
                         if (data.isLiked) {
-                            icon.classList.replace('bi-heart', 'bi-heart-fill');
+                            icon.classList.replace('bi-hand-thumbs-up', 'bi-hand-thumbs-up-fill');
                             btnEl.classList.add('active');
                         } else {
-                            icon.classList.replace('bi-heart-fill', 'bi-heart');
+                            icon.classList.replace('bi-hand-thumbs-up-fill', 'bi-hand-thumbs-up');
                             btnEl.classList.remove('active');
                         }
                         // Update engagement summary
                         const card = btnEl.closest('.fb-post-card');
                         const summary = card.querySelector('.fb-likes-summary');
                         if (data.likes > 0) {
-                            summary.innerHTML = '<span class="fb-like-icon-sm"><i class="bi bi-heart-fill"></i></span><span class="text-muted small">' + data.likes + '</span>';
+                            summary.innerHTML = '<span class="fb-like-icon-sm"><i class="bi bi-hand-thumbs-up-fill"></i></span><span class="text-muted small">' + data.likes + '</span>';
                             summary.style.cursor = 'pointer';
                             summary.onclick = function() { showLikers(id, 'Discussion'); };
                         } else {
