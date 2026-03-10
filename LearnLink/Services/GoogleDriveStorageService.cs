@@ -16,7 +16,7 @@ public class GoogleDriveOptions
 
 public class GoogleDriveStorageService : IStorageService
 {
-    private readonly DriveService _driveService;
+    private readonly DriveService? _driveService;
     private readonly string _sharedFolderId;
     private readonly ILogger<GoogleDriveStorageService> _logger;
 

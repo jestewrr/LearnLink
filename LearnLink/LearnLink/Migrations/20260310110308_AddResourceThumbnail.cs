@@ -10,20 +10,33 @@ namespace LearnLink.LearnLink.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "ThumbnailUrl",
-                table: "Resources",
-                type: "nvarchar(500)",
-                maxLength: 500,
-                nullable: true);
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM sys.columns
+                    WHERE object_id = OBJECT_ID(N'[Resources]')
+                      AND name = 'ThumbnailUrl'
+                )
+                BEGIN
+                    ALTER TABLE [Resources] ADD [ThumbnailUrl] nvarchar(500) NULL;
+                END
+            ");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "ThumbnailUrl",
-                table: "Resources");
+            migrationBuilder.Sql(@"
+                IF EXISTS (
+                    SELECT 1
+                    FROM sys.columns
+                    WHERE object_id = OBJECT_ID(N'[Resources]')
+                      AND name = 'ThumbnailUrl'
+                )
+                BEGIN
+                    ALTER TABLE [Resources] DROP COLUMN [ThumbnailUrl];
+                END
+            ");
         }
     }
 }
