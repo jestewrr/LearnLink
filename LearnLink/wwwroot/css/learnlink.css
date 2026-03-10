@@ -5870,3 +5870,65 @@ a.ll-resource-card-link:hover {
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
+
+/* Document Preview Cover in Sidebar (Scribd-style) */
+.ll-reader-cover-container {
+    margin-bottom: 24px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(15, 23, 42, 0.12);
+    background: #fff;
+    aspect-ratio: 1 / 1.4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border: 1px solid #e2e8f0;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.ll-reader-cover-container:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 35px rgba(15, 23, 42, 0.18);
+}
+
+.ll-reader-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ll-reader-cover-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #fff;
+}
+
+.ll-reader-cover-placeholder i {
+    font-size: 4rem;
+    opacity: 0.9;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.ll-reader-cover-placeholder span {
+    font-size: 0.9rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    background: rgba(0,0,0,0.2);
+    padding: 4px 14px;
+    border-radius: 6px;
+    backdrop-filter: blur(4px);
+}
+
+@media (max-width: 1100px) {
+    .ll-reader-cover-container {
+        max-width: 240px;
+        margin: 0 auto 24px;
+    }
+}

@@ -137,6 +137,8 @@ using (var scope = app.Services.CreateScope())
                     ALTER TABLE [Resources] ADD [ModerateComments] bit NOT NULL DEFAULT 0;
                 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'RequireVersionNotes')
                     ALTER TABLE [Resources] ADD [RequireVersionNotes] bit NOT NULL DEFAULT 0;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'ThumbnailUrl')
+                    ALTER TABLE [Resources] ADD [ThumbnailUrl] nvarchar(max) NULL;
             ");
 
             // Manually ensure the policy columns exist on the ResourceVersions table
