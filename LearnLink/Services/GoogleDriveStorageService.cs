@@ -103,8 +103,7 @@ public class GoogleDriveStorageService : IStorageService
                 ContentType = file.MimeType,
                 FileSize = fileSizeMB,
                 WebViewLink = file.WebViewLink,
-                WebContentLink = file.WebContentLink,
-                ThumbnailUrl = $"https://drive.google.com/thumbnail?id={file.Id}&sz=w800"
+                WebContentLink = file.WebContentLink
             };
         }
         catch (Exception ex)

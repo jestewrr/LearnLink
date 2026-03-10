@@ -11,7 +11,6 @@ namespace LearnLink.Models
         public string FileFormat { get; set; } = "";
         public string FileSize { get; set; } = "";
         public string FilePath { get; set; } = "";
-        public string? ThumbnailUrl { get; set; }
         public string Status { get; set; } = "Published";
         public int ViewCount { get; set; }
         public int DownloadCount { get; set; }

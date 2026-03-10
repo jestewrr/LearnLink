@@ -191,7 +191,6 @@ namespace LearnLink.Controllers
                 IconClass = GetIconClass(r.FileFormat),
                 IconColor = GetIconColor(r.FileFormat),
                 IconBg = GetIconBg(r.FileFormat),
-                ThumbnailUrl = r.ThumbnailUrl,
                 CreatedAt = r.DateUploaded
             };
         }
@@ -1999,10 +1998,7 @@ namespace LearnLink.Controllers
                     fileFormat = Path.GetExtension(file.FileName).TrimStart('.').ToUpperInvariant();
                     fileSize = result.FileSize ?? "";
                     
-                    if (!string.IsNullOrEmpty(result.ThumbnailUrl))
-                    {
-                        ViewData["ThumbnailUrl"] = result.ThumbnailUrl;
-                    }
+
                 }
             }
 
@@ -2021,7 +2017,6 @@ namespace LearnLink.Controllers
                 UserId = currentUser.Id,
                 SchoolId = currentUser.SchoolId,
                 DateUploaded = DateTime.Now,
-                ThumbnailUrl = ViewData["ThumbnailUrl"] as string
             };
 
             _context.Resources.Add(resource);
@@ -3640,7 +3635,7 @@ namespace LearnLink.Controllers
                     }
 
                     resource.FilePath = result.WebViewLink ?? result.WebContentLink ?? "";
-                    resource.ThumbnailUrl = result.ThumbnailUrl; // Map ThumbnailUrl
+
                     resource.FileFormat = Path.GetExtension(file.FileName).TrimStart('.').ToUpperInvariant();
                     resource.FileSize = result.FileSize ?? "";
                 }

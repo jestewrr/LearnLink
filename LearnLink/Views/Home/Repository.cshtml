@@ -187,15 +187,9 @@
                 {
                     var pct = GetRatingPercent(r.Rating);
                     <a href="javascript:void(0)" class="ll-repo-card" onclick="openPreviewModal(@r.Id)">
-                        <div class="ll-repo-card-thumb" style="@(string.IsNullOrEmpty(r.ThumbnailUrl) ? GetThumbnailGradient(r.FileFormat) : "")">
-                            @if (!string.IsNullOrEmpty(r.ThumbnailUrl))
-                            {
-                                <img src="@r.ThumbnailUrl" alt="@r.Title" class="ll-repo-card-thumb-img" />
-                            }
-                            else
-                            {
-                                <i class="bi @GetThumbnailIcon(r.FileFormat)"></i>
-                            }
+                        <div class="ll-repo-card-thumb" style="@GetThumbnailGradient(r.FileFormat)">
+                            <i class="bi @GetThumbnailIcon(r.FileFormat)"></i>
+
                             <span class="ll-repo-card-format">@r.FileFormat</span>
                             <span class="ll-repo-card-page-fold"></span>
                         </div>
@@ -246,15 +240,9 @@
                 {
                     var pct = GetRatingPercent(r.Rating);
                     <a href="javascript:void(0)" class="ll-repo-card" onclick="openPreviewModal(@r.Id)">
-                        <div class="ll-repo-card-thumb" style="@(string.IsNullOrEmpty(r.ThumbnailUrl) ? GetThumbnailGradient(r.FileFormat) : "")">
-                            @if (!string.IsNullOrEmpty(r.ThumbnailUrl))
-                            {
-                                <img src="@r.ThumbnailUrl" alt="@r.Title" class="ll-repo-card-thumb-img" />
-                            }
-                            else
-                            {
-                                <i class="bi @GetThumbnailIcon(r.FileFormat)"></i>
-                            }
+                        <div class="ll-repo-card-thumb" style="@GetThumbnailGradient(r.FileFormat)">
+                            <i class="bi @GetThumbnailIcon(r.FileFormat)"></i>
+
                             <span class="ll-repo-card-format">@r.FileFormat</span>
                             <span class="ll-repo-card-page-fold"></span>
                         </div>
@@ -309,15 +297,9 @@
                 {
                     var pct = GetRatingPercent(r.Rating);
                     <a href="javascript:void(0)" class="ll-repo-card" onclick="openPreviewModal(@r.Id)">
-                        <div class="ll-repo-card-thumb" style="@(string.IsNullOrEmpty(r.ThumbnailUrl) ? GetThumbnailGradient(r.FileFormat) : "")">
-                            @if (!string.IsNullOrEmpty(r.ThumbnailUrl))
-                            {
-                                <img src="@r.ThumbnailUrl" alt="@r.Title" class="ll-repo-card-thumb-img" />
-                            }
-                            else
-                            {
-                                <i class="bi @GetThumbnailIcon(r.FileFormat)"></i>
-                            }
+                        <div class="ll-repo-card-thumb" style="@GetThumbnailGradient(r.FileFormat)">
+                            <i class="bi @GetThumbnailIcon(r.FileFormat)"></i>
+
                             <span class="ll-repo-card-format">@r.FileFormat</span>
                             <span class="ll-repo-card-page-fold"></span>
                         </div>
@@ -416,15 +398,9 @@ else
         <div class="col-sm-6 col-lg-4 col-xl-3 col-xxl-2 resource-item">
             <a href="javascript:void(0)" class="ll-resource-card-link" onclick="openPreviewModal(@resource.Id)">
                 <div class="ll-resource-card">
-                    <div class="ll-resource-thumbnail" style="@(string.IsNullOrEmpty(resource.ThumbnailUrl) ? GetThumbnailGradient(resource.FileFormat) : "")">
-                        @if (!string.IsNullOrEmpty(resource.ThumbnailUrl))
-                        {
-                            <img src="@resource.ThumbnailUrl" alt="@resource.Title" class="ll-resource-thumbnail-img" />
-                        }
-                        else
-                        {
-                            <i class="bi @GetThumbnailIcon(resource.FileFormat)"></i>
-                        }
+                    <div class="ll-resource-thumbnail" style="@GetThumbnailGradient(resource.FileFormat)">
+                        <i class="bi @GetThumbnailIcon(resource.FileFormat)"></i>
+
                         @if (!string.IsNullOrEmpty(resource.FileFormat))
                         {
                         <span class="ll-resource-type">@resource.FileFormat</span>
@@ -475,15 +451,9 @@ else
                     <tr>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <div class="ll-table-format-icon" style="@(string.IsNullOrEmpty(resource.ThumbnailUrl) ? GetThumbnailGradient(resource.FileFormat) : "background: transparent; border: 1px solid #e2e8f0;")">
-                                    @if (!string.IsNullOrEmpty(resource.ThumbnailUrl))
-                                    {
-                                        <img src="@resource.ThumbnailUrl" alt="" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;" />
-                                    }
-                                    else
-                                    {
-                                        <i class="bi @GetThumbnailIcon(resource.FileFormat)"></i>
-                                    }
+                                <div class="ll-table-format-icon" style="@GetThumbnailGradient(resource.FileFormat)">
+                                    <i class="bi @GetThumbnailIcon(resource.FileFormat)"></i>
+
                                 </div>
                                 <div>
                                     <a href="javascript:void(0)" class="ll-table-title-link" onclick="openPreviewModal(@resource.Id)">@resource.Title</a>

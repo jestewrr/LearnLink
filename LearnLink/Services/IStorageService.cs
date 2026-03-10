@@ -10,7 +10,6 @@ public class StorageResult
     public string? FileSize { get; set; }
     public string? WebViewLink { get; set; }
     public string? WebContentLink { get; set; }
-    public string? ThumbnailUrl { get; set; }
 }
 
 public interface IStorageService
