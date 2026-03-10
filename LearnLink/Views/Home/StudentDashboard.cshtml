@@ -97,8 +97,8 @@
     <!-- Continue Reading (Wide) -->
     <div class="col-lg-8">
         <div class="ll-card h-100 border-0 shadow-sm" style="border-radius: 16px;">
-            <div class="ll-card-header d-flex justify-content-between align-items-center bg-white border-bottom-0 pb-0 pt-4 px-4">
-                <h5 class="ll-card-title fw-bold mb-0" style="color: #1e293b;"><i class="bi bi-clock-history me-2" style="color: var(--ll-primary);"></i>Continue Reading</h5>
+            <div class="ll-card-header d-flex justify-content-between align-items-center border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="ll-card-title fw-bold mb-0"><i class="bi bi-clock-history me-2" style="color: var(--ll-primary);"></i>Continue Reading</h5>
                 <a href="@Url.Action("ReadingHistory", "Home")" class="ll-btn ll-btn-outline-primary btn-sm rounded-pill px-3">View All</a>
             </div>
             <div class="ll-card-body p-4">
@@ -115,15 +115,15 @@
                                         <i class="bi @item.IconClass @item.IconColor fs-5"></i>
                                     </div>
                                     <div class="flex-grow-1 min-w-0">
-                                        <div class="fw-bold text-truncate" style="color: #0f172a; font-size: 1.05rem;" title="@item.Title">@item.Title</div>
-                                        <div class="small fw-medium" style="color: #64748b;">@item.Subject</div>
+                                        <div class="fw-bold text-truncate" style="font-size: 1.05rem;" title="@item.Title">@item.Title</div>
+                                        <div class="small fw-medium text-muted">@item.Subject</div>
                                     </div>
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between mb-1 mt-3">
-                                    <span class="small fw-bold" style="color: #334155;">Progress</span>
+                                    <span class="small fw-bold">Progress</span>
                                     <span class="small fw-bold @(item.IsCompleted ? "text-success" : "text-primary")">@item.ProgressPercent%</span>
                                 </div>
-                                <div class="progress rounded-pill bg-white shadow-sm" style="height: 6px; border: 1px solid #e2e8f0;">
+                                <div class="progress rounded-pill shadow-sm" style="height: 6px;">
                                     <div class="progress-bar rounded-pill @(item.IsCompleted ? "bg-success" : "bg-primary")" style="width: @item.ProgressPercent%"></div>
                                 </div>
                             </div>
@@ -181,18 +181,18 @@
 
         <!-- Weekly Target -->
         <div class="ll-card border-0 shadow-sm" style="border-radius: 16px;">
-            <div class="ll-card-header d-flex justify-content-between align-items-center bg-white border-bottom-0 pb-0 pt-4 px-4">
-                <h6 class="ll-card-title fw-bold mb-0" style="color: #1e293b;"><i class="bi bi-bullseye me-2 text-info"></i>Weekly Target</h6>
+            <div class="ll-card-header d-flex justify-content-between align-items-center border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="ll-card-title fw-bold mb-0"><i class="bi bi-bullseye me-2 text-info"></i>Weekly Target</h5>
                 <span class="badge bg-primary bg-opacity-10 text-primary fw-bold rounded-pill px-3 py-2">@Model.WeeklyResourcesCompleted / @Model.WeeklyResourceGoal</span>
             </div>
             <div class="ll-card-body pb-4 pt-3 px-4">
                 <div class="d-flex justify-content-between mb-2">
-                    <span class="fw-medium small" style="color: #64748b;">Resources Read</span>
+                    <span class="fw-medium small text-muted">Resources Read</span>
                     <span class="fw-bold small @(Model.WeeklyResourcesCompleted >= Model.WeeklyResourceGoal ? "text-success" : "text-dark")">
                         @(Model.WeeklyResourcesCompleted >= Model.WeeklyResourceGoal ? "Goal Reached! 🎉" : $"{Model.WeeklyResourceGoal - Model.WeeklyResourcesCompleted} left")
                     </span>
                 </div>
-                <div class="progress rounded-pill bg-light" style="height: 10px; border: 1px solid #e2e8f0;">
+                <div class="progress rounded-pill bg-light" style="height: 10px;">
                     @{
                         var weeklyGoalPercent = Model.WeeklyResourceGoal > 0 ? Math.Min(100, (int)Math.Round((double)Model.WeeklyResourcesCompleted / Model.WeeklyResourceGoal * 100)) : 0;
                     }
@@ -208,8 +208,8 @@
     <!-- Recommended Resources -->
     <div class="col-lg-6">
         <div class="ll-card h-100 border-0 shadow-sm" style="border-radius: 16px;">
-            <div class="ll-card-header d-flex justify-content-between align-items-center bg-white border-bottom-0 pb-0 pt-4 px-4">
-                <h5 class="ll-card-title fw-bold mb-0" style="color: #1e293b;"><i class="bi bi-stars me-2 text-warning"></i>Recommended</h5>
+            <div class="ll-card-header d-flex justify-content-between align-items-center border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="ll-card-title fw-bold mb-0"><i class="bi bi-stars me-2 text-warning"></i>Recommended</h5>
                 <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline-primary btn-sm rounded-pill px-3">All Resources</a>
             </div>
             <div class="ll-card-body px-4 pt-3 pb-4">
@@ -218,16 +218,16 @@
                 <div class="list-group list-group-flush gap-2">
                     @foreach (var res in Model.RecommendedResources.Take(4))
                     {
-                    <a href="@Url.Action("ResourceDetail", "Home", new { id = res.Id })" class="list-group-item list-group-item-action border border-light rounded-3 px-3 py-3 shadow-sm transition-all hover-scale" style="background: #fff;">
+                    <a href="@Url.Action("ResourceDetail", "Home", new { id = res.Id })" class="list-group-item list-group-item-action border border-light rounded-3 px-3 py-3 shadow-sm transition-all hover-scale">
                         <div class="d-flex align-items-center gap-3">
                             <div class="rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width:42px;height:42px;background:@res.IconBg;min-width:42px;">
                                 <i class="bi @res.IconClass @res.IconColor fs-6"></i>
                             </div>
                             <div class="flex-grow-1 min-w-0">
-                                <div class="fw-bold text-truncate text-dark" style="font-size: 0.95rem;" title="@res.Title">@res.Title</div>
-                                <div class="small fw-medium" style="color: #64748b;">@res.Subject</div>
+                                <div class="fw-bold text-truncate" style="font-size: 0.95rem;" title="@res.Title">@res.Title</div>
+                                <div class="small fw-medium text-muted">@res.Subject</div>
                             </div>
-                            <span class="badge bg-light text-dark border rounded-pill px-2 py-1 fw-medium" style="font-size: 0.7rem;">@res.ResourceType</span>
+                            <span class="badge bg-light border rounded-pill px-2 py-1 fw-medium" style="font-size: 0.7rem;">@res.ResourceType</span>
                         </div>
                     </a>
                     }
@@ -250,8 +250,8 @@
     <!-- Quick Access Bookmarks -->
     <div class="col-lg-6">
         <div class="ll-card h-100 border-0 shadow-sm" style="border-radius: 16px;">
-            <div class="ll-card-header d-flex justify-content-between align-items-center bg-white border-bottom-0 pb-0 pt-4 px-4">
-                <h5 class="ll-card-title fw-bold mb-0" style="color: #1e293b;"><i class="bi bi-bookmark-fill me-2 text-primary"></i>Bookmarks</h5>
+            <div class="ll-card-header d-flex justify-content-between align-items-center border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="ll-card-title fw-bold mb-0"><i class="bi bi-bookmark-fill me-2 text-primary"></i>Bookmarks</h5>
                 <a href="@Url.Action("ReadingHistory", "Home", new { filter = "bookmarked" })" class="ll-btn ll-btn-outline-primary btn-sm rounded-pill px-3">View Saved</a>
             </div>
             <div class="ll-card-body px-4 pt-3 pb-4">
@@ -260,14 +260,14 @@
                 <div class="list-group list-group-flush gap-2">
                     @foreach (var res in Model.RecentBookmarks.Take(4))
                     {
-                    <a href="@Url.Action("ResourceDetail", "Home", new { id = res.Id })" class="list-group-item list-group-item-action border border-light rounded-3 px-3 py-3 shadow-sm transition-all hover-scale" style="background: #fff;">
+                    <a href="@Url.Action("ResourceDetail", "Home", new { id = res.Id })" class="list-group-item list-group-item-action border border-light rounded-3 px-3 py-3 shadow-sm transition-all hover-scale">
                         <div class="d-flex align-items-center gap-3">
                             <div class="rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width:42px;height:42px;background:@res.IconBg;min-width:42px;">
                                 <i class="bi @res.IconClass @res.IconColor fs-6"></i>
                             </div>
                             <div class="flex-grow-1 min-w-0">
-                                <div class="fw-bold text-truncate text-dark" style="font-size: 0.95rem;" title="@res.Title">@res.Title</div>
-                                <div class="small fw-medium" style="color: #64748b;">@res.Subject &middot; @res.Uploader</div>
+                                <div class="fw-bold text-truncate" style="font-size: 0.95rem;" title="@res.Title">@res.Title</div>
+                                <div class="small fw-medium text-muted">@res.Subject &middot; @res.Uploader</div>
                             </div>
                             <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
                                 <i class="bi bi-chevron-right text-primary small"></i>

@@ -138,6 +138,23 @@
     }
     input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
     #accessDurationDate:disabled { background-color: #f8f9fa; cursor: not-allowed; opacity: 0.6; }
+
+    /* Dark mode overrides for upload-specific styles */
+    [data-theme="dark"] .ll-dropzone { background: #1e293b; border-color: #475569; }
+    [data-theme="dark"] .ll-dropzone:hover, [data-theme="dark"] .ll-dropzone.dragover { border-color: var(--ll-primary); background: rgba(59,125,216,0.08); }
+    [data-theme="dark"] .ll-dropzone.has-file { border-color: #10b981; background: rgba(16,185,129,0.08); }
+    [data-theme="dark"] .ll-file-preview { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+    [data-theme="dark"] .ll-tag-picker { background: #334155; border-color: #475569; }
+    [data-theme="dark"] .ll-tag-picker:focus-within { border-color: var(--ll-primary); }
+    [data-theme="dark"] .ll-tag-input { color: #e2e8f0; }
+    [data-theme="dark"] .ll-tag-suggestions { background: #1e293b; border-color: #334155; }
+    [data-theme="dark"] .ll-tag-suggestion-item:hover, [data-theme="dark"] .ll-tag-suggestion-item.active { background: rgba(59,125,216,0.15); }
+    [data-theme="dark"] .ll-category-item { border-color: #475569; color: #e2e8f0; }
+    [data-theme="dark"] .ll-category-item:hover { border-color: var(--ll-primary); }
+    [data-theme="dark"] .ll-category-item.selected { border-color: var(--ll-primary); background: rgba(59,125,216,0.1); }
+    [data-theme="dark"] #accessDurationDate:disabled { background-color: #1e293b; }
+    [data-theme="dark"] .ll-progress-bar { background: #334155; }
+
 </style>
 
 <!-- Page Header -->

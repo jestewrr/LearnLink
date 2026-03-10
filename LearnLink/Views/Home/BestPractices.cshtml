@@ -174,26 +174,26 @@
         
         <div class="row g-4 mb-4">
             <div class="col-md-6">
-                <div class="ll-card h-100" style="background-color: #f8fafc; border-color: #e2e8f0;">
+                <div class="ll-card h-100 ll-stat-accent-card">
                     <div class="ll-card-body d-flex align-items-center gap-4 py-4">
-                        <div style="width: 60px; height: 60px; border-radius: 12px; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center;">
+                        <div class="ll-tip-icon" style="width: 60px; height: 60px; border-radius: 12px; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center;">
                             <i class="bi bi-eye fs-2"></i>
                         </div>
                         <div>
-                            <h2 class="fw-bold mb-0" style="color: #1e293b;">@totalViews.ToString("N0")</h2>
+                            <h2 class="fw-bold mb-0">@totalViews.ToString("N0")</h2>
                             <div class="text-muted fw-medium">Total Views Generated</div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="ll-card h-100" style="background-color: #f8fafc; border-color: #e2e8f0;">
+                <div class="ll-card h-100 ll-stat-accent-card">
                     <div class="ll-card-body d-flex align-items-center gap-4 py-4">
-                        <div style="width: 60px; height: 60px; border-radius: 12px; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center;">
+                        <div class="ll-tip-icon" style="width: 60px; height: 60px; border-radius: 12px; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center;">
                             <i class="bi bi-download fs-2"></i>
                         </div>
                         <div>
-                            <h2 class="fw-bold mb-0" style="color: #1e293b;">@totalDownloads.ToString("N0")</h2>
+                            <h2 class="fw-bold mb-0">@totalDownloads.ToString("N0")</h2>
                             <div class="text-muted fw-medium">Total Downloads Generated</div>
                         </div>
                     </div>
@@ -399,7 +399,7 @@
                                             <h6 class="fw-bold small mb-1 text-truncate">@item.Title</h6>
                                             <div class="small text-muted mb-2">@item.Subject · @item.Author</div>
                                             <div class="d-flex align-items-center gap-2">
-                                                <div class="flex-fill" style="height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+                                                <div class="flex-fill ll-progress" style="height: 6px; border-radius: 3px; overflow: hidden;">
                                                     <div style="width: @(item.Progress)%; height: 100%; background: var(--ll-primary); border-radius: 3px;"></div>
                                                 </div>
                                                 <span class="small fw-medium" style="color: var(--ll-primary);">@(item.Progress)%</span>

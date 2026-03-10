@@ -7195,3 +7195,435 @@ a.ll-resource-card-link:hover {
     border-color: #475569;
 }
 
+/* ══════════════════════════════════════════
+   COMPREHENSIVE DARK MODE — ROUND 3
+   Full system-wide inline style & class overrides
+   ══════════════════════════════════════════ */
+
+/* ── Inline text color overrides ── */
+[data-theme="dark"] [style*="color: #0f172a"],
+[data-theme="dark"] [style*="color:#0f172a"] {
+    color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] [style*="color: #92400e"],
+[data-theme="dark"] [style*="color:#92400e"] {
+    color: #fbbf24 !important;
+}
+
+[data-theme="dark"] [style*="color: #b45309"],
+[data-theme="dark"] [style*="color:#b45309"] {
+    color: #f59e0b !important;
+}
+
+[data-theme="dark"] [style*="color: #d97706"],
+[data-theme="dark"] [style*="color:#d97706"] {
+    color: #fbbf24 !important;
+}
+
+[data-theme="dark"] [style*="color: #f59e0b"],
+[data-theme="dark"] [style*="color:#f59e0b"] {
+    color: #fcd34d !important;
+}
+
+/* ── Additional background overrides ── */
+[data-theme="dark"] [style*="background: #fafbfc"],
+[data-theme="dark"] [style*="background:#fafbfc"] {
+    background: #1e293b !important;
+}
+
+[data-theme="dark"] [style*="background-color: #f8fafc"],
+[data-theme="dark"] [style*="background-color:#f8fafc"] {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] [style*="background-color: #f8f9fa"],
+[data-theme="dark"] [style*="background-color:#f8f9fa"] {
+    background-color: #1e293b !important;
+}
+
+[data-theme="dark"] [style*="background: #fee2e2"],
+[data-theme="dark"] [style*="background:#fee2e2"] {
+    background: rgba(239, 68, 68, 0.15) !important;
+}
+
+[data-theme="dark"] [style*="background: #fecaca"],
+[data-theme="dark"] [style*="background:#fecaca"] {
+    background: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* ── Green gradient banners (contributor) ── */
+[data-theme="dark"] [style*="linear-gradient(135deg, #dcfce7 0%, #86efac"] {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.08) 100%) !important;
+}
+
+/* ── Settings: Google Books import card ── */
+[data-theme="dark"] [style*="linear-gradient(135deg, #f8f9fa, #ffffff)"] {
+    background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+}
+
+[data-theme="dark"] [style*="border-left: 4px solid #4285F4"] {
+    border-left-color: #60a5fa !important;
+}
+
+[data-theme="dark"] [style*="color: #4285F4"],
+[data-theme="dark"] [style*="color:#4285F4"] {
+    color: #60a5fa !important;
+}
+
+/* ── SVG stroke overrides for learning progress circles ── */
+[data-theme="dark"] svg path[stroke="#e2e8f0"] {
+    stroke: #334155 !important;
+}
+
+/* ── border-color overrides ── */
+[data-theme="dark"] [style*="border-color: #e2e8f0"],
+[data-theme="dark"] [style*="border-color:#e2e8f0"] {
+    border-color: #334155 !important;
+}
+
+/* ── Card headers with bg-white class ── */
+[data-theme="dark"] .ll-card-header.bg-white {
+    background-color: #1e293b !important;
+}
+
+/* ── bg-white progress bars ── */
+[data-theme="dark"] .progress.bg-white {
+    background-color: #334155 !important;
+}
+
+/* ── text-dark used in badges & inline ── */
+[data-theme="dark"] .badge.text-dark {
+    color: #e2e8f0 !important;
+}
+
+/* ── Card header hover ── */
+[data-theme="dark"] .hover-shadow:hover,
+[data-theme="dark"] .hover-scale:hover {
+    border-color: #475569 !important;
+}
+
+/* ── Upload page: dropzone & file preview ── */
+[data-theme="dark"] .ll-dropzone {
+    background: #1e293b;
+    border-color: #475569;
+}
+
+[data-theme="dark"] .ll-dropzone:hover,
+[data-theme="dark"] .ll-dropzone.dragover {
+    border-color: var(--ll-primary);
+    background: rgba(59, 125, 216, 0.08);
+}
+
+[data-theme="dark"] .ll-dropzone.has-file {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.08);
+}
+
+[data-theme="dark"] .ll-file-preview {
+    background: #0f172a;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .ll-tag-picker {
+    background: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-tag-picker:focus-within {
+    border-color: var(--ll-primary);
+}
+
+[data-theme="dark"] .ll-tag-token {
+    background: rgba(59, 125, 216, 0.2);
+    color: #93c5fd;
+}
+
+[data-theme="dark"] .ll-tag-input {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-progress-bar {
+    background: #334155;
+}
+
+/* ── Reports: chart legend dots (these are fine — saturated colors on dark bg) ── */
+
+/* ── ReadingHistory: streak section ── */
+[data-theme="dark"] .progress.bg-light {
+    background-color: #334155 !important;
+}
+
+/* ── Tag page: avatar with white text on dynamic bg ── */
+[data-theme="dark"] [style*="color: #fff; font-weight: 600; font-size: .85rem"] {
+    color: #fff !important;
+}
+
+/* ── Users page: soft red status backgrounds ── */
+[data-theme="dark"] [style*="background: #fee2e2; color: #ef4444"],
+[data-theme="dark"] [style*="background:#fee2e2;color:#ef4444"] {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #fca5a5 !important;
+}
+
+/* ── card body used in toast notifications ── */
+[data-theme="dark"] .ll-card-body[style*="background: #fff"] {
+    background: #1e293b !important;
+}
+
+/* ── Category autocomplete suggestions ── */
+[data-theme="dark"] .ll-cat-suggestions {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .ll-cat-suggestion-item:hover {
+    background: #334155;
+}
+
+/* ── Content gaps / hot topics cards in BestPractices ── */
+[data-theme="dark"] .p-3.border.rounded.text-center.bg-light {
+    background-color: #334155 !important;
+    border-color: #475569 !important;
+}
+
+[data-theme="dark"] .p-3.border.rounded.text-center.bg-light h6.text-dark {
+    color: #e2e8f0 !important;
+}
+
+/* ── Continue reading progress track in BestPractices ── */
+[data-theme="dark"] [style*="height: 6px; background: #e2e8f0"] {
+    background: #334155 !important;
+}
+
+/* ── Recommended & Bookmark list items ── */
+[data-theme="dark"] .list-group-item.hover-scale[style*="background: #fff"],
+[data-theme="dark"] a.list-group-item[style*="background: #fff"] {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+/* ── General border-dashed empty states ── */
+[data-theme="dark"] .border-dashed {
+    border-color: #475569 !important;
+}
+
+/* ── alert-warning dark mode ── */
+[data-theme="dark"] .alert-warning {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #fcd34d;
+}
+
+/* ── Rejection modal: header & icon backgrounds ── */
+[data-theme="dark"] .modal-header[style*="background: #fee2e2"] {
+    background: rgba(239, 68, 68, 0.15) !important;
+}
+
+[data-theme="dark"] [style*="background: #fecaca; border-radius: 50%"] {
+    background: rgba(239, 68, 68, 0.25) !important;
+}
+
+/* ── Modal footer border ── */
+[data-theme="dark"] .modal-footer {
+    border-top-color: #334155;
+}
+
+/* ── form-label in dark mode ── */
+[data-theme="dark"] .form-label,
+[data-theme="dark"] .ll-form-label {
+    color: #e2e8f0;
+}
+
+/* ── input-group ── */
+[data-theme="dark"] .input-group-text {
+    background: #334155;
+    border-color: #475569;
+    color: #94a3b8;
+}
+
+/* ── card with text-decoration-none text-dark wrapper ── */
+[data-theme="dark"] a.text-dark {
+    color: #e2e8f0 !important;
+}
+
+/* ── border-bottom on items ── */
+[data-theme="dark"] .p-3.border-bottom {
+    border-bottom-color: #334155 !important;
+}
+
+/* ── Breadcrumb text ── */
+[data-theme="dark"] .breadcrumb-item,
+[data-theme="dark"] .breadcrumb-item.active {
+    color: #94a3b8;
+}
+
+/* ── hover-shadow boxes in BestPractices ── */
+[data-theme="dark"] .d-flex.gap-3.p-3.border.rounded.hover-shadow,
+[data-theme="dark"] .d-flex.gap-3.p-3.border.rounded {
+    border-color: #334155 !important;
+    background: #0f172a;
+}
+
+[data-theme="dark"] .d-flex.gap-3.p-3.border.rounded.hover-shadow:hover,
+[data-theme="dark"] .d-flex.gap-3.p-3.border.rounded:hover {
+    background: #1e293b;
+    border-color: #475569 !important;
+}
+
+/* ── Users page: profile card linear gradient avatar ── */
+[data-theme="dark"] [style*="background: linear-gradient(135deg, #0d6efd, #0a58ca)"] {
+    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+}
+
+/* ── History filter buttons ── */
+[data-theme="dark"] .history-filter-btn {
+    background: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .history-filter-btn:hover {
+    background: #475569;
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .history-filter-btn.active {
+    background: var(--ll-primary);
+    border-color: var(--ll-primary);
+    color: #fff;
+}
+
+/* ── Card with border-left accent ── */
+[data-theme="dark"] .ll-card[style*="border-left: 4px solid"] {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+/* ── border on p-3, bg-light rounded stats ── */
+[data-theme="dark"] .p-3.bg-light.rounded {
+    background-color: #0f172a !important;
+    border-color: #334155;
+}
+
+/* ── Disabled form controls in Upload ── */
+[data-theme="dark"] #accessDurationDate:disabled {
+    background-color: #1e293b !important;
+}
+
+/* ── card-body py-3 text-center in BestPractices (quick stats) ── */
+[data-theme="dark"] .ll-card-body.py-3.text-center .fs-3.fw-bold {
+    color: inherit;
+}
+
+/* ── accordion within settings ── */
+[data-theme="dark"] .accordion-item {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .accordion-button {
+    background: #1e293b;
+    color: #e2e8f0;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .accordion-button:not(.collapsed) {
+    background: #0f172a;
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .accordion-body {
+    background: #1e293b;
+}
+
+/* ── card-text & misc ── */
+[data-theme="dark"] .card-text,
+[data-theme="dark"] .card-body,
+[data-theme="dark"] .card {
+    background-color: #1e293b;
+    color: #e2e8f0;
+    border-color: #334155;
+}
+
+/* ── ResourceDetail: external link box ── */
+[data-theme="dark"] [style*="background:linear-gradient(135deg,#3b82f6,#2563eb)"] {
+    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.15) !important;
+}
+
+/* ── Version notes bg-light ── */
+[data-theme="dark"] .small.bg-light.p-2.rounded {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] .small.bg-light.p-2.rounded.mt-1 {
+    background-color: #0f172a !important;
+}
+
+/* ── Contributor stat accent cards ── */
+.ll-stat-accent-card {
+    background-color: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-stat-accent-card {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] .ll-tip-icon[style*="background: #dbeafe"] {
+    background: rgba(37, 99, 235, 0.2) !important;
+}
+
+[data-theme="dark"] .ll-tip-icon[style*="background: #d1fae5"] {
+    background: rgba(5, 150, 105, 0.2) !important;
+}
+
+[data-theme="dark"] .ll-tip-icon[style*="background: #fef3c7"] {
+    background: rgba(245, 158, 11, 0.2) !important;
+}
+
+/* ── Bootstrap .progress track ── */
+[data-theme="dark"] .progress {
+    background-color: #334155;
+}
+
+/* ── border-light in dark mode ── */
+[data-theme="dark"] .border-light {
+    border-color: #334155 !important;
+}
+
+/* ── Selection/highlight colors ── */
+[data-theme="dark"] ::selection {
+    background: rgba(59, 125, 216, 0.3);
+    color: #f1f5f9;
+}
+
+/* ── table-bordered ── */
+[data-theme="dark"] .table-bordered {
+    border-color: #334155;
+}
+
+[data-theme="dark"] .table-bordered > :not(caption) > * > * {
+    border-color: #334155;
+}
+
+/* ── popover ── */
+[data-theme="dark"] .popover {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .popover-body {
+    color: #e2e8f0;
+}
+
+/* ── tooltip ── */
+[data-theme="dark"] .tooltip-inner {
+    background: #0f172a;
+}
+
