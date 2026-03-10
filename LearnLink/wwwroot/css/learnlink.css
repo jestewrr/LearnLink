@@ -948,7 +948,28 @@ body {
 /* Empty State */
 .ll-empty-state {
     text-align: center;
-    padding: 3rem 2rem;
+    padding: 2.5rem 1.5rem;
+}
+
+.ll-repo-card-thumb-img, .ll-resource-thumbnail-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+}
+
+/* Ensure icons and badges stay above the image */
+.ll-repo-card-thumb i, .ll-resource-thumbnail i {
+    z-index: 1;
+    position: relative;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.ll-repo-card-format, .ll-resource-type {
+    z-index: 2;
 }
 
 .ll-empty-state-icon {

@@ -173,6 +173,9 @@ namespace LearnLink.Models
         [StringLength(500)]
         public string FilePath { get; set; } = "";
 
+        [StringLength(500)]
+        public string? ThumbnailUrl { get; set; }
+
         [StringLength(30)]
         public string ResourceType { get; set; } = "";  // PDF, Reviewer, Sheet
 

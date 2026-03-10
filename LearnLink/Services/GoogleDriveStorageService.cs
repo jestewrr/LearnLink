@@ -65,7 +65,7 @@ public class GoogleDriveStorageService : IStorageService
             };
 
             var request = _driveService.Files.Create(fileMetadata, stream, contentType);
-            request.Fields = "id, name, mimeType, size, webViewLink, webContentLink, createdTime";
+            request.Fields = "id, name, mimeType, size, webViewLink, webContentLink, createdTime, hasThumbnail, thumbnailLink";
 
             var progress = await request.UploadAsync();
             if (progress.Status != Google.Apis.Upload.UploadStatus.Completed)
@@ -99,7 +99,8 @@ public class GoogleDriveStorageService : IStorageService
                 ContentType = file.MimeType,
                 FileSize = fileSizeMB,
                 WebViewLink = file.WebViewLink,
-                WebContentLink = file.WebContentLink
+                WebContentLink = file.WebContentLink,
+                ThumbnailUrl = file.HasThumbnail == true ? file.ThumbnailLink : null
             };
         }
         catch (Exception ex)
