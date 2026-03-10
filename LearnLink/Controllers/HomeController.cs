@@ -1133,7 +1133,10 @@ namespace LearnLink.Controllers
                 GradeOrPosition = currentUser.GradeOrPosition,
                 Status = currentUser.Status,
                 StatusBadgeClass = GetStatusBadge(currentUser.Status),
-                JoinedAt = currentUser.DateCreated
+                JoinedAt = currentUser.DateCreated,
+                FirstName = currentUser.FirstName,
+                LastName = currentUser.LastName,
+                MiddleName = currentUser.MiddleName
             };
 
             // My Lessons Learned
@@ -1197,6 +1200,63 @@ namespace LearnLink.Controllers
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = $"Your status has been changed to {currentUser.Status}.";
+            return RedirectToAction("Profile");
+        }
+
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> UpdateProfile(string firstName, string lastName, string? middleName, string? gradeOrPosition)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return RedirectToAction("Login");
+
+            if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
+            {
+                TempData["ErrorMessage"] = "First name and last name are required.";
+                return RedirectToAction("Profile");
+            }
+
+            currentUser.FirstName = firstName.Trim();
+            currentUser.LastName = lastName.Trim();
+            currentUser.MiddleName = string.IsNullOrWhiteSpace(middleName) ? null : middleName.Trim();
+            currentUser.GradeOrPosition = gradeOrPosition?.Trim() ?? "";
+            currentUser.Initials = (currentUser.FirstName[..1] + currentUser.LastName[..1]).ToUpper();
+
+            await _userManager.UpdateAsync(currentUser);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Profile updated successfully.";
+            return RedirectToAction("Profile");
+        }
+
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> ChangePassword(string currentPassword, string newPassword, string confirmPassword)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return RedirectToAction("Login");
+
+            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+            {
+                TempData["ErrorMessage"] = "New password must be at least 6 characters.";
+                return RedirectToAction("Profile");
+            }
+
+            if (newPassword != confirmPassword)
+            {
+                TempData["ErrorMessage"] = "New password and confirmation do not match.";
+                return RedirectToAction("Profile");
+            }
+
+            var result = await _userManager.ChangePasswordAsync(currentUser, currentPassword, newPassword);
+            if (!result.Succeeded)
+            {
+                TempData["ErrorMessage"] = string.Join(" ", result.Errors.Select(e => e.Description));
+                return RedirectToAction("Profile");
+            }
+
+            await _signInManager.RefreshSignInAsync(currentUser);
+            TempData["SuccessMessage"] = "Password changed successfully.";
             return RedirectToAction("Profile");
         }
 
@@ -1916,6 +1976,7 @@ namespace LearnLink.Controllers
             var normalizedTag = tag.Trim();
             var normalizedTagLower = normalizedTag.ToLowerInvariant();
 
+            // --- Resources matching by tag or subject ---
             var matchingTagResourceIds = _context.ResourceTags
                 .Where(rt => rt.Tag != null && rt.Tag.TagName.ToLower() == normalizedTagLower)
                 .Select(rt => rt.ResourceId);
@@ -1928,8 +1989,50 @@ namespace LearnLink.Controllers
             var mappedResources = resources.Select(MapResource).ToList();
             await PopulateResourceMetadataAsync(mappedResources);
 
+            // --- Discussions matching by tags or title ---
+            var discussions = await _context.Discussions
+                .Include(d => d.User)
+                .Include(d => d.Posts)
+                .Where(d => d.Tags.ToLower().Contains(normalizedTagLower)
+                    || d.Title.ToLower().Contains(normalizedTagLower)
+                    || d.Category.ToLower() == normalizedTagLower)
+                .OrderByDescending(d => d.DateCreated)
+                .Take(20)
+                .ToListAsync();
+
+            var likedDiscIds = new HashSet<int>();
+            if (currentUser != null)
+            {
+                likedDiscIds = (await _context.Likes
+                    .Where(l => l.UserId == currentUser.Id && l.TargetType == "Discussion")
+                    .Select(l => l.TargetId)
+                    .ToListAsync()).ToHashSet();
+            }
+            ViewBag.TagDiscussions = discussions.Select(d => MapDiscussion(d, likedDiscIds.Contains(d.DiscussionId))).ToList();
+
+            // --- Lessons matching by tags, title, or category ---
+            var lessons = await _context.LessonsLearned
+                .Include(l => l.User)
+                .Include(l => l.Resource)
+                .Where(l => l.Tags.ToLower().Contains(normalizedTagLower)
+                    || l.Title.ToLower().Contains(normalizedTagLower)
+                    || l.Category.ToLower() == normalizedTagLower)
+                .OrderByDescending(l => l.DateSubmitted)
+                .Take(20)
+                .ToListAsync();
+
+            var likedLessonIds = new HashSet<int>();
+            if (currentUser != null)
+            {
+                likedLessonIds = (await _context.Likes
+                    .Where(l => l.UserId == currentUser.Id && l.TargetType == "Lesson")
+                    .Select(l => l.TargetId)
+                    .ToListAsync()).ToHashSet();
+            }
+            ViewBag.TagLessons = lessons.Select(l => MapLesson(l, likedLessonIds.Contains(l.LessonId))).ToList();
+
             ViewBag.Tag = normalizedTag;
-            ViewBag.ResultCount = mappedResources.Count;
+            ViewBag.ResultCount = mappedResources.Count + discussions.Count + lessons.Count;
             ViewBag.Resources = mappedResources;
 
             return View();
@@ -3342,7 +3445,7 @@ namespace LearnLink.Controllers
                 var recommendedList = new List<ResourceViewModel>();
                 try
                 {
-                    var recIds = await _recommendationService.GetPersonalizedRecommendationsAsync(currentUser.Id, 4, GetEffectiveSchoolId());
+                    var recIds = await _recommendationService.GetPersonalizedRecommendationsAsync(currentUser.Id, 8, GetEffectiveSchoolId());
                     if (recIds.Any())
                     {
                         var recResources = resources.Where(r => recIds.Contains(r.ResourceId)).ToList();
@@ -3357,7 +3460,7 @@ namespace LearnLink.Controllers
 
                 if (!recommendedList.Any())
                 {
-                    recommendedList = resources.OrderByDescending(r => r.Rating).Take(4).Select(MapResource).ToList();
+                    recommendedList = resources.OrderByDescending(r => r.Rating).Take(8).Select(MapResource).ToList();
                 }
                 ViewBag.Recommendations = recommendedList;
 

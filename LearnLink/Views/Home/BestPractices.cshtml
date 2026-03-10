@@ -303,6 +303,42 @@
             </div>
         </div>
 
+        <!-- Quick Stats Row -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="ll-card h-100" style="border-left: 4px solid var(--ll-primary);">
+                    <div class="ll-card-body py-3 text-center">
+                        <div class="fs-3 fw-bold" style="color: var(--ll-primary);">@recommendations.Count</div>
+                        <div class="small text-muted fw-medium">For You</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="ll-card h-100" style="border-left: 4px solid var(--ll-success);">
+                    <div class="ll-card-body py-3 text-center">
+                        <div class="fs-3 fw-bold" style="color: var(--ll-success);">@continueReading.Count</div>
+                        <div class="small text-muted fw-medium">In Progress</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="ll-card h-100" style="border-left: 4px solid var(--ll-warning);">
+                    <div class="ll-card-body py-3 text-center">
+                        <div class="fs-3 fw-bold" style="color: var(--ll-warning);">@trending.Count</div>
+                        <div class="small text-muted fw-medium">Trending</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="ll-card h-100" style="border-left: 4px solid var(--ll-info);">
+                    <div class="ll-card-body py-3 text-center">
+                        <div class="fs-3 fw-bold" style="color: var(--ll-info);">@(totalProgress)%</div>
+                        <div class="small text-muted fw-medium">Overall Progress</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row g-4">
             <div class="col-lg-8">
                 <!-- For You Section -->
@@ -324,10 +360,10 @@
                                         <div style="width: 56px; height: 56px; @GetGradient(resource.FileFormat); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
                                             <i class="bi @GetIcon(resource.FileFormat) fs-4"></i>
                                         </div>
-                                        <div>
-                                            <h6 class="fw-bold mb-1">@resource.Title</h6>
-                                            <p class="small text-muted mb-2 text-truncate" style="max-width: 150px;">@resource.Description</p>
-                                            <div class="d-flex gap-2">
+                                        <div class="flex-fill min-w-0">
+                                            <h6 class="fw-bold mb-1 text-truncate">@resource.Title</h6>
+                                            <p class="small text-muted mb-2 text-truncate">@resource.Description</p>
+                                            <div class="d-flex gap-2 flex-wrap">
                                                 <span class="ll-tag">@resource.Subject</span>
                                                 <span class="ll-badge ll-badge-success">@(matchScore)% match</span>
                                             </div>
@@ -340,6 +376,43 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Continue Reading -->
+                @if (continueReading.Any())
+                {
+                <div class="ll-card mb-4">
+                    <div class="ll-card-header">
+                        <h5 class="ll-card-title"><i class="bi bi-bookmark-check me-2 text-info"></i>Continue Reading</h5>
+                        <a href="@Url.Action("ReadingHistory", "Home")" class="ll-btn ll-btn-outline ll-btn-sm">View History</a>
+                    </div>
+                    <div class="ll-card-body">
+                        <div class="row g-3">
+                            @foreach (var item in continueReading.Take(4))
+                            {
+                            <div class="col-md-6">
+                                <a href="@Url.Action("ResourceDetail", "Home", new { id = item.ResourceId })" class="text-decoration-none text-dark">
+                                    <div class="d-flex gap-3 p-3 border rounded" style="transition: all 0.3s;">
+                                        <div style="width: 48px; height: 48px; @GetGradient(item.FileFormat); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
+                                            <i class="bi @GetIcon(item.FileFormat) fs-5"></i>
+                                        </div>
+                                        <div class="flex-fill min-w-0">
+                                            <h6 class="fw-bold small mb-1 text-truncate">@item.Title</h6>
+                                            <div class="small text-muted mb-2">@item.Subject · @item.Author</div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="flex-fill" style="height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+                                                    <div style="width: @(item.Progress)%; height: 100%; background: var(--ll-primary); border-radius: 3px;"></div>
+                                                </div>
+                                                <span class="small fw-medium" style="color: var(--ll-primary);">@(item.Progress)%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                }
             </div>
 
             <div class="col-lg-4">
@@ -365,7 +438,7 @@
                         {
                             var subjectName = (string)item.Subject;
                             var pct = (int)item.Percent;
-                            var color = (string)item.Color; // primary, success, etc.
+                            var color = (string)item.Color;
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between small mb-1">
                                     <span>@subjectName</span>
@@ -376,6 +449,42 @@
                                 </div>
                             </div>
                         }
+                    </div>
+                </div>
+
+                <!-- Best Practices Tips -->
+                <div class="ll-card mb-4">
+                    <div class="ll-card-header">
+                        <h5 class="ll-card-title"><i class="bi bi-lightbulb me-2 text-warning"></i>Study Tips</h5>
+                    </div>
+                    <div class="ll-card-body">
+                        <div class="d-flex gap-2 mb-3 pb-3 border-bottom">
+                            <div class="flex-shrink-0" style="width: 36px; height: 36px; background: #dbeafe; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                <i class="bi bi-clock text-primary"></i>
+                            </div>
+                            <div>
+                                <div class="small fw-bold">Set a Schedule</div>
+                                <div class="small text-muted">Read at least one resource daily to build a streak.</div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 mb-3 pb-3 border-bottom">
+                            <div class="flex-shrink-0" style="width: 36px; height: 36px; background: #d1fae5; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                <i class="bi bi-pencil text-success"></i>
+                            </div>
+                            <div>
+                                <div class="small fw-bold">Take Notes</div>
+                                <div class="small text-muted">Submit lessons learned after each resource.</div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <div class="flex-shrink-0" style="width: 36px; height: 36px; background: #fef3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                <i class="bi bi-people text-warning"></i>
+                            </div>
+                            <div>
+                                <div class="small fw-bold">Discuss & Share</div>
+                                <div class="small text-muted">Join discussions to deepen your understanding.</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

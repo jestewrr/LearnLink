@@ -80,7 +80,7 @@
                     <div class="fb-likes-summary" @(discussion.LikeCount > 0 ? $"onclick=\"showLikers({discussion.Id}, 'Discussion')\" style=\"cursor:pointer\"" : "")>
                         @if (discussion.LikeCount > 0)
                         {
-                            <span class="fb-like-icon-sm"><i class="bi bi-heart-fill"></i></span>
+                            <span class="fb-like-icon-sm"><i class="bi bi-hand-thumbs-up-fill"></i></span>
                             @if (discussion.LikerNames.Any())
                             {
                                 var firstName = discussion.LikerNames.First();
@@ -111,7 +111,7 @@
             <div class="fb-card-body py-1">
                 <div class="d-flex justify-content-around">
                     <button class="fb-action-btn disc-like-btn @(discussion.IsLiked ? "active" : "")" data-id="@discussion.Id">
-                        <i class="bi @(discussion.IsLiked ? "bi-heart-fill" : "bi-heart")"></i> Like
+                        <i class="bi @(discussion.IsLiked ? "bi-hand-thumbs-up-fill" : "bi-hand-thumbs-up")"></i> Like
                     </button>
                     <button class="fb-action-btn" onclick="document.getElementById('replyEditor').querySelector('.ql-editor').focus();">
                         <i class="bi bi-chat"></i> Comment
@@ -167,7 +167,7 @@
                                 @if (reply.LikeCount > 0)
                                 {
                                     <span class="fb-comment-likes" onclick="showLikers(@reply.Id, 'Reply')" style="cursor:pointer">
-                                        <i class="bi bi-heart-fill" style="font-size: 0.6rem;"></i> @reply.LikeCount
+                                        <i class="bi bi-hand-thumbs-up-fill" style="font-size: 0.6rem;"></i> @reply.LikeCount
                                     </span>
                                 }
                                 <span class="text-muted" style="font-size: 0.7rem;">@replyTime</span>
@@ -235,7 +235,7 @@
                     <span class="small">@replies.Count comments</span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-heart text-muted"></i>
+                    <i class="bi bi-hand-thumbs-up text-muted"></i>
                     <span class="small">@discussion.LikeCount likes</span>
                 </div>
             </div>
@@ -430,12 +430,12 @@
                             const likesEl = btnEl.closest('.d-flex').querySelector('.fb-comment-likes');
                             if (data.likes > 0) {
                                 if (likesEl) {
-                                    likesEl.innerHTML = '<i class="bi bi-heart-fill" style="font-size:0.6rem;"></i> ' + data.likes;
+                                    likesEl.innerHTML = '<i class="bi bi-hand-thumbs-up-fill" style="font-size:0.6rem;"></i> ' + data.likes;
                                 } else {
                                     const span = document.createElement('span');
                                     span.className = 'fb-comment-likes';
                                     span.style.cursor = 'pointer';
-                                    span.innerHTML = '<i class="bi bi-heart-fill" style="font-size:0.6rem;"></i> ' + data.likes;
+                                    span.innerHTML = '<i class="bi bi-hand-thumbs-up-fill" style="font-size:0.6rem;"></i> ' + data.likes;
                                     btnEl.after(document.createTextNode(' '));
                                     const actionRow = btnEl.closest('.d-flex');
                                     const replyAction = actionRow.querySelectorAll('.fb-comment-action')[1];
@@ -447,16 +447,16 @@
                         } else {
                             const icon = btnEl.querySelector('i');
                             if (data.isLiked) {
-                                icon.classList.replace('bi-heart', 'bi-heart-fill');
+                                icon.classList.replace('bi-hand-thumbs-up', 'bi-hand-thumbs-up-fill');
                                 btnEl.classList.add('active');
                             } else {
-                                icon.classList.replace('bi-heart-fill', 'bi-heart');
+                                icon.classList.replace('bi-hand-thumbs-up-fill', 'bi-hand-thumbs-up');
                                 btnEl.classList.remove('active');
                             }
                             const card = btnEl.closest('.fb-card');
                             const summary = card.querySelector('.fb-likes-summary');
                             if (data.likes > 0) {
-                                summary.innerHTML = '<span class="fb-like-icon-sm"><i class="bi bi-heart-fill"></i></span><span class="text-muted small">' + data.likes + '</span>';
+                                summary.innerHTML = '<span class="fb-like-icon-sm"><i class="bi bi-hand-thumbs-up-fill"></i></span><span class="text-muted small">' + data.likes + '</span>';
                                 summary.style.cursor = 'pointer';
                             } else {
                                 summary.innerHTML = '';

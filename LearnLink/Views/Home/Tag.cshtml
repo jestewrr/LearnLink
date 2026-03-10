@@ -4,7 +4,9 @@
     ViewData["ActivePage"] = "Repository";
 
     var resources = ViewBag.Resources as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
-    var resultCount = (int)(ViewBag.ResultCount ?? resources.Count);
+    var discussions = ViewBag.TagDiscussions as List<LearnLink.Models.DiscussionViewModel> ?? new List<LearnLink.Models.DiscussionViewModel>();
+    var lessons = ViewBag.TagLessons as List<LearnLink.Models.LessonViewModel> ?? new List<LearnLink.Models.LessonViewModel>();
+    var resultCount = (int)(ViewBag.ResultCount ?? 0);
     var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
 
     string Normal(string format) => format?.TrimStart('.').ToUpperInvariant() ?? "";
@@ -115,3 +117,131 @@
         }
     }
 </div>
+
+@* ── Discussions Section ── *@
+<div class="ll-card mb-4 mt-5">
+    <div class="p-4">
+        <h2 class="mb-0" style="font-size: 1.4rem; color: #0f172a;"><i class="bi bi-chat-dots me-2" style="color: var(--ll-primary);"></i>Discussions related to @currentTag</h2>
+    </div>
+</div>
+
+@if (!discussions.Any())
+{
+    <div class="ll-card text-center p-4 mb-4">
+        <i class="bi bi-chat-dots display-5 text-muted d-block mb-3"></i>
+        <h5 class="mb-2">No discussions found for @currentTag</h5>
+        <p class="text-muted mb-0">No matching discussions yet.</p>
+    </div>
+}
+else
+{
+    <div class="d-flex flex-column gap-3 mb-4">
+        @foreach (var d in discussions)
+        {
+            var typeIcon = d.Type switch
+            {
+                "Question" => "bi-question-circle text-primary",
+                "Idea" => "bi-lightbulb text-warning",
+                "Resource" => "bi-folder text-success",
+                "Study Group" => "bi-people text-info",
+                _ => "bi-chat-dots text-secondary"
+            };
+            <div class="ll-card p-3">
+                <div class="d-flex gap-3 align-items-start">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                         style="width: 42px; height: 42px; background: @d.AuthorColor; color: #fff; font-weight: 600; font-size: .85rem;">
+                        @d.AuthorInitials
+                    </div>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <i class="bi @typeIcon"></i>
+                            <a href="@Url.Action("Discussions", "Home", new { id = d.Id })" class="fw-semibold text-decoration-none" style="color: var(--ll-primary);">@d.Title</a>
+                            <span class="badge rounded-pill bg-light text-dark border" style="font-size: .65rem;">@d.Type</span>
+                            @if (d.Status == "Open")
+                            {
+                                <span class="badge rounded-pill bg-success" style="font-size: .6rem;">Open</span>
+                            }
+                        </div>
+                        <div class="d-flex align-items-center gap-3 text-muted small">
+                            <span>@d.Author</span>
+                            <span><i class="bi bi-chat-left"></i> @d.ReplyCount</span>
+                            <span><i class="bi bi-eye"></i> @d.ViewCount</span>
+                            <span><i class="bi bi-hand-thumbs-up"></i> @d.LikeCount</span>
+                            <span>@d.CreatedAt.ToString("MMM dd, yyyy")</span>
+                        </div>
+                        @if (d.Tags.Any())
+                        {
+                            <div class="d-flex flex-wrap gap-1 mt-2">
+                                @foreach (var t in d.Tags.Take(5))
+                                {
+                                    <a href="@Url.Action("Tag", "Home", new { tag = t })" class="ll-tag ll-tag-link">#@t</a>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@* ── Lessons Learned Section ── *@
+<div class="ll-card mb-4">
+    <div class="p-4">
+        <h2 class="mb-0" style="font-size: 1.4rem; color: #0f172a;"><i class="bi bi-journal-text me-2" style="color: var(--ll-primary);"></i>Lessons Learned related to @currentTag</h2>
+    </div>
+</div>
+
+@if (!lessons.Any())
+{
+    <div class="ll-card text-center p-4 mb-4">
+        <i class="bi bi-journal-text display-5 text-muted d-block mb-3"></i>
+        <h5 class="mb-2">No lessons found for @currentTag</h5>
+        <p class="text-muted mb-0">No matching lessons learned yet.</p>
+    </div>
+}
+else
+{
+    <div class="d-flex flex-column gap-3 mb-4">
+        @foreach (var l in lessons)
+        {
+            <div class="ll-card p-3">
+                <div class="d-flex gap-3 align-items-start">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                         style="width: 42px; height: 42px; background: @l.AuthorColor; color: #fff; font-weight: 600; font-size: .85rem;">
+                        @l.AuthorInitials
+                    </div>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <i class="bi bi-journal-text text-primary"></i>
+                            <span class="fw-semibold">@l.Title</span>
+                            @if (!string.IsNullOrEmpty(l.Category))
+                            {
+                                <span class="badge rounded-pill bg-light text-dark border" style="font-size: .65rem;">@l.Category</span>
+                            }
+                        </div>
+                        <div class="d-flex align-items-center gap-3 text-muted small">
+                            <span>@l.Author</span>
+                            @if (!string.IsNullOrEmpty(l.ResourceTitle))
+                            {
+                                <span><i class="bi bi-link-45deg"></i> @l.ResourceTitle</span>
+                            }
+                            <span><i class="bi bi-hand-thumbs-up"></i> @l.LikeCount</span>
+                            <span><i class="bi bi-chat-left"></i> @l.CommentCount</span>
+                            <span>@l.CreatedAt.ToString("MMM dd, yyyy")</span>
+                        </div>
+                        @if (l.Tags.Any())
+                        {
+                            <div class="d-flex flex-wrap gap-1 mt-2">
+                                @foreach (var t in l.Tags.Take(5))
+                                {
+                                    <a href="@Url.Action("Tag", "Home", new { tag = t })" class="ll-tag ll-tag-link">#@t</a>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

@@ -3,7 +3,8 @@
     ViewData["Title"] = "My Dashboard";
     ViewData["ActivePage"] = "StudentDashboard";
 
-    var greeting = DateTime.Now.Hour < 12 ? "Good morning" : DateTime.Now.Hour < 17 ? "Good afternoon" : "Good evening";
+    var phtNow = DateTime.UtcNow.AddHours(8);
+    var greeting = phtNow.Hour < 12 ? "Good morning" : phtNow.Hour < 17 ? "Good afternoon" : "Good evening";
     var userName = User.Identity?.Name ?? "Student";
 }
 
