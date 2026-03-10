@@ -160,7 +160,7 @@ body {
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem;
-    color: #ffffff;
+    color: #ffffff !important;
     font-weight: bold;
     text-decoration: none;
     border-radius: var(--ll-border-radius);
@@ -175,7 +175,7 @@ body {
 
 .ll-nav-link.active {
     background: var(--ll-accent);
-    color: #1e293b;
+    color: #1e293b !important;
     font-weight: 600;
 }
 
