@@ -384,6 +384,10 @@ using (var scope = app.Services.CreateScope())
                 -- Fix Quarter column length for 'All Quarters' (Error 2714/TRUNCATED)
                 -- We do this AFTER migration because migration might recreate it as nvarchar(10)
                 ALTER TABLE [Resources] ALTER COLUMN [Quarter] nvarchar(50) NOT NULL;
+
+                -- Fix Resource FilePath length for external links imported from Google Books / Open Library.
+                ALTER TABLE [Resources] ALTER COLUMN [FilePath] nvarchar(500) NOT NULL;
+                ALTER TABLE [ResourceVersions] ALTER COLUMN [FilePath] nvarchar(500) NOT NULL;
                 
                 -- Also fix VersionNumber in case it truncates
                 ALTER TABLE [ResourceVersions] ALTER COLUMN [VersionNumber] nvarchar(50) NOT NULL;

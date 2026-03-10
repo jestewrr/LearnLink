@@ -1508,11 +1508,8 @@ namespace LearnLink.Controllers
                 var desc = volumeInfo.TryGetProperty("description", out var d) ? d.GetString() : "No description available.";
                 if (desc != null && desc.Length > 490) desc = desc.Substring(0, 490) + "...";
 
-                var previewLink = volumeInfo.TryGetProperty("previewLink", out var pl) ? pl.GetString() : "";
-                if (string.IsNullOrEmpty(previewLink))
-                    previewLink = volumeInfo.TryGetProperty("infoLink", out var il) ? il.GetString() : "";
+                var previewLink = BuildGoogleBooksLink(item, volumeInfo);
                 if (string.IsNullOrEmpty(previewLink)) continue;
-                if (previewLink.Length > 490) previewLink = previewLink.Substring(0, 490);
 
                 _context.Resources.Add(new Resource
                 {
@@ -1533,6 +1530,68 @@ namespace LearnLink.Controllers
                 count++;
             }
             return count;
+        }
+
+        private static string BuildGoogleBooksLink(System.Text.Json.JsonElement item, System.Text.Json.JsonElement volumeInfo)
+        {
+            if (item.TryGetProperty("id", out var idElement))
+            {
+                var volumeId = idElement.GetString();
+                if (!string.IsNullOrWhiteSpace(volumeId))
+                {
+                    return $"https://books.google.com/books?id={Uri.EscapeDataString(volumeId)}";
+                }
+            }
+
+            var rawLink = volumeInfo.TryGetProperty("infoLink", out var infoLinkElement)
+                ? infoLinkElement.GetString()
+                : volumeInfo.TryGetProperty("previewLink", out var previewLinkElement)
+                    ? previewLinkElement.GetString()
+                    : null;
+
+            return NormalizeExternalBookLink(rawLink, 500);
+        }
+
+        private static string NormalizeExternalBookLink(string? rawLink, int maxLength)
+        {
+            if (string.IsNullOrWhiteSpace(rawLink))
+            {
+                return string.Empty;
+            }
+
+            if (Uri.TryCreate(rawLink, UriKind.Absolute, out var uri))
+            {
+                var host = uri.Host.ToLowerInvariant();
+                if (host.Contains("books.google."))
+                {
+                    var googleBookId = ExtractQueryParameter(uri.Query, "id");
+                    if (!string.IsNullOrWhiteSpace(googleBookId))
+                    {
+                        return $"https://books.google.com/books?id={Uri.EscapeDataString(googleBookId)}";
+                    }
+                }
+            }
+
+            return rawLink.Length > maxLength ? rawLink.Substring(0, maxLength) : rawLink;
+        }
+
+        private static string? ExtractQueryParameter(string query, string key)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return null;
+            }
+
+            foreach (var segment in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var parts = segment.Split('=', 2);
+                if (parts.Length == 2 && parts[0].Equals(key, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Uri.UnescapeDataString(parts[1]);
+                }
+            }
+
+            return null;
         }
 
         private async Task<int> ImportFromOpenLibraryJson(string json, string subject, string grade, ApplicationUser currentUser)
