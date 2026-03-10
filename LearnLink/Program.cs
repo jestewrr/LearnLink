@@ -67,9 +67,19 @@ builder.Services.AddSingleton(new GoogleAuthFlag { IsEnabled = googleAuthEnabled
 builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
-// Google Drive Storage
-builder.Services.Configure<GoogleDriveOptions>(builder.Configuration.GetSection("GoogleDrive"));
-builder.Services.AddScoped<IStorageService, GoogleDriveStorageService>();
+// Storage Configuration
+var storageProvider = builder.Configuration["Storage:Provider"] ?? "Local";
+builder.Services.AddHttpContextAccessor(); // Needed for LocalStorageService to build URLs
+
+if (storageProvider == "GoogleDrive")
+{
+    builder.Services.Configure<GoogleDriveOptions>(builder.Configuration.GetSection("GoogleDrive"));
+    builder.Services.AddScoped<IStorageService, GoogleDriveStorageService>();
+}
+else
+{
+    builder.Services.AddScoped<IStorageService, LocalStorageService>();
+}
 
 // KNN Recommendation Engine
 builder.Services.AddScoped<IRecommendationService, KnnRecommendationService>();

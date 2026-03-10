@@ -2164,8 +2164,8 @@ namespace LearnLink.Controllers
                 }
                 else
                 {
-                    // Legacy local file
-                    fileUrl = $"/uploads/{resource.FilePath}";
+                    // Local file
+                    fileUrl = resource.FilePath.StartsWith("/uploads/") ? resource.FilePath : $"/uploads/{resource.FilePath}";
                     canPreview = true;
                 }
             }
@@ -2273,17 +2273,25 @@ namespace LearnLink.Controllers
 
             // Compute preview URL for embedded viewer
             string? previewUrl = null;
-            if (!string.IsNullOrEmpty(resource.FilePath) && resource.FilePath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(resource.FilePath))
             {
-                var driveFileId = _storage.ExtractFileId(resource.FilePath);
-                if (!string.IsNullOrEmpty(driveFileId))
+                if (resource.FilePath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                 {
-                    var fmt = resource.FileFormat?.TrimStart('.').Trim().ToUpperInvariant() ?? "";
-                    var isImage = fmt is "JPG" or "JPEG" or "PNG" or "GIF" or "WEBP" or "BMP" or "SVG";
-                    if (isImage)
-                        previewUrl = $"https://drive.google.com/uc?export=view&id={driveFileId}";
-                    else
-                        previewUrl = _storage.GetPreviewUrl(driveFileId, fmt);
+                    var driveFileId = _storage.ExtractFileId(resource.FilePath);
+                    if (!string.IsNullOrEmpty(driveFileId))
+                    {
+                        var fmt = resource.FileFormat?.TrimStart('.').Trim().ToUpperInvariant() ?? "";
+                        var isImage = fmt is "JPG" or "JPEG" or "PNG" or "GIF" or "WEBP" or "BMP" or "SVG";
+                        if (isImage)
+                            previewUrl = $"https://drive.google.com/uc?export=view&id={driveFileId}";
+                        else
+                            previewUrl = _storage.GetPreviewUrl(driveFileId, fmt);
+                    }
+                }
+                else
+                {
+                    // Local file
+                    previewUrl = _storage.GetPreviewUrl(resource.FilePath, resource.FileFormat);
                 }
             }
 
@@ -2427,7 +2435,7 @@ namespace LearnLink.Controllers
                 return NotFound();
             }
 
-            var localUrl = $"/uploads/{resource.FilePath}";
+            var localUrl = resource.FilePath.StartsWith("/uploads/") ? resource.FilePath : $"/uploads/{resource.FilePath}";
             if (string.IsNullOrEmpty(localUrl))
             {
                 return NotFound();
@@ -2561,8 +2569,9 @@ namespace LearnLink.Controllers
                 }
             }
 
-            // Legacy local file
-            var filepath = Path.Combine(_environment.WebRootPath, "uploads", resource.FilePath);
+            // Local file handling
+            string relativePath = resource.FilePath.StartsWith("/uploads/") ? resource.FilePath.Substring(9) : resource.FilePath;
+            var filepath = Path.Combine(_environment.WebRootPath, "uploads", relativePath);
             if (!System.IO.File.Exists(filepath))
             {
                 if (inline) return NotFound();
@@ -2636,8 +2645,9 @@ namespace LearnLink.Controllers
                 }
             }
 
-            // Legacy local file
-            var filepath = Path.Combine(_environment.WebRootPath, "uploads", resource.FilePath);
+            // Local file handling
+            string relPath = resource.FilePath.StartsWith("/uploads/") ? resource.FilePath.Substring(9) : resource.FilePath;
+            var filepath = Path.Combine(_environment.WebRootPath, "uploads", relPath);
             if (!System.IO.File.Exists(filepath))
                 return NotFound();
 
@@ -2887,7 +2897,14 @@ namespace LearnLink.Controllers
             bool canPreview = false;
             if (!string.IsNullOrEmpty(resource.FilePath))
             {
-                localUrl = $"/uploads/{resource.FilePath}";
+                if (resource.FilePath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    localUrl = resource.FilePath;
+                }
+                else
+                {
+                    localUrl = resource.FilePath.StartsWith("/uploads/") ? resource.FilePath : $"/uploads/{resource.FilePath}";
+                }
                 canPreview = true;
             }
 
