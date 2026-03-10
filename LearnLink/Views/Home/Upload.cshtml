@@ -131,13 +131,6 @@
         background: rgba(59,125,216,0.04);
     }
 
-    /* Batch Upload */
-    .ll-batch-file-list { max-height: 300px; overflow-y: auto; }
-    .ll-batch-file-item {
-        display: flex; align-items: center; gap: 0.75rem;
-        padding: 0.75rem; border-bottom: 1px solid #f1f5f9;
-    }
-    .ll-batch-file-item:last-child { border-bottom: none; }
 
     /* Access duration date picker */
     input[type="datetime-local"]::-webkit-calendar-picker-indicator {
@@ -158,19 +151,11 @@
                 <span>@(Model == null ? "Upload Materials" : "Edit Resource")</span>
             </div>
         </div>
-        @if (Model == null)
-        {
-        <div class="d-flex gap-2">
-            <button class="ll-btn ll-btn-outline" id="toggleBatchMode" type="button">
-                <i class="bi bi-collection"></i> Batch Upload
-            </button>
-        </div>
-        }
+
     </div>
 </div>
 
-<!-- Single Upload Mode -->
-<div id="singleUploadMode">
+<!-- Upload Form -->
 <div class="row g-4">
     <div class="col-lg-8">
         <div class="ll-card">
@@ -496,118 +481,7 @@
         </div>
     </div>
 </div>
-</div>
 
-<!-- Batch Upload Mode -->
-<div id="batchUploadMode" class="d-none">
-    <div class="ll-card">
-        <div class="ll-card-header d-flex justify-content-between align-items-center">
-            <h5 class="ll-card-title mb-0"><i class="bi bi-collection me-2"></i>Batch Upload</h5>
-            <button class="ll-btn ll-btn-outline ll-btn-sm" id="backToSingleMode" type="button">
-                <i class="bi bi-arrow-left"></i> Single Upload
-            </button>
-        </div>
-        <div class="ll-card-body">
-            <form id="batchUploadForm" action="@Url.Action("BatchUpload", "Home")" method="post" enctype="multipart/form-data">
-                <!-- Batch Drop Zone -->
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Select Files <span class="text-danger">*</span></label>
-                    <div class="ll-dropzone" id="batchDropZone">
-                        <div class="ll-dropzone-icon">
-                            <i class="bi bi-files"></i>
-                        </div>
-                        <div class="fw-semibold mb-1">Drop multiple files here or click to browse</div>
-                        <div class="text-muted small">PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX — Max @(maxFileSizeMB)MB each</div>
-                    </div>
-                    <input type="file" class="d-none" id="batchFileInput" name="files" multiple
-                           accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx">
-                </div>
-
-                <!-- File List -->
-                <div id="batchFileList" class="ll-card mb-4 d-none">
-                    <div class="ll-card-header d-flex justify-content-between align-items-center py-2 px-3">
-                        <small class="fw-semibold"><span id="batchFileCount">0</span> files selected</small>
-                        <button type="button" class="ll-btn ll-btn-outline ll-btn-sm" id="clearBatchFiles">
-                            <i class="bi bi-x-lg"></i> Clear All
-                        </button>
-                    </div>
-                    <div class="ll-batch-file-list" id="batchFileListBody"></div>
-                </div>
-
-                <!-- Shared Metadata -->
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="ll-form-group">
-                            <label class="ll-form-label">Title Prefix</label>
-                            <input type="text" class="ll-form-control" name="titlePrefix" placeholder="e.g., Math Q1 - (auto-numbered)">
-                            <small class="text-muted">Each file will be titled: Prefix + filename</small>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="ll-form-group">
-                            <label class="ll-form-label">Subject <span class="text-danger">*</span></label>
-                            <select class="ll-form-control ll-form-select" name="subject" required>
-                                <option value="">Select subject</option>
-                                @foreach (var subj in subjects)
-                                {
-                                    <option value="@subj">@subj</option>
-                                }
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="ll-form-group">
-                            <label class="ll-form-label">Grade Level <span class="text-danger">*</span></label>
-                            <select class="ll-form-control ll-form-select" name="gradeLevel" required>
-                                <option value="">Select grade</option>
-                                @foreach (var grade in gradeLevels)
-                                {
-                                    <option value="@grade">@grade</option>
-                                }
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="ll-form-group">
-                            <label class="ll-form-label">Resource Type <span class="text-danger">*</span></label>
-                            <select class="ll-form-control ll-form-select" name="resourceType" required>
-                                <option value="">Select type</option>
-                                @foreach (var rt in resourceTypes)
-                                {
-                                    <option value="@rt">@rt</option>
-                                }
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="ll-form-group">
-                            <label class="ll-form-label">Quarter</label>
-                            <select class="ll-form-control ll-form-select" name="quarter">
-                                <option value="">Select quarter</option>
-                                @foreach (var q in quarters)
-                                {
-                                    <option value="@q">@q</option>
-                                }
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="ll-form-group">
-                    <label class="ll-form-label">Description</label>
-                    <textarea class="ll-form-control" rows="3" name="description" placeholder="Shared description for all uploaded files..."></textarea>
-                </div>
-
-                <div class="d-flex gap-2 justify-content-end">
-                    <button type="submit" class="ll-btn ll-btn-primary" id="batchUploadBtn" disabled>
-                        <i class="bi bi-cloud-arrow-up"></i> Upload All Files
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 <!-- Restricted Users Modal -->
 <div class="modal fade" id="restrictedUsersModal" tabindex="-1">
@@ -1142,104 +1016,7 @@
         if (isFormDirty && !isSubmitting) { e.preventDefault(); e.returnValue = ''; }
     });
 
-    // ==================== Batch Upload ====================
-    const toggleBatchBtn = document.getElementById('toggleBatchMode');
-    const backToSingleBtn = document.getElementById('backToSingleMode');
-    const singleMode = document.getElementById('singleUploadMode');
-    const batchMode = document.getElementById('batchUploadMode');
-    const batchDropZone = document.getElementById('batchDropZone');
-    const batchFileInput = document.getElementById('batchFileInput');
-    const batchFileList = document.getElementById('batchFileList');
-    const batchFileListBody = document.getElementById('batchFileListBody');
-    const batchFileCount = document.getElementById('batchFileCount');
-    const batchUploadBtn = document.getElementById('batchUploadBtn');
-    const clearBatchBtn = document.getElementById('clearBatchFiles');
-    let batchFiles = [];
 
-    if (toggleBatchBtn) {
-        toggleBatchBtn.addEventListener('click', () => {
-            singleMode.classList.add('d-none');
-            batchMode.classList.remove('d-none');
-        });
-    }
-    if (backToSingleBtn) {
-        backToSingleBtn.addEventListener('click', () => {
-            batchMode.classList.add('d-none');
-            singleMode.classList.remove('d-none');
-        });
-    }
-
-    function renderBatchFiles() {
-        if (!batchFiles.length) {
-            batchFileList.classList.add('d-none');
-            batchUploadBtn.disabled = true;
-            return;
-        }
-        batchFileList.classList.remove('d-none');
-        batchUploadBtn.disabled = false;
-        batchFileCount.textContent = batchFiles.length;
-
-        batchFileListBody.innerHTML = batchFiles.map((f, i) => {
-            const icon = getFileIcon(f.name);
-            const err = validateFile(f);
-            return `<div class="ll-batch-file-item ${err ? 'bg-danger bg-opacity-10' : ''}">
-                <div class="ll-file-icon" style="background: ${icon.bg}; width: 36px; height: 36px; font-size: 1rem;">
-                    <i class="bi ${icon.icon}"></i>
-                </div>
-                <div class="flex-fill">
-                    <div class="fw-medium small">${f.name}</div>
-                    <small class="text-muted">${formatFileSize(f.size)}</small>
-                    ${err ? `<div class="ll-file-error">${err}</div>` : ''}
-                </div>
-                <button type="button" class="ll-btn ll-btn-outline ll-btn-sm remove-batch-file" data-index="${i}">
-                    <i class="bi bi-x"></i>
-                </button>
-            </div>`;
-        }).join('');
-
-        batchFileListBody.querySelectorAll('.remove-batch-file').forEach(btn => {
-            btn.addEventListener('click', function() {
-                batchFiles.splice(parseInt(this.dataset.index), 1);
-                syncBatchInput();
-                renderBatchFiles();
-            });
-        });
-
-        // Disable submit if any file has errors
-        const hasErrors = batchFiles.some(f => validateFile(f) !== null);
-        batchUploadBtn.disabled = hasErrors;
-    }
-
-    function syncBatchInput() {
-        const dt = new DataTransfer();
-        batchFiles.forEach(f => dt.items.add(f));
-        batchFileInput.files = dt.files;
-    }
-
-    function addBatchFiles(fileList) {
-        for (const f of fileList) {
-            if (!batchFiles.some(bf => bf.name === f.name && bf.size === f.size)) {
-                batchFiles.push(f);
-            }
-        }
-        syncBatchInput();
-        renderBatchFiles();
-    }
-
-    batchDropZone.addEventListener('click', () => batchFileInput.click());
-    batchDropZone.addEventListener('dragover', (e) => { e.preventDefault(); batchDropZone.classList.add('dragover'); });
-    batchDropZone.addEventListener('dragleave', () => batchDropZone.classList.remove('dragover'));
-    batchDropZone.addEventListener('drop', (e) => {
-        e.preventDefault(); batchDropZone.classList.remove('dragover');
-        addBatchFiles(e.dataTransfer.files);
-    });
-    batchFileInput.addEventListener('change', (e) => { addBatchFiles(e.target.files); });
-
-    clearBatchBtn.addEventListener('click', () => {
-        batchFiles = [];
-        batchFileInput.value = '';
-        renderBatchFiles();
-    });
 
     // ==================== Toast ====================
     var hasSuccess = '@(TempData["SuccessMessage"] != null ? "true" : "false")' === 'true';

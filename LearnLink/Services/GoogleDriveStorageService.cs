@@ -65,13 +65,14 @@ public class GoogleDriveStorageService : IStorageService
             };
 
             var request = _driveService.Files.Create(fileMetadata, stream, contentType);
-            request.Fields = "id, name, mimeType, size, webViewLink, webContentLink, createdTime, hasThumbnail, thumbnailLink";
+            request.Fields = "id, name, mimeType, size, webViewLink, webContentLink, createdTime";
 
             var progress = await request.UploadAsync();
             if (progress.Status != Google.Apis.Upload.UploadStatus.Completed)
             {
-                _logger.LogError("Upload incomplete: {Status}", progress.Status);
-                return new StorageResult { Success = false, Message = "Upload failed" };
+                var apiError = progress.Exception?.Message ?? "Unknown Google Drive API error";
+                _logger.LogError(progress.Exception, "Upload incomplete: {Status}. Details: {Error}", progress.Status, apiError);
+                return new StorageResult { Success = false, Message = $"Google Drive Error: {apiError}" };
             }
 
             var file = request.ResponseBody;
@@ -100,7 +101,7 @@ public class GoogleDriveStorageService : IStorageService
                 FileSize = fileSizeMB,
                 WebViewLink = file.WebViewLink,
                 WebContentLink = file.WebContentLink,
-                ThumbnailUrl = file.HasThumbnail == true ? file.ThumbnailLink : null
+                ThumbnailUrl = $"https://drive.google.com/thumbnail?id={file.Id}&sz=w800"
             };
         }
         catch (Exception ex)
