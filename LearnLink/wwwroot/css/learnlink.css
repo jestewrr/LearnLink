@@ -6291,7 +6291,20 @@ a.ll-resource-card-link:hover {
 }
 
 [data-theme="dark"] .ll-card-header {
+    background: #1e293b;
     border-bottom-color: #334155;
+}
+
+[data-theme="dark"] .ll-card > .ll-card-header,
+[data-theme="dark"] .ll-card > .ll-card-body,
+[data-theme="dark"] .ll-card > .ll-card-body > .table-responsive,
+[data-theme="dark"] .ll-card > .ll-card-body > .table-responsive-sm,
+[data-theme="dark"] .ll-card > .ll-card-body > .table-responsive-md,
+[data-theme="dark"] .ll-card > .ll-card-body > .table-responsive-lg,
+[data-theme="dark"] .ll-card > .ll-card-body > .table-responsive-xl,
+[data-theme="dark"] .ll-card > .ll-card-body > .table-responsive-xxl,
+[data-theme="dark"] .ll-card > .ll-card-body > .ll-table-responsive {
+    background-color: #1e293b !important;
 }
 
 [data-theme="dark"] .ll-card-title,
