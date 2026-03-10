@@ -7627,3 +7627,204 @@ a.ll-resource-card-link:hover {
     background: #0f172a;
 }
 
+/* ══════════════════════════════════════════
+   COMPREHENSIVE DARK MODE — ROUND 4
+   Tables, reader layout, auth pages, final gaps
+   ══════════════════════════════════════════ */
+
+/* ── Generic Bootstrap table headers (not just .ll-table) ── */
+[data-theme="dark"] .table thead th,
+[data-theme="dark"] .table > thead {
+    background-color: #0f172a;
+    color: #94a3b8;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .table tbody td {
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .table > :not(caption) > * > * {
+    border-bottom-color: #334155;
+}
+
+/* ── Reader hero section (white bg → dark) ── */
+[data-theme="dark"] .ll-reader-hero {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+/* ── Reader panel title color ── */
+[data-theme="dark"] .ll-reader-panel-title {
+    color: #94a3b8;
+}
+
+/* ── Reader sidebar scrollbar ── */
+[data-theme="dark"] .ll-reader-left,
+[data-theme="dark"] .ll-reader-right {
+    scrollbar-color: #475569 transparent;
+}
+
+[data-theme="dark"] .ll-reader-left::-webkit-scrollbar-thumb,
+[data-theme="dark"] .ll-reader-right::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
+/* ── Auth pages ── */
+[data-theme="dark"] .ll-auth-header {
+    background: #0f172a;
+    border-bottom-color: #334155;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .ll-auth-body,
+[data-theme="dark"] .ll-auth-wrapper {
+    background: #0f172a;
+}
+
+[data-theme="dark"] .ll-auth-right {
+    background: #0f172a;
+}
+
+[data-theme="dark"] .ll-auth-form-card {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .ll-auth-form-title {
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .ll-auth-form-subtitle {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .ll-auth-nav-link {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .ll-auth-nav-link:hover {
+    color: var(--ll-primary);
+}
+
+[data-theme="dark"] .ll-auth-input-group .form-control,
+[data-theme="dark"] .ll-auth-input-group .form-select {
+    background: #0f172a;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-auth-input-icon {
+    color: #64748b;
+}
+
+/* ── Modal header & title ── */
+[data-theme="dark"] .modal-header {
+    border-bottom-color: #334155;
+    background: #1e293b;
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .modal-title {
+    color: #f1f5f9;
+}
+
+/* ── Form check / radio / switch ── */
+[data-theme="dark"] .form-check-label {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .form-check-input {
+    background-color: #334155;
+    border-color: #475569;
+}
+
+[data-theme="dark"] .form-check-input:checked {
+    background-color: var(--ll-primary);
+    border-color: var(--ll-primary);
+}
+
+/* ── Inline "background: white" (word, not hex) ── */
+[data-theme="dark"] [style*="background: white"],
+[data-theme="dark"] [style*="background:white"] {
+    background: #1e293b !important;
+}
+
+/* ── btn-warning with text-dark: preserve dark text on yellow bg ── */
+[data-theme="dark"] .btn-warning.text-dark {
+    color: #1e293b !important;
+}
+
+/* ── Badge + bg-light combinations ── */
+[data-theme="dark"] .badge.bg-light {
+    background-color: #334155 !important;
+}
+
+[data-theme="dark"] .badge.bg-light.text-dark {
+    background-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+/* ── Index.cshtml: public page section text on bg-white override ── */
+[data-theme="dark"] section.bg-white {
+    background-color: #0f172a !important;
+}
+
+[data-theme="dark"] section.bg-white .display-6,
+[data-theme="dark"] section.bg-white h2,
+[data-theme="dark"] section.bg-white h5 {
+    color: #f1f5f9;
+}
+
+/* ── Index.cshtml: #f8fafc section background ── */
+[data-theme="dark"] section[style*="background: #f8fafc"] {
+    background: #0f172a !important;
+}
+
+/* ── Reader description color ── */
+[data-theme="dark"] .ll-reader-description {
+    color: #94a3b8;
+}
+
+/* ── Inline background #fffbeb (light yellow) ── */
+[data-theme="dark"] [style*="background: #fffbeb"],
+[data-theme="dark"] [style*="background:#fffbeb"],
+[data-theme="dark"] [style*="linear-gradient(135deg, #fffbeb"] {
+    background: rgba(245, 158, 11, 0.1) !important;
+}
+
+/* ── btn-outline-primary on auth pages ── */
+[data-theme="dark"] .btn-outline-primary {
+    border-color: var(--ll-primary);
+    color: var(--ll-primary);
+}
+
+[data-theme="dark"] .btn-outline-primary:hover {
+    background: var(--ll-primary);
+    border-color: var(--ll-primary);
+    color: #fff;
+}
+
+/* ── Lesson content text ── */
+[data-theme="dark"] .text-dark.mb-0.fs-6 {
+    color: #e2e8f0 !important;
+}
+
+/* ── Comment section borders ── */
+[data-theme="dark"] .comment-item {
+    border-color: #334155;
+}
+
+/* ── Version history section ── */
+[data-theme="dark"] .version-item {
+    border-color: #334155;
+}
+
+/* ── Register inline bg #fef3c7 circle ── */
+[data-theme="dark"] [style*="background: #fef3c7"],
+[data-theme="dark"] [style*="background:#fef3c7"] {
+    background: rgba(245, 158, 11, 0.2) !important;
+}
+
