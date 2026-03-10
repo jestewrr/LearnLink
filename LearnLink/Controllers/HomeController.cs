@@ -145,6 +145,7 @@ namespace LearnLink.Controllers
             "DOCX" or "DOC" => "bi-file-earmark-word",
             "PPTX" or "PPT" => "bi-file-earmark-ppt",
             "XLSX" or "XLS" => "bi-file-earmark-excel",
+            "LINK" => "bi-link-45deg",
             _ => "bi-file-earmark"
         };
         private static string GetIconColor(string format) => format?.ToUpper() switch
@@ -153,6 +154,7 @@ namespace LearnLink.Controllers
             "DOCX" or "DOC" => "text-primary",
             "PPTX" or "PPT" => "text-warning",
             "XLSX" or "XLS" => "text-success",
+            "LINK" => "text-primary",
             _ => "text-muted"
         };
         private static string GetIconBg(string format) => format?.ToUpper() switch
@@ -161,8 +163,154 @@ namespace LearnLink.Controllers
             "DOCX" or "DOC" => "#dbeafe",
             "PPTX" or "PPT" => "#fef3c7",
             "XLSX" or "XLS" => "#dcfce7",
+            "LINK" => "#dbeafe",
             _ => "#e2e8f0"
         };
+
+        private static bool IsLinkFileFormat(string? fileFormat)
+            => string.Equals(fileFormat?.TrimStart('.'), "LINK", StringComparison.OrdinalIgnoreCase);
+
+        private static string NormalizeExternalResourceUrl(string? rawUrl)
+        {
+            if (string.IsNullOrWhiteSpace(rawUrl))
+            {
+                return string.Empty;
+            }
+
+            var candidate = rawUrl.Trim();
+
+            if (candidate.StartsWith("/books?id=", StringComparison.OrdinalIgnoreCase)
+                || candidate.StartsWith("books?id=", StringComparison.OrdinalIgnoreCase))
+            {
+                candidate = $"https://books.google.com/{candidate.TrimStart('/')}";
+            }
+            else if (candidate.StartsWith("openlibrary.org/", StringComparison.OrdinalIgnoreCase)
+                || candidate.StartsWith("archive.org/", StringComparison.OrdinalIgnoreCase))
+            {
+                candidate = $"https://{candidate}";
+            }
+            else if (candidate.StartsWith("/works/", StringComparison.OrdinalIgnoreCase)
+                || candidate.StartsWith("/books/", StringComparison.OrdinalIgnoreCase))
+            {
+                candidate = $"https://openlibrary.org{candidate}";
+            }
+            else if (candidate.StartsWith("details/", StringComparison.OrdinalIgnoreCase)
+                || candidate.StartsWith("embed/", StringComparison.OrdinalIgnoreCase))
+            {
+                candidate = $"https://archive.org/{candidate}";
+            }
+
+            if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri))
+            {
+                return candidate;
+            }
+
+            var host = uri.Host.ToLowerInvariant();
+            if (host.Contains("books.google."))
+            {
+                var googleBookId = ExtractQueryParameter(uri.Query, "id");
+                if (!string.IsNullOrWhiteSpace(googleBookId))
+                {
+                    return $"https://books.google.com/books?id={Uri.EscapeDataString(googleBookId)}";
+                }
+            }
+
+            if (host.EndsWith("archive.org", StringComparison.OrdinalIgnoreCase))
+            {
+                var identifier = ExtractArchiveIdentifier(uri.AbsolutePath);
+                if (!string.IsNullOrWhiteSpace(identifier))
+                {
+                    return $"https://archive.org/details/{Uri.EscapeDataString(identifier)}";
+                }
+            }
+
+            if (host.EndsWith("openlibrary.org", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"https://openlibrary.org{uri.PathAndQuery}";
+            }
+
+            return uri.ToString();
+        }
+
+        private static string? BuildExternalPreviewUrl(string? externalUrl)
+        {
+            var normalizedUrl = NormalizeExternalResourceUrl(externalUrl);
+            if (string.IsNullOrWhiteSpace(normalizedUrl) || !Uri.TryCreate(normalizedUrl, UriKind.Absolute, out var uri))
+            {
+                return null;
+            }
+
+            var host = uri.Host.ToLowerInvariant();
+            if (host.Contains("books.google."))
+            {
+                var googleBookId = ExtractQueryParameter(uri.Query, "id");
+                return !string.IsNullOrWhiteSpace(googleBookId)
+                    ? $"https://books.google.com/books?id={Uri.EscapeDataString(googleBookId)}&output=embed"
+                    : null;
+            }
+
+            if (host.EndsWith("archive.org", StringComparison.OrdinalIgnoreCase))
+            {
+                var identifier = ExtractArchiveIdentifier(uri.AbsolutePath);
+                return !string.IsNullOrWhiteSpace(identifier)
+                    ? $"https://archive.org/embed/{Uri.EscapeDataString(identifier)}"
+                    : null;
+            }
+
+            return null;
+        }
+
+        private static string GetExternalSourceLabel(string? externalUrl)
+        {
+            var normalizedUrl = NormalizeExternalResourceUrl(externalUrl);
+            if (!Uri.TryCreate(normalizedUrl, UriKind.Absolute, out var uri))
+            {
+                return "External source";
+            }
+
+            var host = uri.Host.ToLowerInvariant();
+            if (host.Contains("books.google.")) return "Google Books";
+            if (host.EndsWith("archive.org", StringComparison.OrdinalIgnoreCase)) return "Internet Archive";
+            if (host.EndsWith("openlibrary.org", StringComparison.OrdinalIgnoreCase)) return "Open Library";
+            return uri.Host;
+        }
+
+        private static string? ExtractArchiveIdentifier(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return null;
+            }
+
+            var segments = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length >= 2
+                && (segments[0].Equals("details", StringComparison.OrdinalIgnoreCase)
+                    || segments[0].Equals("embed", StringComparison.OrdinalIgnoreCase)))
+            {
+                return segments[1];
+            }
+
+            return null;
+        }
+
+        private static string? GetFirstArrayString(System.Text.Json.JsonElement element)
+        {
+            if (element.ValueKind != System.Text.Json.JsonValueKind.Array)
+            {
+                return null;
+            }
+
+            foreach (var item in element.EnumerateArray())
+            {
+                var value = item.GetString();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value;
+                }
+            }
+
+            return null;
+        }
 
 
 
@@ -1390,7 +1538,7 @@ namespace LearnLink.Controllers
 
                         // --- Try Google Books API first ---
                         var apiKey = _configuration["GoogleBooks:ApiKey"];
-                        var googleUrl = $"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=10&printType=books&langRestrict=en";
+                        var googleUrl = $"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=10&printType=books&langRestrict=en&filter=free-ebooks";
                         if (!string.IsNullOrEmpty(apiKey))
                             googleUrl += $"&key={apiKey}";
 
@@ -1412,7 +1560,7 @@ namespace LearnLink.Controllers
                         // --- Fallback: Open Library API (free, no key required) ---
                         if (!googleSuccess)
                         {
-                            var openLibUrl = $"https://openlibrary.org/search.json?q={query}&limit=10&fields=key,title,author_name,first_sentence,subject,cover_i,number_of_pages_median,first_publish_year";
+                            var openLibUrl = $"https://openlibrary.org/search.json?q={query}&limit=10&has_fulltext=true&ebook_access=public&fields=key,title,author_name,first_sentence,subject,cover_i,number_of_pages_median,first_publish_year,ebook_access,public_scan_b,ia";
                             var olResponse = await client.GetAsync(openLibUrl);
 
                             if (olResponse.IsSuccessStatusCode)
@@ -1498,6 +1646,9 @@ namespace LearnLink.Controllers
             int count = 0;
             foreach (var item in items.EnumerateArray())
             {
+                if (!IsGoogleBookFreelyAccessible(item))
+                    continue;
+
                 var volumeInfo = item.GetProperty("volumeInfo");
                 var title = volumeInfo.TryGetProperty("title", out var t) ? t.GetString() : "Unknown Title";
                 if (title != null && title.Length > 95) title = title.Substring(0, 95) + "...";
@@ -1552,6 +1703,39 @@ namespace LearnLink.Controllers
             return NormalizeExternalBookLink(rawLink, 500);
         }
 
+        private static bool IsGoogleBookFreelyAccessible(System.Text.Json.JsonElement item)
+        {
+            if (!item.TryGetProperty("accessInfo", out var accessInfo))
+            {
+                return false;
+            }
+
+            var viewability = accessInfo.TryGetProperty("viewability", out var viewabilityElement)
+                ? viewabilityElement.GetString()
+                : null;
+
+            var isEmbeddable = accessInfo.TryGetProperty("embeddable", out var embeddableElement)
+                && embeddableElement.ValueKind == System.Text.Json.JsonValueKind.True;
+
+            var isPublicDomain = accessInfo.TryGetProperty("publicDomain", out var publicDomainElement)
+                && publicDomainElement.ValueKind == System.Text.Json.JsonValueKind.True;
+
+            var pdfAvailable = accessInfo.TryGetProperty("pdf", out var pdfElement)
+                && pdfElement.TryGetProperty("isAvailable", out var pdfAvailableElement)
+                && pdfAvailableElement.ValueKind == System.Text.Json.JsonValueKind.True;
+
+            var epubAvailable = accessInfo.TryGetProperty("epub", out var epubElement)
+                && epubElement.TryGetProperty("isAvailable", out var epubAvailableElement)
+                && epubAvailableElement.ValueKind == System.Text.Json.JsonValueKind.True;
+
+            return isEmbeddable
+                && (isPublicDomain
+                    || string.Equals(viewability, "ALL_PAGES", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(viewability, "FULL_PUBLIC_DOMAIN", StringComparison.OrdinalIgnoreCase)
+                    || pdfAvailable
+                    || epubAvailable);
+        }
+
         private static string NormalizeExternalBookLink(string? rawLink, int maxLength)
         {
             if (string.IsNullOrWhiteSpace(rawLink))
@@ -1603,6 +1787,9 @@ namespace LearnLink.Controllers
             int count = 0;
             foreach (var doc in docs.EnumerateArray())
             {
+                if (!IsOpenLibraryFreelyAccessible(doc))
+                    continue;
+
                 var title = doc.TryGetProperty("title", out var t) ? t.GetString() : "Unknown Title";
                 if (title != null && title.Length > 95) title = title.Substring(0, 95) + "...";
 
@@ -1625,11 +1812,8 @@ namespace LearnLink.Controllers
                 if (string.IsNullOrWhiteSpace(desc)) desc = "No description available.";
                 if (desc.Length > 490) desc = desc.Substring(0, 490) + "...";
 
-                // Build Open Library link from key (e.g., /works/OL12345W)
-                var key = doc.TryGetProperty("key", out var k) ? k.GetString() : null;
-                if (string.IsNullOrEmpty(key)) continue;
-                var link = $"https://openlibrary.org{key}";
-                if (link.Length > 490) link = link.Substring(0, 490);
+                var link = BuildOpenLibraryLink(doc);
+                if (string.IsNullOrEmpty(link)) continue;
 
                 _context.Resources.Add(new Resource
                 {
@@ -1650,6 +1834,37 @@ namespace LearnLink.Controllers
                 count++;
             }
             return count;
+        }
+
+        private static bool IsOpenLibraryFreelyAccessible(System.Text.Json.JsonElement doc)
+        {
+            var ebookAccess = doc.TryGetProperty("ebook_access", out var ebookAccessElement)
+                ? ebookAccessElement.GetString()
+                : null;
+
+            var isPublic = string.Equals(ebookAccess, "public", StringComparison.OrdinalIgnoreCase);
+            var publicScan = doc.TryGetProperty("public_scan_b", out var publicScanElement)
+                && publicScanElement.ValueKind == System.Text.Json.JsonValueKind.True;
+
+            var hasArchiveIdentifier = doc.TryGetProperty("ia", out var iaElement)
+                && !string.IsNullOrWhiteSpace(GetFirstArrayString(iaElement));
+
+            return (isPublic || publicScan) && hasArchiveIdentifier;
+        }
+
+        private static string BuildOpenLibraryLink(System.Text.Json.JsonElement doc)
+        {
+            if (doc.TryGetProperty("ia", out var iaElement))
+            {
+                var archiveIdentifier = GetFirstArrayString(iaElement);
+                if (!string.IsNullOrWhiteSpace(archiveIdentifier))
+                {
+                    return $"https://archive.org/details/{Uri.EscapeDataString(archiveIdentifier)}";
+                }
+            }
+
+            var key = doc.TryGetProperty("key", out var keyElement) ? keyElement.GetString() : null;
+            return string.IsNullOrWhiteSpace(key) ? string.Empty : NormalizeExternalResourceUrl($"https://openlibrary.org{key}");
         }
 
         private static string GetTimeAgo(DateTime dt)
@@ -2306,8 +2521,23 @@ namespace LearnLink.Controllers
             // File preview/download URL
             string fileUrl = string.Empty;
             bool canPreview = false;
+            ViewBag.ExternalSourceUrl = string.Empty;
+            ViewBag.ExternalPreviewUrl = string.Empty;
+            ViewBag.ExternalSourceLabel = string.Empty;
 
-            if (!string.IsNullOrEmpty(resource.FilePath))
+            if (IsLinkFileFormat(resource.FileFormat))
+            {
+                var externalUrl = NormalizeExternalResourceUrl(resource.FilePath);
+                if (!string.IsNullOrEmpty(externalUrl))
+                {
+                    fileUrl = externalUrl;
+                    canPreview = true;
+                    ViewBag.ExternalSourceUrl = externalUrl;
+                    ViewBag.ExternalPreviewUrl = BuildExternalPreviewUrl(externalUrl) ?? string.Empty;
+                    ViewBag.ExternalSourceLabel = GetExternalSourceLabel(externalUrl);
+                }
+            }
+            else if (!string.IsNullOrEmpty(resource.FilePath))
             {
                 if (resource.FilePath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                 {
@@ -2432,12 +2662,18 @@ namespace LearnLink.Controllers
                 "DOCX" or "DOC" => "Word Document",
                 "PPTX" or "PPT" => "PowerPoint Presentation",
                 "XLSX" or "XLS" => "Excel Spreadsheet",
+                "LINK" => "External Link",
                 _ => "Document"
             };
 
             // Compute preview URL for embedded viewer
             string? previewUrl = null;
-            if (!string.IsNullOrEmpty(resource.FilePath))
+            if (IsLinkFileFormat(resource.FileFormat))
+            {
+                var externalUrl = NormalizeExternalResourceUrl(resource.FilePath);
+                previewUrl = BuildExternalPreviewUrl(externalUrl);
+            }
+            else if (!string.IsNullOrEmpty(resource.FilePath))
             {
                 if (resource.FilePath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                 {
@@ -2505,7 +2741,9 @@ namespace LearnLink.Controllers
                 categories = vm.Categories,
                 createdAt = vm.CreatedAt.ToString("MMM dd, yyyy"),
                 detailUrl = Url.Action("ResourceDetail", "Home", new { id = vm.Id }),
-                previewUrl = previewUrl
+                previewUrl = previewUrl,
+                sourceUrl = IsLinkFileFormat(resource.FileFormat) ? NormalizeExternalResourceUrl(resource.FilePath) : null,
+                sourceLabel = IsLinkFileFormat(resource.FileFormat) ? GetExternalSourceLabel(resource.FilePath) : null
             });
         }
 
@@ -3116,7 +3354,22 @@ namespace LearnLink.Controllers
             // Local file preview
             string localUrl = string.Empty;
             bool canPreview = false;
-            if (!string.IsNullOrEmpty(resource.FilePath))
+            ViewBag.ExternalSourceUrl = string.Empty;
+            ViewBag.ExternalPreviewUrl = string.Empty;
+            ViewBag.ExternalSourceLabel = string.Empty;
+
+            if (IsLinkFileFormat(resource.FileFormat))
+            {
+                localUrl = NormalizeExternalResourceUrl(resource.FilePath);
+                if (!string.IsNullOrEmpty(localUrl))
+                {
+                    ViewBag.ExternalSourceUrl = localUrl;
+                    ViewBag.ExternalPreviewUrl = BuildExternalPreviewUrl(localUrl) ?? string.Empty;
+                    ViewBag.ExternalSourceLabel = GetExternalSourceLabel(localUrl);
+                    canPreview = true;
+                }
+            }
+            else if (!string.IsNullOrEmpty(resource.FilePath))
             {
                 if (resource.FilePath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                 {

@@ -6091,6 +6091,24 @@ a.ll-resource-card-link:hover {
 .ll-reader-meta-uploader strong {
     color: #1e293b;
 }
+.ll-reader-meta-source-link {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 14px;
+    font-size: 0.82rem;
+    color: #64748b;
+}
+.ll-reader-meta-source-link a {
+    color: var(--ll-primary);
+    font-weight: 600;
+    text-decoration: none;
+    word-break: break-word;
+}
+.ll-reader-meta-source-link a:hover {
+    text-decoration: underline;
+}
 .ll-reader-meta-divider {
     border: none;
     border-top: 1px solid #e8ecf1;
@@ -6900,6 +6918,14 @@ a.ll-resource-card-link:hover {
 
 [data-theme="dark"] .ll-reader-meta-uploader strong {
     color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-reader-meta-source-link {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .ll-reader-meta-source-link a {
+    color: #60a5fa;
 }
 
 [data-theme="dark"] .ll-reader-meta-divider {
