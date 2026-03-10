@@ -65,6 +65,7 @@ public class GoogleDriveStorageService : IStorageService
             };
 
             var request = _driveService.Files.Create(fileMetadata, stream, contentType);
+            request.SupportsAllDrives = true; // Fix for storage quota error
             request.Fields = "id, name, mimeType, size, webViewLink, webContentLink, createdTime";
 
             var progress = await request.UploadAsync();
@@ -85,7 +86,9 @@ public class GoogleDriveStorageService : IStorageService
                     Type = "anyone",
                     Role = "reader"
                 };
-                await _driveService.Permissions.Create(permission, file.Id).ExecuteAsync();
+                var permissionRequest = _driveService.Permissions.Create(permission, file.Id);
+                permissionRequest.SupportsAllDrives = true;
+                await permissionRequest.ExecuteAsync();
             }
             catch (Exception ex)
             {
@@ -117,7 +120,9 @@ public class GoogleDriveStorageService : IStorageService
 
         try
         {
-            await _driveService.Files.Delete(fileId).ExecuteAsync();
+            var deleteRequest = _driveService.Files.Delete(fileId);
+            deleteRequest.SupportsAllDrives = true;
+            await deleteRequest.ExecuteAsync();
             return true;
         }
         catch (Exception ex)
@@ -134,8 +139,9 @@ public class GoogleDriveStorageService : IStorageService
         try
         {
             var stream = new MemoryStream();
-            var request = _driveService.Files.Get(fileId);
-            await request.DownloadAsync(stream);
+            var downloadRequest = _driveService.Files.Get(fileId);
+            downloadRequest.SupportsAllDrives = true;
+            await downloadRequest.DownloadAsync(stream);
             stream.Position = 0;
             return stream;
         }
