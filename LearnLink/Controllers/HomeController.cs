@@ -2291,7 +2291,26 @@ namespace LearnLink.Controllers
                 else
                 {
                     // Local file
-                    previewUrl = _storage.GetPreviewUrl(resource.FilePath, resource.FileFormat);
+                    var fmt = resource.FileFormat?.TrimStart('.').Trim().ToUpperInvariant() ?? "";
+                    var isImage = fmt is "JPG" or "JPEG" or "PNG" or "GIF" or "WEBP" or "BMP" or "SVG";
+                    var isOffice = fmt is "DOCX" or "DOC" or "PPTX" or "PPT" or "XLSX" or "XLS";
+
+                    if (isImage || fmt == "PDF")
+                    {
+                        previewUrl = Url.Action("DownloadResource", "Home", new { id = resource.ResourceId, inline = true });
+                        if (fmt == "PDF") previewUrl += "#view=FitH";
+                    }
+                    else if (isOffice)
+                    {
+                        var req = Request;
+                        var isLocalhost = req.Host.Host == "localhost" || req.Host.Host == "127.0.0.1";
+                        if (!isLocalhost)
+                        {
+                            var fileUrl = _storage.GetDirectDownloadUrl(resource.FilePath);
+                            var fullUrl = $"{req.Scheme}://{req.Host}{fileUrl}";
+                            previewUrl = "https://view.officeapps.live.com/op/embed.aspx?src=" + Uri.EscapeDataString(fullUrl);
+                        }
+                    }
                 }
             }
 

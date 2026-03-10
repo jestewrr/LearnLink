@@ -5431,10 +5431,9 @@ a.ll-resource-card-link:hover {
     transform: scale(1.1);
 }
 .ll-preview-strip {
-    background: linear-gradient(180deg, #e8ecf3 0%, #f0f2f7 100%);
-    padding: 20px 24px;
+    background: #f1f4f9;
+    padding: 0;
     display: flex;
-    gap: 14px;
     overflow-x: auto;
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -5572,7 +5571,7 @@ a.ll-resource-card-link:hover {
     display: flex;
     align-items: stretch;
     justify-content: center;
-    padding: 16px;
+    padding: 0;
     min-height: 85vh;
 }
 .ll-reader-viewer-frame iframe,
@@ -5581,9 +5580,9 @@ a.ll-resource-card-link:hover {
     height: 100%;
     min-height: 80vh;
     border: none;
-    border-radius: 4px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
-    background: #fff;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
 }
 .ll-reader-sidebar-right {
     background: #fff;
