@@ -3355,20 +3355,38 @@ namespace LearnLink.Controllers
         {
             var currentUser = await GetCurrentUserAsync();
             ViewBag.CurrentUserId = currentUser?.Id;
+            ViewBag.CurrentUserInitials = currentUser?.Initials ?? "?";
+            ViewBag.CurrentUserColor = currentUser?.AvatarColor ?? "";
+            ViewBag.CurrentUserName = currentUser?.FullName ?? "";
+
             var discussions = await _context.Discussions
                 .Include(d => d.User)
                 .Include(d => d.Posts)
+                    .ThenInclude(p => p.User)
                 .OrderByDescending(d => d.DateCreated)
                 .ToListAsync();
 
             var likedIds = new HashSet<int>();
+            var likedReplyIds = new HashSet<int>();
             if (currentUser != null)
             {
                 likedIds = (await _context.Likes
                     .Where(l => l.UserId == currentUser.Id && l.TargetType == "Discussion")
                     .Select(l => l.TargetId)
                     .ToListAsync()).ToHashSet();
+                likedReplyIds = (await _context.Likes
+                    .Where(l => l.UserId == currentUser.Id && l.TargetType == "Reply")
+                    .Select(l => l.TargetId)
+                    .ToListAsync()).ToHashSet();
             }
+
+            // Get liker names per discussion (top 3 for preview)
+            var discussionIds = discussions.Select(d => d.DiscussionId).ToList();
+            var likersByDiscussion = await _context.Likes
+                .Where(l => l.TargetType == "Discussion" && discussionIds.Contains(l.TargetId))
+                .Include(l => l.User)
+                .GroupBy(l => l.TargetId)
+                .ToDictionaryAsync(g => g.Key, g => g.OrderByDescending(l => l.CreatedAt).Take(3).Select(l => l.User?.FullName ?? "Someone").ToList());
 
             // Calculate popular tags
             var allTagsStr = await _context.Discussions
@@ -3391,7 +3409,29 @@ namespace LearnLink.Controllers
             }
             ViewBag.PopularTags = tagCounts.OrderByDescending(kv => kv.Value).Select(kv => kv.Key).Take(15).ToList();
 
-            ViewBag.Discussions = discussions.Select(d => MapDiscussion(d, likedIds.Contains(d.DiscussionId))).ToList();
+            // Active contributors
+            var topContributors = discussions
+                .Where(d => d.User != null)
+                .GroupBy(d => d.UserId)
+                .Select(g => new { User = g.First().User!, Count = g.Count() })
+                .OrderByDescending(x => x.Count)
+                .Take(5)
+                .Select(x => new { Name = x.User.FullName, Initials = x.User.Initials ?? "?", Color = x.User.AvatarColor ?? "", Posts = x.Count })
+                .ToList();
+            ViewBag.TopContributors = topContributors;
+
+            ViewBag.Discussions = discussions.Select(d => {
+                var vm = MapDiscussion(d, likedIds.Contains(d.DiscussionId));
+                vm.LikerNames = likersByDiscussion.ContainsKey(d.DiscussionId) ? likersByDiscussion[d.DiscussionId] : new List<string>();
+                // Latest 2 replies for inline preview
+                vm.LatestReplies = (d.Posts ?? new List<DiscussionPost>())
+                    .OrderByDescending(p => p.DatePosted)
+                    .Take(2)
+                    .Select(p => MapReply(p, likedReplyIds.Contains(p.PostId)))
+                    .Reverse()
+                    .ToList();
+                return vm;
+            }).ToList();
             return View();
         }
 
@@ -3554,10 +3594,66 @@ namespace LearnLink.Controllers
         }
 
         [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> GetDiscussionLikers(int id, string type = "Discussion")
+        {
+            var likers = await _context.Likes
+                .Where(l => l.TargetType == type && l.TargetId == id)
+                .Include(l => l.User)
+                .OrderByDescending(l => l.CreatedAt)
+                .Select(l => new { 
+                    name = l.User != null ? l.User.FirstName + " " + l.User.LastName : "Someone",
+                    initials = l.User != null ? l.User.Initials : "?",
+                    color = l.User != null ? l.User.AvatarColor : "",
+                    role = "User"
+                })
+                .ToListAsync();
+            return Json(likers);
+        }
+
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> QuickReply(int discussionId, string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+                return Json(new { success = false });
+
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Json(new { success = false });
+
+            var post = new DiscussionPost
+            {
+                DiscussionId = discussionId,
+                UserId = currentUser.Id,
+                Content = System.Net.WebUtility.HtmlEncode(content),
+                DatePosted = DateTime.Now
+            };
+
+            _context.DiscussionPosts.Add(post);
+            await _context.SaveChangesAsync();
+
+            return Json(new { 
+                success = true, 
+                reply = new {
+                    id = post.PostId,
+                    content = post.Content,
+                    author = currentUser.FullName,
+                    initials = currentUser.Initials ?? "?",
+                    color = currentUser.AvatarColor ?? "",
+                    time = "Just now"
+                }
+            });
+        }
+
+        [Authorize]
         public async Task<IActionResult> Discussions(int id)
         {
             var currentUser = await GetCurrentUserAsync();
             ViewBag.CurrentUserId = currentUser?.Id;
+            ViewBag.CurrentUserInitials = currentUser?.Initials ?? "?";
+            ViewBag.CurrentUserColor = currentUser?.AvatarColor ?? "";
+            ViewBag.CurrentUserName = currentUser?.FullName ?? "";
+
             var discussions = await _context.Discussions
                 .Include(d => d.User)
                 .Include(d => d.Posts)
@@ -3568,22 +3664,41 @@ namespace LearnLink.Controllers
 
             if (discussion == null) return RedirectToAction("KnowledgePortal");
 
+            // Increment view count
+            discussion.ViewCount++;
+            await _context.SaveChangesAsync();
+
             var posts = await _context.DiscussionPosts
                 .Include(p => p.User)
                 .Where(p => p.DiscussionId == discussion.DiscussionId)
-                .OrderByDescending(p => p.DatePosted)
+                .OrderBy(p => p.DatePosted)
                 .ToListAsync();
 
             var likedReplyIds = new HashSet<int>();
+            var isDiscussionLiked = false;
             if (currentUser != null)
             {
                 likedReplyIds = (await _context.Likes
                     .Where(l => l.UserId == currentUser.Id && l.TargetType == "Reply")
                     .Select(l => l.TargetId)
                     .ToListAsync()).ToHashSet();
+                isDiscussionLiked = await _context.Likes
+                    .AnyAsync(l => l.UserId == currentUser.Id && l.TargetType == "Discussion" && l.TargetId == discussion.DiscussionId);
             }
 
-            ViewBag.Discussion = MapDiscussion(discussion);
+            // Get liker names for discussion
+            var discLikers = await _context.Likes
+                .Where(l => l.TargetType == "Discussion" && l.TargetId == discussion.DiscussionId)
+                .Include(l => l.User)
+                .OrderByDescending(l => l.CreatedAt)
+                .Take(10)
+                .Select(l => l.User != null ? l.User.FirstName + " " + l.User.LastName : "Someone")
+                .ToListAsync();
+
+            var discVm = MapDiscussion(discussion, isDiscussionLiked);
+            discVm.LikerNames = discLikers;
+
+            ViewBag.Discussion = discVm;
             ViewBag.Replies = posts.Select(p => MapReply(p, likedReplyIds.Contains(p.PostId))).ToList();
             ViewBag.SimilarDiscussions = discussions
                 .Where(d => d.DiscussionId != discussion.DiscussionId)

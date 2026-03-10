@@ -71,6 +71,8 @@ namespace LearnLink.Models
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public string Status { get; set; } = "Open";
         public bool IsLiked { get; set; }
+        public List<string> LikerNames { get; set; } = new();
+        public List<ReplyViewModel> LatestReplies { get; set; } = new();
     }
 
     public class ReplyViewModel

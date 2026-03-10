@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "Discussions";
+    ViewData["Title"] = "Discussion";
     ViewData["ActivePage"] = "Discussions";
 
     var discussion = ViewBag.Discussion as LearnLink.Models.DiscussionViewModel;
@@ -7,184 +7,272 @@
     var similarDiscussions = ViewBag.SimilarDiscussions as List<LearnLink.Models.DiscussionViewModel> ?? new List<LearnLink.Models.DiscussionViewModel>();
 }
 
-<!-- Page Header -->
-<div class="ll-page-header">
-    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
-        <div>
-            <h1 class="ll-page-title">Discussions</h1>
-            <div class="ll-breadcrumb">
-                <a href="@Url.Action("Dashboard", "Home")">Home</a>
-                <i class="bi bi-chevron-right small"></i>
-                <a href="@Url.Action("KnowledgePortal", "Home")">Knowledge Sharing</a>
-                <i class="bi bi-chevron-right small"></i>
-                <span>Discussions</span>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Discussion Thread -->
 <div class="row g-4">
+    <!-- Main Content -->
     <div class="col-lg-8">
         @if (discussion != null)
         {
-        <!-- Main Discussion -->
-        <div class="ll-card mb-4">
-            <div class="ll-card-body">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    @{
-                        var typeClass = discussion.Type switch
-                        {
-                            "Question" => "ll-badge-info",
-                            "Idea" => "ll-badge-info",
-                            "Resource" => "ll-badge-success",
-                            "Study Group" => "ll-badge-warning",
-                            _ => "ll-badge-info"
-                        };
-                    }
-                    <span class="ll-badge @typeClass">@discussion.Type</span>
+            var typeIcon = discussion.Type == "Question" ? "bi-question-circle-fill text-primary"
+                : discussion.Type == "Idea" ? "bi-lightbulb-fill text-warning"
+                : discussion.Type == "Resource" ? "bi-file-earmark-fill text-success"
+                : discussion.Type == "Study Group" ? "bi-people-fill text-info"
+                : "bi-chat-fill text-secondary";
+            var totalMins = (DateTime.Now - discussion.CreatedAt).TotalMinutes;
+            var timeAgo = totalMins < 1 ? "Just now"
+                : totalMins < 60 ? (int)totalMins + " minutes ago"
+                : totalMins < 1440 ? (int)(DateTime.Now - discussion.CreatedAt).TotalHours + " hours ago"
+                : totalMins < 10080 ? (int)(DateTime.Now - discussion.CreatedAt).TotalDays + " days ago"
+                : discussion.CreatedAt.ToString("MMMM dd, yyyy");
+
+        <!-- Main Post -->
+        <div class="fb-card mb-3">
+            <!-- Post Header -->
+            <div class="fb-card-body pb-0">
+                <div class="d-flex align-items-start gap-3 mb-3">
+                    <div class="fb-avatar-lg" style="@(discussion.AuthorColor ?? "")">@discussion.AuthorInitials</div>
+                    <div class="flex-fill">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-bold fs-6">@discussion.Author</span>
+                            <i class="@typeIcon" title="@discussion.Type"></i>
+                        </div>
+                        <div class="small text-muted">@discussion.AuthorRole · @timeAgo · <i class="bi bi-globe2"></i></div>
+                    </div>
                     <div class="d-flex gap-2">
-                        <button class="ll-btn ll-btn-outline ll-btn-sm" id="bookmarkDiscBtn"><i class="bi bi-bookmark"></i></button>
-                        <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-share"></i></button>
-                        @if (ViewBag.CurrentUserId != null && ViewBag.CurrentUserId == discussion.UserId || User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
+                        <button class="btn btn-sm btn-light rounded-circle" id="bookmarkDiscBtn" title="Bookmark">
+                            <i class="bi bi-bookmark"></i>
+                        </button>
+                        @if (ViewBag.CurrentUserId != null && (ViewBag.CurrentUserId == discussion.UserId || User.IsInRole("SuperAdmin") || User.IsInRole("Manager")))
                         {
-                            <div class="dropdown">
-                                <button class="ll-btn ll-btn-outline ll-btn-sm" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item edit-disc-btn" href="#" 
-                                           data-id="@discussion.Id" 
-                                           data-title="@discussion.Title" 
-                                           data-content="@discussion.Content" 
-                                           data-type="@discussion.Type"><i class="bi bi-pencil me-2"></i>Edit</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger delete-disc-btn" href="#" data-id="@discussion.Id"><i class="bi bi-trash me-2"></i>Delete</a></li>
-                                </ul>
-                            </div>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light rounded-circle" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                <li><a class="dropdown-item edit-disc-btn" href="#"
+                                       data-id="@discussion.Id" data-title="@discussion.Title"
+                                       data-content="@discussion.Content" data-type="@discussion.Type"><i class="bi bi-pencil me-2"></i>Edit Post</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger delete-disc-btn" href="#" data-id="@discussion.Id"><i class="bi bi-trash me-2"></i>Delete Post</a></li>
+                            </ul>
+                        </div>
                         }
                     </div>
                 </div>
 
+                <!-- Post Content -->
                 <h4 class="fw-bold mb-3">@discussion.Title</h4>
-
-                <div class="d-flex gap-3 mb-4">
-                    <div class="ll-discussion-avatar" style="width: 48px; height: 48px; @(discussion.AuthorColor ?? "")">@discussion.AuthorInitials</div>
-                    <div>
-                        <div class="fw-bold">@discussion.Author</div>
-                        <div class="small text-muted">@discussion.AuthorRole • Posted @((DateTime.Now - discussion.CreatedAt).TotalHours switch { < 1 => "just now", < 24 => (int)((DateTime.Now - discussion.CreatedAt).TotalHours) + " hours ago", _ => (int)((DateTime.Now - discussion.CreatedAt).TotalDays) + " days ago" })</div>
-                    </div>
-                </div>
-
-                <div class="mb-4">
+                <div class="fb-post-content mb-3" style="font-size: 0.95rem; line-height: 1.7;">
                     @Html.Raw(discussion.Content)
                 </div>
 
-                <div class="d-flex flex-wrap gap-2 mb-4">
+                @if (discussion.Tags.Any())
+                {
+                <div class="d-flex flex-wrap gap-1 mb-3">
                     @foreach (var tag in discussion.Tags)
                     {
-                    <span class="ll-tag">@tag</span>
+                        <span class="fb-tag">#@tag</span>
                     }
                 </div>
-
-                <div class="d-flex justify-content-between align-items-center border-top pt-3">
-                    <div class="d-flex gap-3">
-                        <button class="ll-btn ll-btn-outline ll-btn-sm disc-like-btn" data-id="@discussion.Id">
-                            <i class="bi bi-heart@(discussion.IsLiked ? "-fill text-danger" : "")"></i> <span class="like-count">@discussion.LikeCount</span>
-                        </button>
-                        <span class="small text-muted d-flex align-items-center gap-1">
-                            <i class="bi bi-eye"></i> @discussion.ViewCount views
-                        </span>
-                    </div>
-                    <button class="ll-btn ll-btn-primary ll-btn-sm" onclick="document.getElementById('replyEditor').querySelector('.ql-editor').focus();">
-                        <i class="bi bi-reply"></i> Reply
-                    </button>
-                </div>
+                }
             </div>
-        </div>
-        }
 
-        <!-- Replies -->
-        <h6 class="fw-bold text-muted mb-3">@replies.Count Replies</h6>
-
-        @foreach (var reply in replies)
-        {
-        <div class="ll-card mb-3" @(reply.IsBestAnswer ? "style=\"border: 2px solid #22c55e;\"" : "")>
-            @if (reply.IsBestAnswer)
-            {
-            <div class="ll-card-header bg-success bg-opacity-10">
-                <span class="fw-bold text-success"><i class="bi bi-check-circle-fill me-2"></i>Best Answer</span>
-            </div>
-            }
-            <div class="ll-card-body">
-                <div class="d-flex gap-3 mb-3">
-                    <div class="ll-discussion-avatar" style="width: 40px; height: 40px; @(reply.AuthorColor ?? "")">@reply.AuthorInitials</div>
-                    <div class="flex-fill">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <span class="fw-bold">@reply.Author</span>
-                                @{
-                                    var roleClass = reply.AuthorRole switch
-                                    {
-                                        "Moderator" => "ll-badge-danger",
-                                        "Contributor" => "ll-badge-warning",
-                                        _ => "ll-badge-info"
-                                    };
+            <!-- Engagement Summary -->
+            <div class="fb-card-body py-2 border-top border-bottom">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="fb-likes-summary" @(discussion.LikeCount > 0 ? $"onclick=\"showLikers({discussion.Id}, 'Discussion')\" style=\"cursor:pointer\"" : "")>
+                        @if (discussion.LikeCount > 0)
+                        {
+                            <span class="fb-like-icon-sm"><i class="bi bi-heart-fill"></i></span>
+                            @if (discussion.LikerNames.Any())
+                            {
+                                var firstName = discussion.LikerNames.First();
+                                var othersCount = discussion.LikeCount - 1;
+                                @if (othersCount > 0)
+                                {
+                                    <span class="text-muted small">@firstName and @othersCount other@(othersCount > 1 ? "s" : "")</span>
                                 }
-                                <span class="ll-badge @roleClass ms-2" style="font-size: 0.65rem;">@reply.AuthorRole</span>
-                            </div>
-                            <span class="small text-muted">@((DateTime.Now - reply.CreatedAt).TotalMinutes switch { < 60 => (int)((DateTime.Now - reply.CreatedAt).TotalMinutes) + " minutes ago", < 1440 => (int)((DateTime.Now - reply.CreatedAt).TotalHours) + " hours ago", _ => (int)((DateTime.Now - reply.CreatedAt).TotalDays) + " days ago" })</span>
-                        </div>
-                        <div class="small text-muted">@reply.AuthorTitle</div>
+                                else
+                                {
+                                    <span class="text-muted small">@firstName</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted small">@discussion.LikeCount</span>
+                            }
+                        }
+                    </div>
+                    <div class="d-flex gap-3">
+                        <span class="text-muted small">@replies.Count comment@(replies.Count != 1 ? "s" : "")</span>
+                        <span class="text-muted small">@discussion.ViewCount views</span>
                     </div>
                 </div>
-                @Html.Raw(reply.Content)
-                <div class="d-flex gap-2 mt-3">
-                    <button class="ll-btn ll-btn-outline ll-btn-sm reply-like-btn" data-id="@reply.Id">
-                        <i class="bi @(reply.IsLiked ? "bi-heart-fill text-danger" : "bi-heart")"></i> <span class="like-count">@reply.LikeCount</span>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="fb-card-body py-1">
+                <div class="d-flex justify-content-around">
+                    <button class="fb-action-btn disc-like-btn @(discussion.IsLiked ? "active" : "")" data-id="@discussion.Id">
+                        <i class="bi @(discussion.IsLiked ? "bi-heart-fill" : "bi-heart")"></i> Like
                     </button>
-                    <button class="ll-btn ll-btn-outline ll-btn-sm"><i class="bi bi-reply"></i> Reply</button>
-                    @if (ViewBag.CurrentUserId != null && ViewBag.CurrentUserId == reply.UserId || User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
-                    {
-                        <button class="ll-btn ll-btn-outline ll-btn-sm text-danger delete-reply-btn" data-id="@reply.Id"><i class="bi bi-trash"></i></button>
-                    }
+                    <button class="fb-action-btn" onclick="document.getElementById('replyEditor').querySelector('.ql-editor').focus();">
+                        <i class="bi bi-chat"></i> Comment
+                    </button>
+                    <button class="fb-action-btn fb-share-btn" data-id="@discussion.Id">
+                        <i class="bi bi-share"></i> Share
+                    </button>
                 </div>
             </div>
         </div>
         }
 
-        <!-- Add Reply Box -->
-        <div class="ll-card">
-            <div class="ll-card-body">
-                <h6 class="fw-bold mb-3">Add Your Reply</h6>
-                <form asp-action="PostReply" method="post">
-                    <input type="hidden" name="discussionId" value="@(discussion?.Id ?? 1)" />
-                    <div id="replyEditor" style="min-height: 100px;"></div>
-                    <input type="hidden" name="content" id="replyHidden" />
-                    <div class="d-flex justify-content-end align-items-center mt-3">
-                        <button type="submit" class="ll-btn ll-btn-primary">
-                            <i class="bi bi-send"></i> Post Reply
-                        </button>
+        <!-- Comments Section -->
+        <div class="fb-card mb-3">
+            <div class="fb-card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0">Comments</h6>
+                    <span class="text-muted small">@replies.Count total</span>
+                </div>
+
+                @foreach (var reply in replies)
+                {
+                    var replyMins = (DateTime.Now - reply.CreatedAt).TotalMinutes;
+                    var replyTime = replyMins < 1 ? "Just now"
+                        : replyMins < 60 ? (int)replyMins + "m"
+                        : replyMins < 1440 ? (int)(DateTime.Now - reply.CreatedAt).TotalHours + "h"
+                        : replyMins < 10080 ? (int)(DateTime.Now - reply.CreatedAt).TotalDays + "d"
+                        : reply.CreatedAt.ToString("MMM dd");
+
+                <div class="fb-comment @(reply.IsBestAnswer ? "fb-comment-best" : "") mb-3">
+                    @if (reply.IsBestAnswer)
+                    {
+                        <div class="fb-best-answer-badge mb-2">
+                            <i class="bi bi-check-circle-fill me-1"></i> Best Answer
+                        </div>
+                    }
+                    <div class="d-flex gap-2">
+                        <div class="fb-avatar-sm flex-shrink-0" style="@(reply.AuthorColor ?? "")">@reply.AuthorInitials</div>
+                        <div class="flex-fill">
+                            <div class="fb-comment-bubble">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span class="fw-bold small">@reply.Author</span>
+                                    @if (!string.IsNullOrEmpty(reply.AuthorTitle))
+                                    {
+                                        <span class="text-muted" style="font-size: 0.7rem;">· @reply.AuthorTitle</span>
+                                    }
+                                </div>
+                                <div class="small">@Html.Raw(reply.Content)</div>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 mt-1 ms-2">
+                                <button class="fb-comment-action reply-like-btn @(reply.IsLiked ? "active" : "")" data-id="@reply.Id">Like</button>
+                                <span class="fb-comment-action">Reply</span>
+                                @if (reply.LikeCount > 0)
+                                {
+                                    <span class="fb-comment-likes" onclick="showLikers(@reply.Id, 'Reply')" style="cursor:pointer">
+                                        <i class="bi bi-heart-fill" style="font-size: 0.6rem;"></i> @reply.LikeCount
+                                    </span>
+                                }
+                                <span class="text-muted" style="font-size: 0.7rem;">@replyTime</span>
+                                @if (ViewBag.CurrentUserId != null && (ViewBag.CurrentUserId == reply.UserId || User.IsInRole("SuperAdmin") || User.IsInRole("Manager")))
+                                {
+                                    <button class="fb-comment-action text-danger delete-reply-btn" data-id="@reply.Id">Delete</button>
+                                }
+                            </div>
+                        </div>
                     </div>
-                </form>
+                </div>
+                }
+
+                @if (!replies.Any())
+                {
+                    <div class="text-center py-4">
+                        <i class="bi bi-chat-square text-muted" style="font-size: 2rem;"></i>
+                        <p class="text-muted small mt-2 mb-0">No comments yet. Be the first to share your thoughts!</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Write Comment Box -->
+        <div class="fb-card">
+            <div class="fb-card-body">
+                <div class="d-flex gap-3">
+                    <div class="fb-avatar flex-shrink-0" style="@(ViewBag.CurrentUserColor ?? "")">@(ViewBag.CurrentUserInitials ?? "?")</div>
+                    <div class="flex-fill">
+                        <form asp-action="PostReply" method="post">
+                            <input type="hidden" name="discussionId" value="@(discussion?.Id ?? 1)" />
+                            <div id="replyEditor" class="fb-reply-editor"></div>
+                            <input type="hidden" name="content" id="replyHidden" />
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <div class="small text-muted">Press Enter to format, use toolbar for rich text</div>
+                                <button type="submit" class="btn btn-primary rounded-pill px-4 btn-sm fw-bold">
+                                    <i class="bi bi-send-fill me-1"></i> Post
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Sidebar -->
     <div class="col-lg-4">
-        <!-- Similar Discussions -->
-        <div class="ll-card">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title">Similar Discussions</h5>
+        <!-- About This Discussion -->
+        @if (discussion != null)
+        {
+        <div class="fb-card mb-3">
+            <div class="fb-card-body">
+                <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-2"></i>About This Discussion</h6>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <i class="bi bi-clock text-muted"></i>
+                    <span class="small">Created @discussion.CreatedAt.ToString("MMMM dd, yyyy")</span>
+                </div>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <i class="bi bi-eye text-muted"></i>
+                    <span class="small">@discussion.ViewCount views</span>
+                </div>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <i class="bi bi-chat text-muted"></i>
+                    <span class="small">@replies.Count comments</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-heart text-muted"></i>
+                    <span class="small">@discussion.LikeCount likes</span>
+                </div>
             </div>
-            <div class="ll-card-body">
-                @for (int i = 0; i < similarDiscussions.Count; i++)
+        </div>
+        }
+
+        <!-- Similar Discussions -->
+        @if (similarDiscussions.Any())
+        {
+        <div class="fb-card mb-3">
+            <div class="fb-card-body">
+                <h6 class="fw-bold mb-3"><i class="bi bi-collection me-2"></i>Related Discussions</h6>
+                @foreach (var sim in similarDiscussions)
                 {
-                    var sim = similarDiscussions[i];
-                <a href="@Url.Action("Discussions", "Home", new { id = sim.Id })" class="d-block text-decoration-none text-dark mb-3 pb-3 @(i < similarDiscussions.Count - 1 ? "border-bottom" : "")">
-                    <div class="fw-medium small">@sim.Title</div>
-                    <div class="small text-muted">@sim.ReplyCount replies • @((DateTime.Now - sim.CreatedAt).Days switch { 0 => "Today", 1 => "Yesterday", var d when d < 7 => d + " days ago", var d when d < 30 => (d / 7) + " weeks ago", _ => sim.CreatedAt.ToString("MMM dd") })</div>
+                    var simTypeIcon = sim.Type == "Question" ? "bi-question-circle text-primary"
+                        : sim.Type == "Idea" ? "bi-lightbulb text-warning"
+                        : sim.Type == "Resource" ? "bi-file-earmark text-success"
+                        : "bi-chat text-secondary";
+                <a href="@Url.Action("Discussions", "Home", new { id = sim.Id })" class="d-flex align-items-start gap-2 text-decoration-none text-dark mb-3 pb-3 border-bottom">
+                    <i class="@simTypeIcon mt-1"></i>
+                    <div>
+                        <div class="small fw-medium">@sim.Title</div>
+                                                @{ var simDays = (DateTime.Now - sim.CreatedAt).Days; }
+                        <div class="small text-muted">@sim.ReplyCount comments · @(simDays == 0 ? "Today" : simDays == 1 ? "Yesterday" : simDays < 7 ? simDays + "d ago" : sim.CreatedAt.ToString("MMM dd"))</div>
+                    </div>
                 </a>
                 }
+            </div>
+        </div>
+        }
+
+        <!-- Back to Feed -->
+        <div class="fb-card">
+            <div class="fb-card-body text-center">
+                <a href="@Url.Action("KnowledgePortal", "Home")" class="btn btn-light rounded-pill w-100">
+                    <i class="bi bi-arrow-left me-2"></i>Back to Feed
+                </a>
             </div>
         </div>
     </div>
@@ -192,39 +280,36 @@
 
 <!-- Edit Discussion Modal -->
 <div class="modal fade" id="editDiscussionModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
             <form asp-action="EditDiscussion" method="post">
                 <input type="hidden" name="id" id="editDiscId">
-                <div class="modal-header">
-                    <h5 class="modal-title">Edit Discussion</h5>
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">Edit Post</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="ll-form-group">
-                        <label class="ll-form-label">Discussion Type</label>
+                    <div class="mb-3">
                         <input type="hidden" name="Type" id="editDiscType">
-                        <div class="d-flex flex-wrap gap-2">
-                            <button type="button" class="ll-btn ll-btn-outline ll-btn-sm edit-disc-type-btn" data-value="Question">Question</button>
-                            <button type="button" class="ll-btn ll-btn-outline ll-btn-sm edit-disc-type-btn" data-value="Idea">Idea</button>
-                            <button type="button" class="ll-btn ll-btn-outline ll-btn-sm edit-disc-type-btn" data-value="Resource">Resource</button>
-                            <button type="button" class="ll-btn ll-btn-outline ll-btn-sm edit-disc-type-btn" data-value="Study Group">Study Group</button>
-                            <button type="button" class="ll-btn ll-btn-outline ll-btn-sm edit-disc-type-btn" data-value="General">General</button>
+                        <div class="d-flex gap-1">
+                            <button type="button" class="fb-type-pill edit-disc-type-btn" data-value="Question">Question</button>
+                            <button type="button" class="fb-type-pill edit-disc-type-btn" data-value="Idea">Idea</button>
+                            <button type="button" class="fb-type-pill edit-disc-type-btn" data-value="Resource">Resource</button>
+                            <button type="button" class="fb-type-pill edit-disc-type-btn" data-value="Study Group">Study Group</button>
+                            <button type="button" class="fb-type-pill edit-disc-type-btn" data-value="General">General</button>
                         </div>
                     </div>
-                    <div class="ll-form-group">
-                        <label class="ll-form-label">Title</label>
-                        <input type="text" class="ll-form-control" name="Title" id="editDiscTitle" required>
+                    <div class="mb-3">
+                        <input type="text" class="form-control border-0 fs-5 px-0" name="Title" id="editDiscTitle" required style="box-shadow:none;">
                     </div>
-                    <div class="ll-form-group">
-                        <label class="ll-form-label">Content</label>
+                    <div class="mb-3">
                         <div id="editDiscContentEditor" style="min-height: 150px;"></div>
                         <input type="hidden" name="Content" id="editDiscContent" />
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="ll-btn ll-btn-primary">Save Changes</button>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill fw-bold">Save Changes</button>
                 </div>
             </form>
         </div>
@@ -233,20 +318,18 @@
 
 <!-- Delete Discussion Modal -->
 <div class="modal fade" id="deleteDiscussionModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow">
             <form asp-action="DeleteDiscussion" method="post">
                 <input type="hidden" name="id" id="deleteDiscId">
-                <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title">Delete Discussion?</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted">Are you sure you want to delete this discussion?</p>
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="ll-btn ll-btn-danger">Delete Discussion</button>
+                <div class="modal-body text-center py-4">
+                    <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 2.5rem;"></i>
+                    <h5 class="fw-bold mt-3">Delete this post?</h5>
+                    <p class="text-muted small">This action cannot be undone.</p>
+                    <div class="d-flex gap-2 justify-content-center mt-3">
+                        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger rounded-pill px-4">Delete</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -255,23 +338,36 @@
 
 <!-- Delete Reply Modal -->
 <div class="modal fade" id="deleteReplyModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow">
             <form asp-action="DeleteReply" method="post">
                 <input type="hidden" name="id" id="deleteReplyId">
                 <input type="hidden" name="discussionId" value="@(discussion?.Id ?? 0)">
-                <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title">Delete Reply?</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted">Are you sure you want to delete this reply?</p>
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="ll-btn ll-btn-danger">Delete Reply</button>
+                <div class="modal-body text-center py-4">
+                    <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 2.5rem;"></i>
+                    <h5 class="fw-bold mt-3">Delete this comment?</h5>
+                    <p class="text-muted small">This action cannot be undone.</p>
+                    <div class="d-flex gap-2 justify-content-center mt-3">
+                        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger rounded-pill px-4">Delete</button>
+                    </div>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Likers Modal -->
+<div class="modal fade" id="likersModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold">Likes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="likersModalBody">
+                <div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+            </div>
         </div>
     </div>
 </div>
@@ -279,7 +375,7 @@
 <!-- Toast -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
     <div id="discToast" class="toast" role="alert">
-        <div class="toast-header bg-success text-white">
+        <div class="toast-header bg-success text-white border-0">
             <i class="bi bi-check-circle me-2"></i>
             <strong class="me-auto">Success</strong>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
@@ -290,118 +386,175 @@
 
 @section Scripts {
 <script>
-    (function() {
-        // ===== Quill Rich Text Editors =====
-        const quillToolbar = [
-            [{ 'header': [2, 3, false] }],
-            ['bold', 'italic', 'underline'],
-            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-            ['link'],
-            ['clean']
-        ];
-        const replyQuill = new Quill('#replyEditor', {
-            theme: 'snow', placeholder: 'Share your thoughts, experiences, or tips...', modules: { toolbar: quillToolbar }
-        });
-        const editDiscQuill = new Quill('#editDiscContentEditor', {
-            theme: 'snow', placeholder: 'Write your discussion content...', modules: { toolbar: quillToolbar }
-        });
+(function() {
+    // Quill Editor
+    const quillToolbar = [
+        [{ 'header': [2, 3, false] }],
+        ['bold', 'italic', 'underline'],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+        ['link'],
+        ['clean']
+    ];
+    const replyQuill = new Quill('#replyEditor', {
+        theme: 'snow', placeholder: 'Write a comment...', modules: { toolbar: quillToolbar }
+    });
+    const editDiscQuill = new Quill('#editDiscContentEditor', {
+        theme: 'snow', placeholder: 'Write your post content...', modules: { toolbar: quillToolbar }
+    });
 
-        // Sync Quill to hidden inputs on form submit
-        document.getElementById('replyEditor')?.closest('form')?.addEventListener('submit', function() {
-            const html = replyQuill.root.innerHTML;
-            document.getElementById('replyHidden').value = html === '<p><br></p>' ? '' : html;
-        });
-        document.getElementById('editDiscContentEditor')?.closest('form')?.addEventListener('submit', function() {
-            const html = editDiscQuill.root.innerHTML;
-            document.getElementById('editDiscContent').value = html === '<p><br></p>' ? '' : html;
-        });
-        // Like buttons
-        document.querySelectorAll('.disc-like-btn, .reply-like-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const id = this.dataset.id;
-                const btnEl = this;
-                const isReply = btnEl.classList.contains('reply-like-btn');
-                const url = isReply ? '@Url.Action("LikeReply", "Home")' : '@Url.Action("LikeDiscussion", "Home")';
-                const icon = btnEl.querySelector('i');
-                const countEl = btnEl.querySelector('.like-count');
-                
-                fetch(url + '?id=' + id, { method: 'POST' })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            if (data.isLiked) {
-                                icon.classList.remove('bi-heart');
-                                icon.classList.add('bi-heart-fill', 'text-danger');
-                            } else {
-                                icon.classList.remove('bi-heart-fill', 'text-danger');
-                                icon.classList.add('bi-heart');
+    // Sync Quill to hidden inputs on form submit
+    document.getElementById('replyEditor')?.closest('form')?.addEventListener('submit', function() {
+        const html = replyQuill.root.innerHTML;
+        document.getElementById('replyHidden').value = html === '<p><br></p>' ? '' : html;
+    });
+    document.getElementById('editDiscContentEditor')?.closest('form')?.addEventListener('submit', function() {
+        const html = editDiscQuill.root.innerHTML;
+        document.getElementById('editDiscContent').value = html === '<p><br></p>' ? '' : html;
+    });
+
+    // Like buttons
+    document.querySelectorAll('.disc-like-btn, .reply-like-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const btnEl = this;
+            const isReply = btnEl.classList.contains('reply-like-btn');
+            const url = isReply ? '@Url.Action("LikeReply", "Home")' : '@Url.Action("LikeDiscussion", "Home")';
+
+            fetch(url + '?id=' + id, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        if (isReply) {
+                            btnEl.classList.toggle('active', data.isLiked);
+                            // Update like count next to button
+                            const likesEl = btnEl.closest('.d-flex').querySelector('.fb-comment-likes');
+                            if (data.likes > 0) {
+                                if (likesEl) {
+                                    likesEl.innerHTML = '<i class="bi bi-heart-fill" style="font-size:0.6rem;"></i> ' + data.likes;
+                                } else {
+                                    const span = document.createElement('span');
+                                    span.className = 'fb-comment-likes';
+                                    span.style.cursor = 'pointer';
+                                    span.innerHTML = '<i class="bi bi-heart-fill" style="font-size:0.6rem;"></i> ' + data.likes;
+                                    btnEl.after(document.createTextNode(' '));
+                                    const actionRow = btnEl.closest('.d-flex');
+                                    const replyAction = actionRow.querySelectorAll('.fb-comment-action')[1];
+                                    replyAction.after(span);
+                                }
+                            } else if (likesEl) {
+                                likesEl.remove();
                             }
-                            countEl.textContent = data.likes;
+                        } else {
+                            const icon = btnEl.querySelector('i');
+                            if (data.isLiked) {
+                                icon.classList.replace('bi-heart', 'bi-heart-fill');
+                                btnEl.classList.add('active');
+                            } else {
+                                icon.classList.replace('bi-heart-fill', 'bi-heart');
+                                btnEl.classList.remove('active');
+                            }
+                            const card = btnEl.closest('.fb-card');
+                            const summary = card.querySelector('.fb-likes-summary');
+                            if (data.likes > 0) {
+                                summary.innerHTML = '<span class="fb-like-icon-sm"><i class="bi bi-heart-fill"></i></span><span class="text-muted small">' + data.likes + '</span>';
+                                summary.style.cursor = 'pointer';
+                            } else {
+                                summary.innerHTML = '';
+                                summary.style.cursor = '';
+                            }
                         }
-                    });
-            });
-        });
-
-        // Edit Discussion type buttons
-        document.querySelectorAll('.edit-disc-type-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.edit-disc-type-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                document.getElementById("editDiscType").value = this.dataset.value;
-            });
-        });
-
-        // Edit/Delete Interactions
-        document.querySelectorAll('.edit-disc-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                document.getElementById('editDiscId').value = this.dataset.id;
-                document.getElementById('editDiscTitle').value = this.dataset.title;
-                editDiscQuill.root.innerHTML = this.dataset.content || '';
-                document.getElementById('editDiscType').value = this.dataset.type;
-                
-                // Set active type button
-                document.querySelectorAll('.edit-disc-type-btn').forEach(b => {
-                    if (b.dataset.value === this.dataset.type) b.classList.add('active');
-                    else b.classList.remove('active');
+                    }
                 });
-                
-                new bootstrap.Modal(document.getElementById('editDiscussionModal')).show();
+        });
+    });
+
+    // Edit Discussion type buttons
+    document.querySelectorAll('.edit-disc-type-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.edit-disc-type-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById("editDiscType").value = this.dataset.value;
+        });
+    });
+
+    // Edit/Delete Interactions
+    document.querySelectorAll('.edit-disc-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('editDiscId').value = this.dataset.id;
+            document.getElementById('editDiscTitle').value = this.dataset.title;
+            editDiscQuill.root.innerHTML = this.dataset.content || '';
+            document.getElementById('editDiscType').value = this.dataset.type;
+            document.querySelectorAll('.edit-disc-type-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.value === this.dataset.type);
+            });
+            new bootstrap.Modal(document.getElementById('editDiscussionModal')).show();
+        });
+    });
+    document.querySelectorAll('.delete-disc-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('deleteDiscId').value = this.dataset.id;
+            new bootstrap.Modal(document.getElementById('deleteDiscussionModal')).show();
+        });
+    });
+    document.querySelectorAll('.delete-reply-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('deleteReplyId').value = this.dataset.id;
+            new bootstrap.Modal(document.getElementById('deleteReplyModal')).show();
+        });
+    });
+
+    // Bookmark toggle
+    var bookmarkBtn = document.getElementById('bookmarkDiscBtn');
+    if (bookmarkBtn) {
+        bookmarkBtn.addEventListener('click', function() {
+            var icon = this.querySelector('i');
+            icon.classList.toggle('bi-bookmark');
+            icon.classList.toggle('bi-bookmark-fill');
+            icon.classList.toggle('text-warning');
+        });
+    }
+
+    // Share button
+    document.querySelectorAll('.fb-share-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                const toast = new bootstrap.Toast(document.getElementById('discToast'));
+                document.querySelector('#discToast .toast-body').textContent = 'Link copied to clipboard!';
+                toast.show();
             });
         });
+    });
 
-        document.querySelectorAll('.delete-disc-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                document.getElementById('deleteDiscId').value = this.dataset.id;
-                new bootstrap.Modal(document.getElementById('deleteDiscussionModal')).show();
+    // Show Likers Modal
+    window.showLikers = function(id, type) {
+        const modal = new bootstrap.Modal(document.getElementById('likersModal'));
+        const body = document.getElementById('likersModalBody');
+        body.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+        modal.show();
+        fetch('@Url.Action("GetDiscussionLikers", "Home")?id=' + id + '&type=' + type)
+            .then(r => r.json())
+            .then(likers => {
+                if (likers.length === 0) {
+                    body.innerHTML = '<p class="text-muted text-center">No likes yet.</p>';
+                    return;
+                }
+                body.innerHTML = likers.map(l =>
+                    '<div class="d-flex align-items-center gap-3 mb-3">' +
+                    '<div class="fb-avatar" style="' + (l.color || '') + '">' + l.initials + '</div>' +
+                    '<div><div class="fw-bold">' + l.name + '</div><div class="small text-muted">' + l.role + '</div></div>' +
+                    '</div>'
+                ).join('');
             });
-        });
+    };
 
-        document.querySelectorAll('.delete-reply-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.getElementById('deleteReplyId').value = this.dataset.id;
-                new bootstrap.Modal(document.getElementById('deleteReplyModal')).show();
-            });
-        });
-
-        // Bookmark toggle
-        var bookmarkBtn = document.getElementById('bookmarkDiscBtn');
-        if (bookmarkBtn) {
-            bookmarkBtn.addEventListener('click', function() {
-                var icon = this.querySelector('i');
-                icon.classList.toggle('bi-bookmark');
-                icon.classList.toggle('bi-bookmark-fill');
-                icon.classList.toggle('text-warning');
-            });
-        }
-
-        // Server-side toast trigger
-        var hasSuccess = '@(TempData["SuccessMessage"] != null ? "true" : "false")' === 'true';
-        if (hasSuccess) {
-            var toast = new bootstrap.Toast(document.getElementById('discToast'));
-            toast.show();
-        }
-    })();
+    // Server-side toast trigger
+    var hasSuccess = '@(TempData["SuccessMessage"] != null ? "true" : "false")' === 'true';
+    if (hasSuccess) {
+        var toast = new bootstrap.Toast(document.getElementById('discToast'));
+        toast.show();
+    }
+})();
 </script>
 }
