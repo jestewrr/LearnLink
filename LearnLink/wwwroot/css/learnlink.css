@@ -6569,3 +6569,96 @@ a.ll-resource-card-link:hover {
     filter: invert(1) grayscale(100%) brightness(200%);
 }
 
+/* ── Repo Cards Dark Mode ── */
+[data-theme="dark"] .ll-repo-card {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-repo-card:hover {
+    border-color: #475569;
+}
+
+[data-theme="dark"] .ll-repo-card-title {
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .ll-repo-card-author {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .ll-repo-card-page-fold {
+    border-color: transparent #1e293b transparent transparent;
+}
+
+[data-theme="dark"] .ll-repo-carousel-arrow {
+    background: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-repo-carousel-arrow:hover {
+    background: var(--ll-primary);
+    border-color: var(--ll-primary);
+    color: #fff;
+}
+
+[data-theme="dark"] .ll-repo-rating-bar {
+    background: #334155;
+}
+
+[data-theme="dark"] .ll-repo-rating-text {
+    color: #94a3b8;
+}
+
+/* ── Assorted Cards & UI Elements ── */
+[data-theme="dark"] .ll-stat-card,
+[data-theme="dark"] .ll-discussion-card,
+[data-theme="dark"] .ll-quick-action {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .ll-stat-card:hover,
+[data-theme="dark"] .ll-discussion-card:hover,
+[data-theme="dark"] .ll-quick-action:hover {
+    border-color: #475569;
+}
+
+[data-theme="dark"] .ll-stat-value,
+[data-theme="dark"] .ll-quick-action-label,
+[data-theme="dark"] .ll-discussion-title {
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .fb-quick-comment {
+    background: #334155;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .fb-quick-comment:focus {
+    background: #1e293b;
+}
+
+[data-theme="dark"] .fb-comments-preview {
+    background: #0f172a;
+}
+
+[data-theme="dark"] .fb-trending-tag,
+[data-theme="dark"] .fb-type-pill,
+[data-theme="dark"] .fb-load-more-btn {
+    background: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .fb-trending-tag:hover,
+[data-theme="dark"] .fb-type-pill:hover,
+[data-theme="dark"] .fb-load-more-btn:hover,
+[data-theme="dark"] .fb-type-pill.active {
+    background: #475569;
+    color: #f1f5f9;
+}
+
