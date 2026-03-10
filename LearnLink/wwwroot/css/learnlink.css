@@ -7950,8 +7950,8 @@ a.ll-resource-card-link:hover {
 [data-theme="dark"] .table th,
 [data-theme="dark"] .ll-table th,
 [data-theme="dark"] .ll-table thead th {
-    background-color: #0f172a !important;
-    color: #94a3b8 !important;
+    background-color: #1e293b !important;
+    color: #e2e8f0 !important;
     border-color: #334155 !important;
     border-bottom-color: #334155 !important;
 }
@@ -7977,6 +7977,18 @@ a.ll-resource-card-link:hover {
     border-color: #334155 !important;
 }
 
+/* Base outline buttons staying white (Action / Clear Buttons UI) */
+[data-theme="dark"] .ll-btn-outline {
+    background-color: transparent !important;
+    border-color: #475569 !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] .ll-btn-outline:hover {
+    background-color: #334155 !important;
+    border-color: #64748b !important;
+    color: #fff !important;
+}
+
 /* Forms & Text inputs */
 [data-theme="dark"] .ll-form-control,
 [data-theme="dark"] .ll-search-box input {
@@ -7996,6 +8008,21 @@ a.ll-resource-card-link:hover {
     background-color: #0f172a;
     border-color: #334155;
     color: #e2e8f0;
+}
+[data-theme="dark"] option,
+[data-theme="dark"] select option,
+[data-theme="dark"] .form-select option,
+[data-theme="dark"] .ll-form-select option {
+    background-color: #1e293b !important;
+    color: #e2e8f0 !important;
+}
+
+/* Placeholder Contrast Fix */
+[data-theme="dark"] .ll-search-box input::placeholder,
+[data-theme="dark"] .form-control::placeholder,
+[data-theme="dark"] .ll-form-control::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
 }
 
 /* Resource Detail page (Scribd-style reader) */
@@ -8051,6 +8078,21 @@ a.ll-resource-card-link:hover {
 }
 [data-theme="dark"] .text-dark {
     color: #f8fafc !important;
+}
+
+/* Knowledge Sharing Portal: Inline / Black text stripping */
+[data-theme="dark"] .fb-post-content,
+[data-theme="dark"] .fb-post-content * {
+    color: #e2e8f0;
+}
+[data-theme="dark"] [style*="color: #000"],
+[data-theme="dark"] [style*="color: black"],
+[data-theme="dark"] [style*="color:#000"],
+[data-theme="dark"] [style*="color: rgb(0, 0, 0)"],
+[data-theme="dark"] [style*="color: #343a40"],
+[data-theme="dark"] [style*="color:#343a40"],
+[data-theme="dark"] [style*="color: rgb(33, 37, 41)"] {
+    color: #e2e8f0 !important;
 }
 
 /* Notification list */
