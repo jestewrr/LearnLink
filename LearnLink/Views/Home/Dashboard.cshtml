@@ -61,8 +61,6 @@
         <div>
             <h1 class="ll-page-title">Dashboard</h1>
             <div class="ll-breadcrumb">
-                <a href="#">Home</a>
-                <i class="bi bi-chevron-right small"></i>
                 <span>Dashboard</span>
             </div>
         </div>
@@ -484,6 +482,24 @@
             .replace(/'/g, '&#39;');
     }
 
+    function formatPreviewDescription(value) {
+        var raw = String(value ?? '');
+        if (!raw.trim()) {
+            return '';
+        }
+
+        var normalized = raw
+            .replace(/<\/p>\s*<p[^>]*>/gi, '\n\n')
+            .replace(/<br\s*\/?>/gi, '\n');
+
+        var temp = document.createElement('div');
+        temp.innerHTML = normalized;
+
+        return escHtml(temp.textContent || temp.innerText || '')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/\n/g, '<br>');
+    }
+
     function updateReviewIndicators(resourceId, previewedAt) {
         document.querySelectorAll('[data-review-window="' + resourceId + '"]').forEach(function (element) {
             element.classList.remove('urgent');
@@ -571,7 +587,7 @@
             document.getElementById('pendingPreviewTags').innerHTML = tagsHtml;
 
             document.getElementById('pendingPreviewDesc').innerHTML = data.description
-                ? escHtml(data.description).replace(/\n/g, '<br>')
+                ? formatPreviewDescription(data.description)
                 : '<em class="text-muted">No description available.</em>';
 
             document.getElementById('pendingPreviewOpenBtn').href = data.detailUrl || '#';

@@ -50,6 +50,11 @@ body {
     width: var(--ll-sidebar-collapsed-width);
 }
 
+.ll-sidebar.collapsed .ll-sidebar-brand {
+    justify-content: center;
+    padding: 1rem 0.5rem;
+}
+
 .ll-sidebar-brand {
     padding: 1.25rem;
     display: flex;
@@ -82,6 +87,11 @@ body {
     white-space: nowrap;
     transition: var(--ll-transition);
     text-shadow: 0 1px 2px rgba(15, 23, 42, 0.2);
+}
+
+.ll-sidebar.collapsed .brand-icon {
+    width: 40px;
+    height: 40px;
 }
 
 .ll-sidebar.collapsed .brand-text {
@@ -1401,6 +1411,11 @@ body {
         width: var(--ll-sidebar-width);
     }
 
+    .ll-sidebar.collapsed.show .ll-sidebar-brand {
+        justify-content: flex-start;
+        padding: 1rem 1.25rem;
+    }
+
     /* Reset collapsed overrides on mobile when shown */
     .ll-sidebar.collapsed.show .brand-text,
     .ll-sidebar.collapsed.show .ll-nav-link .nav-text,
@@ -1907,7 +1922,7 @@ select.ll-form-select.ll-select-hidden {
 .ll-auth-header {
     background: #fff;
     border-bottom: 1px solid #e2e8f0;
-    padding: 1rem 0;
+    padding: 0.75rem 0;
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -1918,13 +1933,23 @@ select.ll-form-select.ll-select-hidden {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     color: var(--ll-primary);
 }
 
+.ll-auth-logo img {
+    height: 40px;
+    width: auto;
+    display: block;
+}
+
 .ll-auth-logo-text {
-    font-size: 1.75rem;
+    font-size: 1.25rem;
     text-shadow: 0 1px 2px rgba(15, 23, 42, 0.2);
+}
+
+.ll-auth-header .btn {
+    min-height: 38px;
 }
 
 .ll-auth-nav-link {
@@ -2516,7 +2541,7 @@ select.ll-form-select.ll-select-hidden {
 .ll-landing-header {
     background: #fff;
     border-bottom: 1px solid #e2e8f0;
-    padding: 1rem 0;
+    padding: 0.75rem 0;
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -2527,13 +2552,38 @@ select.ll-form-select.ll-select-hidden {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     color: var(--ll-primary);
 }
 
+.ll-landing-logo img {
+    height: 40px;
+    width: auto;
+    display: block;
+}
+
 .ll-landing-logo-text {
-    font-size: 1.75rem;
+    font-size: 1.25rem;
     text-shadow: 0 1px 2px rgba(15, 23, 42, 0.2);
+}
+
+.ll-landing-auth .btn {
+    min-height: 38px;
+    padding: 0.45rem 1rem;
+}
+
+.ll-landing-auth .btn-outline-primary {
+    background: #fff;
+    border-color: var(--ll-primary);
+    color: var(--ll-primary);
+}
+
+.ll-landing-auth .btn-outline-primary:hover,
+.ll-landing-auth .btn-outline-primary:focus,
+.ll-landing-auth .btn-outline-primary:active {
+    background: #eff6ff;
+    border-color: var(--ll-primary);
+    color: var(--ll-primary);
 }
 
 .ll-landing-nav-link {
