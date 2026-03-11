@@ -8152,6 +8152,32 @@ a.ll-resource-card-link:hover {
     background-color: #1e293b !important;
     color: #e2e8f0 !important;
 }
+[data-theme="dark"] option:checked,
+[data-theme="dark"] select option:checked,
+[data-theme="dark"] .form-select option:checked,
+[data-theme="dark"] .ll-form-select option:checked {
+    background-color: #334155 !important;
+    color: #f1f5f9 !important;
+}
+[data-theme="dark"] option:hover,
+[data-theme="dark"] select option:hover,
+[data-theme="dark"] .form-select option:hover,
+[data-theme="dark"] .ll-form-select option:hover {
+    background-color: #475569 !important;
+    color: #f1f5f9 !important;
+}
+[data-theme="dark"] .form-select option:disabled {
+    color: #64748b !important;
+}
+[data-theme="dark"] .input-group .btn-outline-secondary {
+    background: #334155;
+    border-color: #475569;
+    color: #94a3b8;
+}
+[data-theme="dark"] .input-group .btn-outline-secondary:hover {
+    background: #475569;
+    color: #e2e8f0;
+}
 
 /* Placeholder Contrast Fix */
 [data-theme="dark"] .ll-search-box input::placeholder,

@@ -330,6 +330,21 @@
         activeTab.style.color = 'var(--ll-primary)';
     }
 
+    // ===== Password Visibility Toggles =====
+    document.querySelectorAll('.ll-pw-toggle').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var input = this.closest('.input-group').querySelector('input');
+            var icon = this.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        });
+    });
+
     // ===== Dark Mode Toggle =====
     (function() {
         var btn = document.getElementById('themeToggleBtn');
@@ -467,16 +482,25 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Current Password <span class="text-danger">*</span></label>
-                        <input type="password" class="form-control" name="currentPassword" required />
+                        <div class="input-group">
+                            <input type="password" class="form-control" name="currentPassword" required />
+                            <button class="btn btn-outline-secondary ll-pw-toggle" type="button" tabindex="-1"><i class="bi bi-eye"></i></button>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-bold">New Password <span class="text-danger">*</span></label>
-                        <input type="password" class="form-control" name="newPassword" required minlength="6" />
+                        <div class="input-group">
+                            <input type="password" class="form-control" name="newPassword" required minlength="6" />
+                            <button class="btn btn-outline-secondary ll-pw-toggle" type="button" tabindex="-1"><i class="bi bi-eye"></i></button>
+                        </div>
                         <div class="form-text">Must be at least 6 characters.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Confirm New Password <span class="text-danger">*</span></label>
-                        <input type="password" class="form-control" name="confirmPassword" required minlength="6" />
+                        <div class="input-group">
+                            <input type="password" class="form-control" name="confirmPassword" required minlength="6" />
+                            <button class="btn btn-outline-secondary ll-pw-toggle" type="button" tabindex="-1"><i class="bi bi-eye"></i></button>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
