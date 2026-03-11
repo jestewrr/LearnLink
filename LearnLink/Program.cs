@@ -229,6 +229,10 @@ using (var scope = app.Services.CreateScope())
                 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'AccessExpiresAt')
                     ALTER TABLE [Resources] ADD [AccessExpiresAt] datetime2 NULL;
 
+                -- Fix missing PendingReviewPreviewedAt column
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'PendingReviewPreviewedAt')
+                    ALTER TABLE [Resources] ADD [PendingReviewPreviewedAt] datetime2 NULL;
+
                 -- Fix missing ResourceAccessGrants table
                 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('ResourceAccessGrants') AND type in ('U'))
                 BEGIN

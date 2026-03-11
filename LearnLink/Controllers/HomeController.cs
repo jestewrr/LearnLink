@@ -312,7 +312,42 @@ namespace LearnLink.Controllers
             return null;
         }
 
+        private static readonly TimeSpan PendingReviewWindow = TimeSpan.FromDays(3);
 
+        private static DateTime GetPendingReviewDeadline(Resource resource) => resource.DateUploaded.Add(PendingReviewWindow);
+
+        private async Task AutoRejectExpiredPendingResourcesAsync()
+        {
+            var now = DateTime.Now;
+            var staleResources = await _context.Resources
+                .Where(r => r.Status == "Pending" && r.PendingReviewPreviewedAt == null && r.DateUploaded <= now.Subtract(PendingReviewWindow))
+                .ToListAsync();
+
+            if (staleResources.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var resource in staleResources)
+            {
+                resource.Status = "Rejected";
+                resource.RejectionReason = "Automatically rejected because no admin or manager previewed it within 3 days of submission.";
+
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = resource.UserId,
+                    Title = "Resource Auto-Rejected",
+                    Message = $"Your resource \"{resource.Title}\" was automatically rejected because it was not previewed within 3 days of submission.",
+                    Type = "Rejected",
+                    Icon = "bi-hourglass-split",
+                    IconBg = "#fee2e2",
+                    ResourceId = resource.ResourceId,
+                    Link = $"/Home/ResourceDetail/{resource.ResourceId}"
+                });
+            }
+
+            await _context.SaveChangesAsync();
+        }
 
         private static ResourceViewModel MapResource(Resource r)
         {
@@ -336,6 +371,7 @@ namespace LearnLink.Controllers
                 UploaderInitials = r.User?.Initials ?? "?",
                 UploaderColor = r.User?.AvatarColor ?? "",
                 Quarter = r.Quarter,
+                PendingReviewPreviewedAt = r.PendingReviewPreviewedAt,
                 IconClass = GetIconClass(r.FileFormat),
                 IconColor = GetIconColor(r.FileFormat),
                 IconBg = GetIconBg(r.FileFormat),
@@ -510,6 +546,8 @@ namespace LearnLink.Controllers
         [Authorize(Roles = "SuperAdmin,Manager")]
         public async Task<IActionResult> ApproveResource(int id)
         {
+            await AutoRejectExpiredPendingResourcesAsync();
+
             var resource = await _context.Resources.FindAsync(id);
             if (resource != null)
             {
@@ -545,6 +583,8 @@ namespace LearnLink.Controllers
         [HttpPost]
         public async Task<IActionResult> RejectResource(int id, string? reason)
         {
+            await AutoRejectExpiredPendingResourcesAsync();
+
             var resource = await _context.Resources.FindAsync(id);
             if (resource != null)
             {
@@ -1417,6 +1457,8 @@ namespace LearnLink.Controllers
                 return RedirectToAction("StudentDashboard");
             if (User.IsInRole("Contributor"))
                 return RedirectToAction("Repository");
+
+            await AutoRejectExpiredPendingResourcesAsync();
 
             await LoadSchoolSettingsToViewBag();
             var schoolId = GetEffectiveSchoolId();
@@ -2391,6 +2433,7 @@ namespace LearnLink.Controllers
                 FileFormat = fileFormat,
                 FileSize = fileSize,
                 Status = isDraft ? "Draft" : "Pending",
+                PendingReviewPreviewedAt = null,
                 UserId = currentUser.Id,
                 SchoolId = currentUser.SchoolId,
                 DateUploaded = DateTime.Now,
@@ -2644,6 +2687,14 @@ namespace LearnLink.Controllers
 
             var currentUser = await GetCurrentUserAsync();
 
+            if (resource.Status == "Pending"
+                && resource.PendingReviewPreviewedAt == null
+                && (User.IsInRole("SuperAdmin") || User.IsInRole("Manager")))
+            {
+                resource.PendingReviewPreviewedAt = DateTime.Now;
+                await _context.SaveChangesAsync();
+            }
+
             var vm = MapResource(resource);
             if (currentUser != null)
             {
@@ -2665,6 +2716,11 @@ namespace LearnLink.Controllers
                 "LINK" => "External Link",
                 _ => "Document"
             };
+
+            var reviewDueAt = GetPendingReviewDeadline(resource);
+            var reviewDaysRemaining = resource.Status == "Pending"
+                ? Math.Max(0, (int)Math.Ceiling((reviewDueAt - DateTime.Now).TotalDays))
+                : 0;
 
             // Compute preview URL for embedded viewer
             string? previewUrl = null;
@@ -2740,6 +2796,9 @@ namespace LearnLink.Controllers
                 tags = vm.Tags,
                 categories = vm.Categories,
                 createdAt = vm.CreatedAt.ToString("MMM dd, yyyy"),
+                reviewDueAt = resource.Status == "Pending" ? reviewDueAt.ToString("MMM dd, yyyy h:mm tt") : null,
+                reviewPreviewedAt = resource.PendingReviewPreviewedAt?.ToString("MMM dd, yyyy h:mm tt"),
+                reviewDaysRemaining = reviewDaysRemaining,
                 detailUrl = Url.Action("ResourceDetail", "Home", new { id = vm.Id }),
                 previewUrl = previewUrl,
                 sourceUrl = IsLinkFileFormat(resource.FileFormat) ? NormalizeExternalResourceUrl(resource.FilePath) : null,
@@ -4337,6 +4396,7 @@ namespace LearnLink.Controllers
             resource.ResourceType = resourceType ?? "";
             resource.Quarter = quarter ?? "";
             resource.Status = isDraft ? "Draft" : "Pending";
+            resource.PendingReviewPreviewedAt = isDraft ? resource.PendingReviewPreviewedAt : null;
 
             // ---- Policy Settings ----
             resource.AccessLevel = accessLevel ?? "Registered";

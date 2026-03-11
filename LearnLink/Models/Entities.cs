@@ -193,6 +193,8 @@ namespace LearnLink.Models
 
         public DateTime DateUploaded { get; set; } = DateTime.Now;
 
+        public DateTime? PendingReviewPreviewedAt { get; set; }
+
         [StringLength(20)]
         public string Status { get; set; } = "Active";  // Active, Archive, Pending, Draft
 

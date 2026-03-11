@@ -5786,6 +5786,41 @@ a.ll-resource-card-link:hover {
     transform: translateY(0);
     opacity: 1;
 }
+.ll-review-window {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.ll-review-window.previewed {
+    background: #ecfdf5;
+    color: #047857;
+}
+.ll-review-window.urgent {
+    background: #fff7ed;
+    color: #c2410c;
+}
+.ll-admin-preview-frame {
+    width: 100%;
+    height: 100%;
+    min-height: 500px;
+    border: 0;
+    background: #fff;
+}
+.ll-admin-preview-image {
+    width: 100%;
+    height: 100%;
+    min-height: 500px;
+    object-fit: contain;
+    display: block;
+    background: #fff;
+}
 .ll-preview-close {
     position: absolute;
     top: 16px;
@@ -7900,6 +7935,18 @@ a.ll-resource-card-link:hover {
     background: #0f172a !important;
     box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5) !important;
     color: #cbd5e1 !important;
+}
+[data-theme="dark"] .ll-review-window {
+    background: rgba(59, 130, 246, 0.16);
+    color: #93c5fd;
+}
+[data-theme="dark"] .ll-review-window.previewed {
+    background: rgba(16, 185, 129, 0.16);
+    color: #86efac;
+}
+[data-theme="dark"] .ll-review-window.urgent {
+    background: rgba(249, 115, 22, 0.18);
+    color: #fdba74;
 }
 [data-theme="dark"] .ll-preview-content {
     background: #0f172a !important;

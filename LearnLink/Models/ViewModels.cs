@@ -20,6 +20,7 @@ namespace LearnLink.Models
         public string UploaderInitials { get; set; } = "";
         public string UploaderColor { get; set; } = "";
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime? PendingReviewPreviewedAt { get; set; }
         public string Quarter { get; set; } = "";
         public string IconClass { get; set; } = "bi-file-earmark";
         public string IconColor { get; set; } = "text-primary";
