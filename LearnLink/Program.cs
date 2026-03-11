@@ -159,6 +159,24 @@ using (var scope = app.Services.CreateScope())
 
                 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ResourceVersions') AND name = 'FileSize')
                     ALTER TABLE [ResourceVersions] ADD [FileSize] nvarchar(20) NOT NULL DEFAULT '';
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ResourceVersions') AND name = 'Title')
+                    ALTER TABLE [ResourceVersions] ADD [Title] nvarchar(100) NULL;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ResourceVersions') AND name = 'Description')
+                    ALTER TABLE [ResourceVersions] ADD [Description] nvarchar(500) NULL;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ResourceVersions') AND name = 'Subject')
+                    ALTER TABLE [ResourceVersions] ADD [Subject] nvarchar(50) NULL;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ResourceVersions') AND name = 'GradeLevel')
+                    ALTER TABLE [ResourceVersions] ADD [GradeLevel] nvarchar(30) NULL;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ResourceVersions') AND name = 'ResourceType')
+                    ALTER TABLE [ResourceVersions] ADD [ResourceType] nvarchar(30) NULL;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ResourceVersions') AND name = 'Quarter')
+                    ALTER TABLE [ResourceVersions] ADD [Quarter] nvarchar(50) NULL;
             ");
 
             // Manually ensure multi-tenancy tables and columns exist

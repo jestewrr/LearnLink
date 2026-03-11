@@ -557,6 +557,7 @@
 <script>
 (function() {
     // ==================== Constants ====================
+    const isPublishedEdit = @((isPublishedEdit ? "true" : "false"));
     const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx'];
     const MAX_FILE_SIZE = @(maxFileSizeMB) * 1024 * 1024;
     const FILE_ICONS = {
@@ -646,9 +647,11 @@
         clearFileError();
         const notesContainer = document.getElementById('versionNotesContainer');
         if (notesContainer) {
-            notesContainer.classList.add('d-none');
+            if (!isPublishedEdit) {
+                notesContainer.classList.add('d-none');
+            }
             const vn = document.getElementById('versionNotes');
-            if (vn) vn.required = false;
+            if (vn) vn.required = isPublishedEdit;
         }
     };
 
@@ -820,8 +823,12 @@
     const saveDraftBtn = document.getElementById('saveDraftBtn');
     const uploadBtn = document.getElementById('uploadBtn');
 
-    saveDraftBtn.addEventListener('click', () => isDraftField.value = 'true');
-    uploadBtn.addEventListener('click', () => isDraftField.value = 'false');
+    if (saveDraftBtn) {
+        saveDraftBtn.addEventListener('click', () => isDraftField.value = 'true');
+    }
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', () => isDraftField.value = 'false');
+    }
 
     uploadForm.addEventListener('submit', function(e) {
         const isDraft = isDraftField.value === 'true';
@@ -842,6 +849,11 @@
 
         if (!subject || !grade || !type || !desc || !fileSelected) {
             showFormFeedback('Please fill in all required fields and select a file.');
+            return false;
+        }
+        const versionNotes = document.getElementById('versionNotes');
+        if (versionNotes && versionNotes.required && !versionNotes.value.trim()) {
+            showFormFeedback('Please provide version notes for this update.');
             return false;
         }
         clearFormFeedback();
