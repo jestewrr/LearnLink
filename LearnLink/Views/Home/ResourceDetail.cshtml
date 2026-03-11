@@ -257,19 +257,46 @@
             var versions = ViewBag.ResourceVersions as IEnumerable<LearnLink.Models.ResourceVersion>;
             if (versions != null && versions.Any())
             {
-                <details class="ll-scribd-versions" style="margin-top:14px;">
+                <details class="ll-scribd-versions" style="margin-top:14px;" open>
                     <summary><i class="bi bi-clock-history me-2"></i>Version History (@versions.Count())</summary>
                     <div class="ll-scribd-versions-list">
-                        @foreach (var v in versions)
+                        @{ var versionList = versions.ToList(); }
+                        @for (int vi = 0; vi < versionList.Count; vi++)
                         {
-                            <div class="ll-scribd-version-item">
-                                <div class="d-flex justify-content-between">
-                                    <strong style="color:var(--ll-primary);font-size:0.85rem;">@v.VersionNumber</strong>
+                            var v = versionList[vi];
+                            var isLatest = vi == 0;
+                            var prevVersion = vi < versionList.Count - 1 ? versionList[vi + 1] : null;
+                            <div class="ll-scribd-version-item" style="@(isLatest ? "border-left: 3px solid var(--ll-primary); padding-left: 10px;" : "")">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong style="color:var(--ll-primary);font-size:0.85rem;">
+                                        @v.VersionNumber
+                                        @if (isLatest)
+                                        {
+                                            <span class="badge bg-primary ms-1" style="font-size:0.65rem;">Current</span>
+                                        }
+                                    </strong>
                                     <span class="text-muted" style="font-size:0.8rem;">@v.DateUpdated.ToString("MMM dd, yyyy")</span>
                                 </div>
                                 @if (!string.IsNullOrEmpty(v.VersionNotes))
                                 {
                                     <div class="small bg-light p-2 rounded mt-1" style="border-left:3px solid var(--ll-primary);font-size:0.78rem;">@v.VersionNotes</div>
+                                }
+                                @if (prevVersion != null && !string.IsNullOrEmpty(v.Title) && !string.IsNullOrEmpty(prevVersion.Title))
+                                {
+                                    var changes = new List<string>();
+                                    if (v.Title != prevVersion.Title) changes.Add("Title");
+                                    if (v.Description != prevVersion.Description) changes.Add("Description");
+                                    if (v.Subject != prevVersion.Subject) changes.Add("Subject");
+                                    if (v.GradeLevel != prevVersion.GradeLevel) changes.Add("Grade Level");
+                                    if (v.ResourceType != prevVersion.ResourceType) changes.Add("Type");
+                                    if (v.Quarter != prevVersion.Quarter) changes.Add("Quarter");
+                                    if (v.FilePath != prevVersion.FilePath) changes.Add("File");
+                                    if (changes.Any())
+                                    {
+                                        <div class="small text-info mt-1" style="font-size:0.75rem;">
+                                            <i class="bi bi-pencil-square me-1"></i>Changed: @string.Join(", ", changes)
+                                        </div>
+                                    }
                                 }
                                 <div class="small text-muted mt-1"><i class="bi @GetThumbnailIcon(v.FileFormat)"></i> @v.FileFormat.ToUpper() · @v.FileSize</div>
                             </div>

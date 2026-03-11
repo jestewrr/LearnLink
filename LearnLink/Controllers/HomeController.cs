@@ -2682,12 +2682,16 @@ namespace LearnLink.Controllers
                 }
             }
 
-            if (resource.EnableVersionHistory)
+            // Always load versions — published edits always create version entries
             {
-                ViewBag.ResourceVersions = await _context.ResourceVersions
+                var versionList = await _context.ResourceVersions
                     .Where(v => v.ResourceId == resource.ResourceId)
                     .OrderByDescending(v => v.DateUpdated)
                     .ToListAsync();
+                if (versionList.Any())
+                {
+                    ViewBag.ResourceVersions = versionList;
+                }
             }
 
             var relatedResources = new List<Resource>();
@@ -3611,12 +3615,16 @@ namespace LearnLink.Controllers
                 }
             }
 
-            if (resource.EnableVersionHistory)
+            // Always load versions
             {
-                ViewBag.ResourceVersions = await _context.ResourceVersions
+                var versionList = await _context.ResourceVersions
                     .Where(v => v.ResourceId == resource.ResourceId)
                     .OrderByDescending(v => v.DateUpdated)
                     .ToListAsync();
+                if (versionList.Any())
+                {
+                    ViewBag.ResourceVersions = versionList;
+                }
             }
 
             var relatedResources = new List<Resource>();
@@ -4633,13 +4641,9 @@ namespace LearnLink.Controllers
                 {
                     return NotFound();
                 }
-                
-                if (resource.Status == "Published" && !User.IsInRole("SuperAdmin") && !User.IsInRole("Manager"))
-                {
-                    TempData["ErrorMessage"] = "Published resources can no longer be edited. Please contact an administrator if you need to make changes.";
-                    return RedirectToAction("MyUploads");
-                }
             }
+
+            ViewBag.IsPublishedEdit = resource != null && resource.Status == "Published";
 
             var recentUploads = await _context.Resources
                 .Include(r => r.User)
@@ -4698,12 +4702,6 @@ namespace LearnLink.Controllers
                 {
                     return NotFound();
                 }
-                
-                if (resource.Status == "Published" && !User.IsInRole("SuperAdmin") && !User.IsInRole("Manager"))
-                {
-                    TempData["ErrorMessage"] = "Published resources can no longer be edited. Please contact an administrator if you need to make changes.";
-                    return RedirectToAction("MyUploads");
-                }
             }
             else
             {
@@ -4717,14 +4715,49 @@ namespace LearnLink.Controllers
                 isNew = true;
             }
 
+            // Track if this is an edit of a published resource
+            bool isPublishedEdit = !isNew && resource.Status == "Published";
+
+            // For published resources, snapshot the current state before applying changes
+            if (isPublishedEdit)
+            {
+                var existingVersionCount = await _context.ResourceVersions.CountAsync(v => v.ResourceId == resource.ResourceId);
+
+                if (existingVersionCount == 0)
+                {
+                    // Create V1 to preserve the original published state
+                    _context.ResourceVersions.Add(new ResourceVersion
+                    {
+                        ResourceId = resource.ResourceId,
+                        VersionNumber = "V1",
+                        VersionNotes = "Original published version",
+                        FilePath = resource.FilePath,
+                        FileFormat = resource.FileFormat,
+                        FileSize = resource.FileSize,
+                        Title = resource.Title,
+                        Description = resource.Description,
+                        Subject = resource.Subject,
+                        GradeLevel = resource.GradeLevel,
+                        ResourceType = resource.ResourceType,
+                        Quarter = resource.Quarter,
+                        DateUpdated = resource.DateUploaded
+                    });
+                }
+            }
+
             resource.Title = title ?? "";
             resource.Description = description ?? "";
             resource.Subject = subject ?? "";
             resource.GradeLevel = gradeLevel ?? "";
             resource.ResourceType = resourceType ?? "";
             resource.Quarter = quarter ?? "";
-            resource.Status = isDraft ? "Draft" : "Pending";
-            resource.PendingReviewPreviewedAt = isDraft ? resource.PendingReviewPreviewedAt : null;
+
+            // Published resources stay Published after edits (no re-approval needed)
+            if (!isPublishedEdit)
+            {
+                resource.Status = isDraft ? "Draft" : "Pending";
+                resource.PendingReviewPreviewedAt = isDraft ? resource.PendingReviewPreviewedAt : null;
+            }
 
             // ---- Policy Settings ----
             resource.AccessLevel = accessLevel ?? "Registered";
@@ -4755,7 +4788,7 @@ namespace LearnLink.Controllers
                     resource.FileSize = result.FileSize ?? "";
                 }
 
-                if (resource.EnableVersionHistory)
+                if (!isPublishedEdit && resource.EnableVersionHistory)
                 {
                     var versionNumber = "V1";
                     if (!isNew)
@@ -4772,10 +4805,38 @@ namespace LearnLink.Controllers
                         FilePath = resource.FilePath,
                         FileFormat = resource.FileFormat,
                         FileSize = resource.FileSize,
+                        Title = resource.Title,
+                        Description = resource.Description,
+                        Subject = resource.Subject,
+                        GradeLevel = resource.GradeLevel,
+                        ResourceType = resource.ResourceType,
+                        Quarter = resource.Quarter,
                         DateUpdated = DateTime.Now
                     };
                     _context.ResourceVersions.Add(newVersion);
                 }
+            }
+
+            // For published edits, create a new version with the updated state
+            if (isPublishedEdit)
+            {
+                var versionCount = await _context.ResourceVersions.CountAsync(v => v.ResourceId == resource.ResourceId);
+                _context.ResourceVersions.Add(new ResourceVersion
+                {
+                    ResourceId = resource.ResourceId,
+                    VersionNumber = $"V{versionCount + 1}",
+                    VersionNotes = versionNotes ?? "Updated",
+                    FilePath = resource.FilePath,
+                    FileFormat = resource.FileFormat,
+                    FileSize = resource.FileSize,
+                    Title = resource.Title,
+                    Description = resource.Description,
+                    Subject = resource.Subject,
+                    GradeLevel = resource.GradeLevel,
+                    ResourceType = resource.ResourceType,
+                    Quarter = resource.Quarter,
+                    DateUpdated = DateTime.Now
+                });
             }
 
             try
@@ -4852,7 +4913,12 @@ namespace LearnLink.Controllers
 
             await LogActivity(currentUser.Id, isNew ? "Upload" : "Edit", resource.Title, resource.ResourceId);
 
-            if (isDraft)
+            if (isPublishedEdit)
+            {
+                TempData["SuccessMessage"] = "Resource updated successfully! A new version has been saved to the version history.";
+                TempData["SuccessTitle"] = "Update Saved";
+            }
+            else if (isDraft)
             {
                 TempData["SuccessMessage"] = "Resource saved as draft successfully!";
                 TempData["SuccessTitle"] = "Draft Saved";

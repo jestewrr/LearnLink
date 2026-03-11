@@ -315,6 +315,25 @@ namespace LearnLink.Models
         public string FileSize { get; set; } = "";
 
         public DateTime DateUpdated { get; set; } = DateTime.Now;
+
+        // Metadata snapshot for tracking changes
+        [StringLength(100)]
+        public string? Title { get; set; }
+
+        [StringLength(500)]
+        public string? Description { get; set; }
+
+        [StringLength(50)]
+        public string? Subject { get; set; }
+
+        [StringLength(30)]
+        public string? GradeLevel { get; set; }
+
+        [StringLength(30)]
+        public string? ResourceType { get; set; }
+
+        [StringLength(50)]
+        public string? Quarter { get; set; }
     }
 
     // ==================== Tags ====================

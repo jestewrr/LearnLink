@@ -11,6 +11,7 @@
     var allCategories = ViewBag.AllCategories as List<LearnLink.Models.ResourceCategory> ?? new List<LearnLink.Models.ResourceCategory>();
     var existingTags = ViewBag.ExistingTags as string ?? "";
     var existingCategoryIds = ViewBag.ExistingCategoryIds as List<int> ?? new List<int>();
+    var isPublishedEdit = (bool)(ViewBag.IsPublishedEdit ?? false);
 
     var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx" };
     var maxFileSizeMB = 50;
@@ -190,6 +191,13 @@
                         @TempData["ErrorMessage"]
                     </div>
                     }
+                    @if (isPublishedEdit)
+                    {
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <strong>Updating a published resource.</strong> Your changes will be saved immediately and a new version will be recorded in the version history.
+                    </div>
+                    }
                     <div id="formFeedback" class="alert alert-danger d-none" role="alert"></div>
 
                     <!-- Enhanced File Upload Drop Zone -->
@@ -228,11 +236,11 @@
 
                         @if (Model != null)
                         {
-                        <div class="mt-3 d-none" id="versionNotesContainer">
-                            <label class="ll-form-label">Version Notes @(Model.RequireVersionNotes ? Html.Raw("<span class=\"text-danger\">*</span>") : null)</label>
-                            <textarea class="ll-form-control" rows="2" id="versionNotes" name="versionNotes" placeholder="What changed in this new version?"></textarea>
-                            <small class="text-muted">Since you are replacing the file, please provide a brief note on what changed.</small>
-                            <input type="hidden" id="requireNotesFlag" value="@(Model.RequireVersionNotes.ToString().ToLower())" />
+                        <div class="mt-3 @(isPublishedEdit ? "" : "d-none")" id="versionNotesContainer">
+                            <label class="ll-form-label">Version Notes <span class="text-danger">*</span></label>
+                            <textarea class="ll-form-control" rows="2" id="versionNotes" name="versionNotes" placeholder="Describe what you changed in this update" @(isPublishedEdit ? "required" : "")></textarea>
+                            <small class="text-muted">Please provide a brief note on what changed.</small>
+                            <input type="hidden" id="requireNotesFlag" value="@(isPublishedEdit || Model.RequireVersionNotes ? "true" : "false")" />
                         </div>
                         }
                     </div>
@@ -407,12 +415,15 @@
                     <hr class="my-4">
 
                     <div class="d-flex gap-2 justify-content-end">
+                        @if (!isPublishedEdit)
+                        {
                         <button type="submit" class="ll-btn ll-btn-outline" id="saveDraftBtn">
                             <i class="bi bi-pencil-square"></i> Save as Draft
                         </button>
+                        }
                         <button type="submit" class="ll-btn ll-btn-primary" id="uploadBtn">
-                            <i class="bi bi-cloud-arrow-up"></i>
-                            @(Model == null ? "Upload Resource" : "Save Changes")
+                            <i class="bi @(isPublishedEdit ? "bi-check-circle" : "bi-cloud-arrow-up")"></i>
+                            @(Model == null ? "Upload Resource" : (isPublishedEdit ? "Update Resource" : "Save Changes"))
                         </button>
                     </div>
                 </form>
