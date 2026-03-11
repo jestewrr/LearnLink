@@ -284,6 +284,36 @@ using (var scope = app.Services.CreateScope())
                     CREATE INDEX [IX_Likes_UserId] ON [Likes] ([UserId]);
                 END
 
+                -- Fix missing LessonComments table
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('LessonComments') AND type in ('U'))
+                BEGIN
+                    CREATE TABLE [LessonComments] (
+                        [LessonCommentId] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
+                        [LessonId] int NOT NULL,
+                        [UserId] nvarchar(450) NOT NULL,
+                        [Content] nvarchar(2000) NOT NULL,
+                        [DatePosted] datetime2 NOT NULL DEFAULT GETDATE(),
+                        CONSTRAINT [FK_LessonComments_LessonsLearned_LessonId] FOREIGN KEY ([LessonId]) REFERENCES [LessonsLearned] ([LessonId]) ON DELETE CASCADE,
+                        CONSTRAINT [FK_LessonComments_AspNetUsers_UserId] FOREIGN KEY ([UserId]) REFERENCES [AspNetUsers] ([Id])
+                    );
+                    CREATE INDEX [IX_LessonComments_LessonId] ON [LessonComments] ([LessonId]);
+                    CREATE INDEX [IX_LessonComments_UserId] ON [LessonComments] ([UserId]);
+                END
+
+                -- Fix missing AccountDeletionFeedbacks table
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('AccountDeletionFeedbacks') AND type in ('U'))
+                BEGIN
+                    CREATE TABLE [AccountDeletionFeedbacks] (
+                        [FeedbackId] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
+                        [Reason] nvarchar(500) NOT NULL,
+                        [Feedback] nvarchar(2000) NULL,
+                        [UserEmail] nvarchar(100) NULL,
+                        [UserName] nvarchar(100) NULL,
+                        [UserRole] nvarchar(50) NULL,
+                        [DeletedAt] datetime2 NOT NULL DEFAULT GETDATE()
+                    );
+                END
+
                 -- Fix missing ResourceVersions table
                 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('ResourceVersions') AND type in ('U'))
                 BEGIN
