@@ -3345,8 +3345,104 @@ namespace LearnLink.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Search(string? q = null)
         {
+            var query = (q ?? string.Empty).Trim();
+
             if (User.Identity?.IsAuthenticated ?? false)
-                return RedirectToAction("Repository");
+            {
+                var currentUser = await GetCurrentUserAsync();
+                var canSearchUsers = User.IsInRole("SuperAdmin") || User.IsInRole("Manager");
+                var model = new GlobalSearchViewModel
+                {
+                    Query = query,
+                    CanSearchUsers = canSearchUsers
+                };
+
+                if (!string.IsNullOrWhiteSpace(query))
+                {
+                    var pattern = $"%{query}%";
+
+                    var matchedResources = await BuildAccessiblePublishedResourceQuery(currentUser)
+                        .Where(r =>
+                            EF.Functions.Like(r.Title, pattern) ||
+                            EF.Functions.Like(r.Description, pattern) ||
+                            EF.Functions.Like(r.Subject, pattern) ||
+                            EF.Functions.Like(r.ResourceType, pattern) ||
+                            EF.Functions.Like(r.GradeLevel, pattern) ||
+                            EF.Functions.Like(r.FileFormat, pattern))
+                        .OrderByDescending(r => r.ViewCount + r.DownloadCount)
+                        .ThenByDescending(r => r.DateUploaded)
+                        .Take(8)
+                        .ToListAsync();
+
+                    var lessons = await _context.LessonsLearned
+                        .Include(l => l.User)
+                        .Include(l => l.Resource)
+                        .Where(l =>
+                            EF.Functions.Like(l.Title, pattern) ||
+                            EF.Functions.Like(l.Content, pattern) ||
+                            EF.Functions.Like(l.Category, pattern) ||
+                            EF.Functions.Like(l.Tags, pattern) ||
+                            (l.Resource != null && EF.Functions.Like(l.Resource.Title, pattern)))
+                        .OrderByDescending(l => l.DateSubmitted)
+                        .Take(8)
+                        .ToListAsync();
+
+                    var discussions = await _context.Discussions
+                        .Include(d => d.User)
+                        .Include(d => d.Posts)
+                        .Where(d =>
+                            EF.Functions.Like(d.Title, pattern) ||
+                            EF.Functions.Like(d.Content, pattern) ||
+                            EF.Functions.Like(d.Category, pattern) ||
+                            EF.Functions.Like(d.Tags, pattern) ||
+                            EF.Functions.Like(d.Type, pattern))
+                        .OrderByDescending(d => d.DateCreated)
+                        .Take(8)
+                        .ToListAsync();
+
+                    model.Resources = matchedResources.Select(MapResource).ToList();
+                    model.Lessons = lessons.Select(l => MapLesson(l)).ToList();
+                    model.Discussions = discussions.Select(d => MapDiscussion(d)).ToList();
+
+                    if (canSearchUsers)
+                    {
+                        var schoolId = GetEffectiveSchoolId();
+                        var matchedUsers = await _userManager.Users
+                            .Where(u =>
+                                (!schoolId.HasValue || u.SchoolId == schoolId.Value) &&
+                                (EF.Functions.Like(u.FirstName, pattern) ||
+                                 EF.Functions.Like(u.LastName, pattern) ||
+                                 EF.Functions.Like(u.Email ?? string.Empty, pattern) ||
+                                 EF.Functions.Like(u.GradeOrPosition ?? string.Empty, pattern)))
+                            .OrderBy(u => u.FirstName)
+                            .ThenBy(u => u.LastName)
+                            .Take(8)
+                            .ToListAsync();
+
+                        foreach (var user in matchedUsers)
+                        {
+                            var roles = await _userManager.GetRolesAsync(user);
+                            var role = roles.FirstOrDefault() ?? "Student";
+
+                            model.Users.Add(new UserViewModel
+                            {
+                                Name = user.FullName,
+                                Email = user.Email ?? string.Empty,
+                                Initials = user.Initials,
+                                AvatarColor = user.AvatarColor,
+                                Role = role,
+                                RoleBadgeClass = GetRoleBadge(role),
+                                GradeOrPosition = user.GradeOrPosition,
+                                Status = user.Status,
+                                StatusBadgeClass = GetStatusBadge(user.Status),
+                                JoinedAt = user.DateCreated
+                            });
+                        }
+                    }
+                }
+
+                return View(model);
+            }
 
             // Only show PUBLIC resources (both Published and Pending) to anonymous users
             var resources = await _context.Resources
@@ -3360,7 +3456,7 @@ namespace LearnLink.Controllers
             var mapped = resources.Select(MapResource).ToList();
             ViewBag.Resources = mapped;
             ViewBag.AllResources = mapped;
-            ViewBag.SearchQuery = q;
+            ViewBag.SearchQuery = query;
             return View("PublicSearch");
         }
 

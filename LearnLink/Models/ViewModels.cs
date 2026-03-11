@@ -114,6 +114,19 @@ namespace LearnLink.Models
         public string? MiddleName { get; set; }
     }
 
+    public class GlobalSearchViewModel
+    {
+        public string Query { get; set; } = "";
+        public bool CanSearchUsers { get; set; }
+        public List<ResourceViewModel> Resources { get; set; } = new();
+        public List<LessonViewModel> Lessons { get; set; } = new();
+        public List<DiscussionViewModel> Discussions { get; set; } = new();
+        public List<UserViewModel> Users { get; set; } = new();
+        public int TotalResults => Resources.Count + Lessons.Count + Discussions.Count + Users.Count;
+        public bool HasQuery => !string.IsNullOrWhiteSpace(Query);
+        public bool HasResults => TotalResults > 0;
+    }
+
     public class ActivityViewModel
     {
         public string User { get; set; } = "";

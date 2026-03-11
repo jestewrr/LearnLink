@@ -209,7 +209,7 @@
                     </button>
                     <form class="ll-search-box" action="@Url.Action("Search", "Home")" method="get">
                         <i class="bi bi-search"></i>
-                        <input type="text" name="q" placeholder="Search resources, discussions, users..." class="form-control">
+                        <input type="text" name="q" value="@Context.Request.Query["q"]" placeholder="Search resources, discussions, users..." class="form-control">
                         <button type="submit" class="d-none"></button>
                     </form>
                 </div>
