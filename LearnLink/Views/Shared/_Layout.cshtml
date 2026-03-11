@@ -38,6 +38,9 @@
         var userRole = isAdmin ? "Super Admin" : isManager ? "Manager" : isContributor ? "Contributor" : "Student";
         var schoolName = User.FindFirst("SchoolName")?.Value;
         var schoolCode = User.FindFirst("SchoolCode")?.Value;
+        // For SuperAdmin: show switched school context in sidebar
+        var switchedSchoolName = isAdmin ? Context.Session.GetString("SwitchedSchoolName") : null;
+        var displaySchoolName = !string.IsNullOrEmpty(switchedSchoolName) ? switchedSchoolName : schoolName;
     }
     @if (ViewData["HideLayout"] is true)
     {
@@ -53,11 +56,11 @@
                 </div>
                 <span class="brand-text"><span class="fw-bold">Learn</span><span style="color: var(--ll-accent);">Link</span></span>
             </div>
-            @if (!string.IsNullOrEmpty(schoolName))
+            @if (!string.IsNullOrEmpty(displaySchoolName))
             {
             <div class="text-center px-3 pb-2">
-                <span class="ll-sidebar-school-badge" title="@schoolName (@schoolCode)">
-                    <i class="bi bi-building me-1"></i>@schoolName
+                <span class="ll-sidebar-school-badge" title="@displaySchoolName">
+                    <i class="bi bi-building me-1"></i>@displaySchoolName
                 </span>
             </div>
             }

@@ -4230,6 +4230,15 @@ namespace LearnLink.Controllers
                 ViewBag.LearningProgress = progress;
                 ViewBag.TotalProgress = resources.Any() ? (int)((double)userHistoryAll.Count(h => h.Resource != null) / resources.Count * 100) : 0;
 
+                // User's most read resources (resources the user has accessed, ordered by their popularity)
+                var userMostRead = userHistoryAll
+                    .Where(h => h.Resource != null && h.Resource.Status == "Published")
+                    .OrderByDescending(h => h.Resource!.ViewCount)
+                    .Take(5)
+                    .Select(h => MapResource(h.Resource!))
+                    .ToList();
+                ViewBag.UserMostRead = userMostRead;
+
                 return View();
             }
         }
@@ -5875,6 +5884,27 @@ namespace LearnLink.Controllers
 
             ViewBag.Schools = schoolViewModels;
 
+            // Load users eligible to be managers (Contributors in each school + existing Managers)
+            var allSchoolUsers = await _userManager.Users
+                .Where(u => u.SchoolId != null && u.Status == "Active")
+                .Select(u => new { u.Id, u.FirstName, u.LastName, u.SchoolId })
+                .ToListAsync();
+
+            var managerUsers = new List<object>();
+            foreach (var u in allSchoolUsers)
+            {
+                var appUser = await _userManager.FindByIdAsync(u.Id);
+                if (appUser != null)
+                {
+                    var roles = await _userManager.GetRolesAsync(appUser);
+                    if (roles.Contains("Contributor") || roles.Contains("Manager"))
+                    {
+                        managerUsers.Add(new { u.Id, u.FirstName, u.LastName, u.SchoolId, Role = roles.Contains("Manager") ? "Manager" : "Contributor" });
+                    }
+                }
+            }
+            ViewBag.ManagerCandidates = managerUsers;
+
             // Yesterday comparison for KPI cards
             var yesterday = DateTime.Now.Date;
             ViewBag.YesterdaySchoolCount = schools.Count(s => s.DateCreated < yesterday);
@@ -5985,7 +6015,103 @@ namespace LearnLink.Controllers
 
         [Authorize(Roles = "SuperAdmin")]
         [HttpPost]
-        public async Task<IActionResult> SwitchSchoolContext(int? schoolId)
+        public async Task<IActionResult> EditSchool(int id, string name, string code, string description, string contactEmail, string address)
+        {
+            var school = await _context.Schools.FindAsync(id);
+            if (school == null)
+            {
+                TempData["ErrorMessage"] = "School not found.";
+                return RedirectToAction("Schools");
+            }
+
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(code))
+            {
+                TempData["ErrorMessage"] = "School name and code are required.";
+                return RedirectToAction("Schools");
+            }
+
+            code = code.Trim().ToUpper();
+
+            // Check for duplicate code (exclude current school)
+            if (await _context.Schools.AnyAsync(s => s.Code == code && s.SchoolId != id))
+            {
+                TempData["ErrorMessage"] = $"A school with code '{code}' already exists.";
+                return RedirectToAction("Schools");
+            }
+
+            school.Name = name.Trim();
+            school.Code = code;
+            school.Description = description?.Trim() ?? "";
+            school.ContactEmail = contactEmail?.Trim() ?? "";
+            school.Address = address?.Trim() ?? "";
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = $"School '{school.Name}' updated successfully.";
+            return RedirectToAction("Schools");
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPost]
+        public async Task<IActionResult> DeleteSchool(int id)
+        {
+            var school = await _context.Schools.FindAsync(id);
+            if (school == null)
+            {
+                TempData["ErrorMessage"] = "School not found.";
+                return RedirectToAction("Schools");
+            }
+
+            // Prevent deleting a school that still has users
+            var userCount = await _userManager.Users.CountAsync(u => u.SchoolId == id);
+            if (userCount > 0)
+            {
+                TempData["ErrorMessage"] = $"Cannot delete '{school.Name}' — it still has {userCount} user(s). Reassign or remove them first.";
+                return RedirectToAction("Schools");
+            }
+
+            _context.Schools.Remove(school);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = $"School '{school.Name}' has been deleted.";
+            return RedirectToAction("Schools");
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPost]
+        public async Task<IActionResult> AssignManager(int schoolId, string userId)
+        {
+            var school = await _context.Schools.FindAsync(schoolId);
+            if (school == null)
+            {
+                TempData["ErrorMessage"] = "School not found.";
+                return RedirectToAction("Schools");
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null || user.SchoolId != schoolId)
+            {
+                TempData["ErrorMessage"] = "User not found or does not belong to this school.";
+                return RedirectToAction("Schools");
+            }
+
+            var currentRoles = await _userManager.GetRolesAsync(user);
+
+            // Remove current role(s) except SuperAdmin
+            foreach (var role in currentRoles.Where(r => r != "SuperAdmin"))
+            {
+                await _userManager.RemoveFromRoleAsync(user, role);
+            }
+
+            // Assign Manager role
+            await _userManager.AddToRoleAsync(user, "Manager");
+
+            TempData["SuccessMessage"] = $"{user.FullName} has been assigned as Manager of '{school.Name}'.";
+            return RedirectToAction("Schools");
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPost]
+        public async Task<IActionResult> SwitchSchoolContext(int? schoolId, string? returnUrl)
         {
             if (schoolId.HasValue && schoolId.Value > 0)
             {
@@ -5993,14 +6119,18 @@ namespace LearnLink.Controllers
                 if (school != null)
                 {
                     HttpContext.Session.SetInt32("SwitchedSchoolId", schoolId.Value);
+                    HttpContext.Session.SetString("SwitchedSchoolName", school.Name);
                     TempData["SuccessMessage"] = $"Switched to {school.Name} context.";
                 }
             }
             else
             {
                 HttpContext.Session.Remove("SwitchedSchoolId");
+                HttpContext.Session.Remove("SwitchedSchoolName");
                 TempData["SuccessMessage"] = "Switched to All Schools view.";
             }
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+                return Redirect(returnUrl);
             return RedirectToAction("Dashboard");
         }
 
@@ -6166,13 +6296,14 @@ namespace LearnLink.Controllers
         }
 
         [Authorize(Roles = "SuperAdmin,Contributor,Manager")]
-        public async Task<IActionResult> Reports()
+        public async Task<IActionResult> Reports(int? schoolId)
         {
             await LoadSchoolSettingsToViewBag();
 
-            var data = await BuildReportData(null);
+            var data = await BuildReportData(schoolId);
             var jsonOpts = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
             ViewBag.InitialReportData = JsonSerializer.Serialize(data, jsonOpts);
+            ViewBag.InitialSchoolId = schoolId;
 
             var schools = await _context.Schools.Where(s => s.IsActive)
                 .OrderBy(s => s.Name)

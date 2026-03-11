@@ -221,10 +221,12 @@
 
     // ──────── SCHOOL FILTER DROPDOWN ────────
     var sel = document.getElementById('schoolFilter');
+    var initialSchoolId = '@(ViewBag.InitialSchoolId ?? "")';
     schools.forEach(function (s) {
         var o = document.createElement('option');
         o.value = s.schoolId;
         o.textContent = s.name;
+        if (initialSchoolId && s.schoolId.toString() === initialSchoolId) o.selected = true;
         sel.appendChild(o);
     });
     sel.addEventListener('change', function () {

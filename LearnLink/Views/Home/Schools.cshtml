@@ -3,6 +3,7 @@
     ViewData["ActivePage"] = "Schools";
 
     var schools = ViewBag.Schools as List<dynamic> ?? new List<dynamic>();
+    var managerCandidates = ViewBag.ManagerCandidates as List<object> ?? new List<object>();
 
     var ySchoolCount = (int)(ViewBag.YesterdaySchoolCount ?? 0);
     var yActiveSchools = (int)(ViewBag.YesterdayActiveSchools ?? 0);
@@ -207,12 +208,43 @@
                             </form>
                         </td>
                         <td class="text-center">
-                            <form asp-action="SwitchSchoolContext" method="post" class="d-inline">
-                                <input type="hidden" name="schoolId" value="@school.SchoolId" />
-                                <button type="submit" class="btn btn-sm btn-outline-primary" title="Switch to this school's context">
-                                    <i class="bi bi-box-arrow-in-right"></i>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
                                 </button>
-                            </form>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <button type="button" class="dropdown-item" onclick="openEditModal(@school.SchoolId, '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode((string)school.Name))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode((string)school.Code))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode((string)(school.Description ?? "")))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode((string)(school.ContactEmail ?? "")))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode((string)(school.Address ?? "")))')">
+                                            <i class="bi bi-pencil me-2"></i>Edit School
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button type="button" class="dropdown-item" onclick="openAssignManagerModal(@school.SchoolId, '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode((string)school.Name))')">
+                                            <i class="bi bi-person-gear me-2"></i>Assign Manager
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="@Url.Action("Reports", "Home")?schoolId=@school.SchoolId">
+                                            <i class="bi bi-bar-chart me-2"></i>View Reports
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form asp-action="SwitchSchoolContext" method="post" class="d-inline">
+                                            <input type="hidden" name="schoolId" value="@school.SchoolId" />
+                                            <button type="submit" class="dropdown-item">
+                                                <i class="bi bi-box-arrow-in-right me-2"></i>Switch Context
+                                            </button>
+                                        </form>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <button type="button" class="dropdown-item text-danger" onclick="confirmDeleteSchool(@school.SchoolId, '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode((string)school.Name))', @school.UserCount)">
+                                            <i class="bi bi-trash me-2"></i>Delete School
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
                         </td>
                     </tr>
                     }
@@ -264,3 +296,164 @@
         </div>
     </div>
 </div>
+
+<!-- Edit School Modal -->
+<div class="modal fade" id="editSchoolModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-action="EditSchool" method="post">
+                <input type="hidden" name="id" id="editSchoolId" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit School</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">School Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="editSchoolName" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">School Code <span class="text-danger">*</span></label>
+                        <input type="text" name="code" id="editSchoolCode" class="form-control" maxlength="6" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea name="description" id="editSchoolDescription" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Contact Email</label>
+                            <input type="email" name="contactEmail" id="editSchoolEmail" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Address</label>
+                            <input type="text" name="address" id="editSchoolAddress" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Manager Modal -->
+<div class="modal fade" id="assignManagerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-action="AssignManager" method="post">
+                <input type="hidden" name="schoolId" id="assignManagerSchoolId" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-person-gear me-2"></i>Assign Manager</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Assign a manager for <strong id="assignManagerSchoolName"></strong>. The selected user will be promoted to the Manager role.</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Select User <span class="text-danger">*</span></label>
+                        <select name="userId" id="assignManagerUserSelect" class="form-select" required>
+                            <option value="">— Choose a user —</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Assign Manager</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete School Confirmation Modal -->
+<div class="modal fade" id="deleteSchoolModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-action="DeleteSchool" method="post">
+                <input type="hidden" name="id" id="deleteSchoolId" />
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Delete School</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete <strong id="deleteSchoolName"></strong>?</p>
+                    <p id="deleteSchoolWarning" class="text-danger fw-semibold d-none">
+                        <i class="bi bi-exclamation-circle me-1"></i>This school still has users. Remove or reassign them first.
+                    </p>
+                    <p class="text-muted small">This action cannot be undone. All associated settings and departments will be removed.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" id="deleteSchoolSubmitBtn" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Manager candidates data from server
+    var managerCandidates = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(managerCandidates, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+
+    function openEditModal(id, name, code, description, contactEmail, address) {
+        document.getElementById('editSchoolId').value = id;
+        document.getElementById('editSchoolName').value = name;
+        document.getElementById('editSchoolCode').value = code;
+        document.getElementById('editSchoolDescription').value = description;
+        document.getElementById('editSchoolEmail').value = contactEmail;
+        document.getElementById('editSchoolAddress').value = address;
+        new bootstrap.Modal(document.getElementById('editSchoolModal')).show();
+    }
+
+    function openAssignManagerModal(schoolId, schoolName) {
+        document.getElementById('assignManagerSchoolId').value = schoolId;
+        document.getElementById('assignManagerSchoolName').textContent = schoolName;
+
+        var select = document.getElementById('assignManagerUserSelect');
+        // Clear existing options
+        select.innerHTML = '<option value="">— Choose a user —</option>';
+
+        // Filter candidates for this school
+        var candidates = managerCandidates.filter(function (u) { return u.schoolId === schoolId; });
+
+        if (candidates.length === 0) {
+            var opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'No eligible users in this school';
+            opt.disabled = true;
+            select.appendChild(opt);
+        } else {
+            candidates.forEach(function (u) {
+                var opt = document.createElement('option');
+                opt.value = u.id;
+                opt.textContent = u.firstName + ' ' + u.lastName + ' (' + u.role + ')';
+                select.appendChild(opt);
+            });
+        }
+
+        new bootstrap.Modal(document.getElementById('assignManagerModal')).show();
+    }
+
+    function confirmDeleteSchool(id, name, userCount) {
+        document.getElementById('deleteSchoolId').value = id;
+        document.getElementById('deleteSchoolName').textContent = name;
+
+        var warning = document.getElementById('deleteSchoolWarning');
+        var btn = document.getElementById('deleteSchoolSubmitBtn');
+
+        if (userCount > 0) {
+            warning.classList.remove('d-none');
+            btn.disabled = true;
+        } else {
+            warning.classList.add('d-none');
+            btn.disabled = false;
+        }
+
+        new bootstrap.Modal(document.getElementById('deleteSchoolModal')).show();
+    }
+</script>
+}

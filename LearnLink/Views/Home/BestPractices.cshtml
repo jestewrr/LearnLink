@@ -287,14 +287,16 @@
     }
     else
     {
+        var userMostRead = ViewBag.UserMostRead as List<LearnLink.Models.ResourceViewModel> ?? new List<LearnLink.Models.ResourceViewModel>();
+
         <!-- Personalized Recommendations Banner -->
         <div class="ll-card mb-4" style="background: linear-gradient(135deg, #fef3c7 0%, #fcd34d 100%); border: none;">
             <div class="ll-card-body py-4">
                 <div class="row align-items-center">
                     <div class="col-lg-8">
-                        <h4 class="fw-bold mb-2"><i class="bi bi-stars me-2"></i>Personalized Recommendations</h4>
-                        <p class="mb-0 text-dark opacity-75">Based on your reading history and interests, we've curated these resources just for you.
-                           Keep exploring to get more accurate recommendations!</p>
+                        <h4 class="fw-bold mb-2"><i class="bi bi-stars me-2"></i>Personalized Just for You</h4>
+                        <p class="mb-0 text-dark opacity-75">Our recommendation engine analyzes reading patterns across all learners to find resources
+                           you'll find most valuable. The more you explore, the smarter it gets!</p>
                     </div>
                     <div class="col-lg-4 text-end d-none d-lg-block">
                         <i class="bi bi-magic" style="font-size: 4rem; opacity: 0.3;"></i>
@@ -303,51 +305,17 @@
             </div>
         </div>
 
-        <!-- Quick Stats Row -->
-        <div class="row g-3 mb-4">
-            <div class="col-6 col-md-3">
-                <div class="ll-card h-100" style="border-left: 4px solid var(--ll-primary);">
-                    <div class="ll-card-body py-3 text-center">
-                        <div class="fs-3 fw-bold" style="color: var(--ll-primary);">@recommendations.Count</div>
-                        <div class="small text-muted fw-medium">For You</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="ll-card h-100" style="border-left: 4px solid var(--ll-success);">
-                    <div class="ll-card-body py-3 text-center">
-                        <div class="fs-3 fw-bold" style="color: var(--ll-success);">@continueReading.Count</div>
-                        <div class="small text-muted fw-medium">In Progress</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="ll-card h-100" style="border-left: 4px solid var(--ll-warning);">
-                    <div class="ll-card-body py-3 text-center">
-                        <div class="fs-3 fw-bold" style="color: var(--ll-warning);">@trending.Count</div>
-                        <div class="small text-muted fw-medium">Trending</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="ll-card h-100" style="border-left: 4px solid var(--ll-info);">
-                    <div class="ll-card-body py-3 text-center">
-                        <div class="fs-3 fw-bold" style="color: var(--ll-info);">@(totalProgress)%</div>
-                        <div class="small text-muted fw-medium">Overall Progress</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div class="row g-4">
             <div class="col-lg-8">
-                <!-- For You Section -->
+                <!-- Recommended for You -->
                 <div class="ll-card mb-4">
                     <div class="ll-card-header">
                         <h5 class="ll-card-title"><i class="bi bi-person-heart me-2 text-danger"></i>Recommended for You</h5>
-                        <span class="ll-badge ll-badge-info">Based on your history</span>
+                        <span class="ll-badge ll-badge-info">Powered by KNN Algorithm</span>
                     </div>
                     <div class="ll-card-body">
+                        @if (recommendations.Any())
+                        {
                         <div class="row g-3">
                             @{
                                 int matchScore = 98;
@@ -374,6 +342,15 @@
                                 matchScore -= new Random(resource.Title.GetHashCode()).Next(3, 8);
                             }
                         </div>
+                        }
+                        else
+                        {
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-journal-bookmark display-6 d-block mb-2"></i>
+                            <p>Start reading resources to get personalized recommendations!</p>
+                            <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-primary ll-btn-sm">Browse Resources</a>
+                        </div>
+                        }
                     </div>
                 </div>
 
@@ -452,48 +429,132 @@
                     </div>
                 </div>
 
-                <!-- Best Practices Tips -->
+                <!-- What's Next -->
                 <div class="ll-card mb-4">
                     <div class="ll-card-header">
-                        <h5 class="ll-card-title"><i class="bi bi-lightbulb me-2 text-warning"></i>Study Tips</h5>
+                        <h5 class="ll-card-title"><i class="bi bi-signpost-split me-2 text-primary"></i>What's Next?</h5>
                     </div>
                     <div class="ll-card-body">
-                        <div class="d-flex gap-2 mb-3 pb-3 border-bottom">
-                            <div class="flex-shrink-0" style="width: 36px; height: 36px; background: #dbeafe; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <i class="bi bi-clock text-primary"></i>
+                        <a href="@Url.Action("Repository", "Home")" class="text-decoration-none">
+                            <div class="d-flex gap-2 mb-3 pb-3 border-bottom align-items-center">
+                                <div class="flex-shrink-0" style="width: 36px; height: 36px; background: #dbeafe; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-search text-primary"></i>
+                                </div>
+                                <div>
+                                    <div class="small fw-bold">Explore Resources</div>
+                                    <div class="small text-muted">Browse and discover new learning materials.</div>
+                                </div>
                             </div>
-                            <div>
-                                <div class="small fw-bold">Set a Schedule</div>
-                                <div class="small text-muted">Read at least one resource daily to build a streak.</div>
+                        </a>
+                        <a href="@Url.Action("Discussions", "Home")" class="text-decoration-none">
+                            <div class="d-flex gap-2 mb-3 pb-3 border-bottom align-items-center">
+                                <div class="flex-shrink-0" style="width: 36px; height: 36px; background: #d1fae5; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-chat-dots text-success"></i>
+                                </div>
+                                <div>
+                                    <div class="small fw-bold">Join a Discussion</div>
+                                    <div class="small text-muted">Share your thoughts with classmates.</div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="d-flex gap-2 mb-3 pb-3 border-bottom">
-                            <div class="flex-shrink-0" style="width: 36px; height: 36px; background: #d1fae5; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <i class="bi bi-pencil text-success"></i>
+                        </a>
+                        <a href="@Url.Action("LessonsLearned", "Home")" class="text-decoration-none">
+                            <div class="d-flex gap-2 mb-3 pb-3 border-bottom align-items-center">
+                                <div class="flex-shrink-0" style="width: 36px; height: 36px; background: #fef3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-journal-text text-warning"></i>
+                                </div>
+                                <div>
+                                    <div class="small fw-bold">Write a Lesson Learned</div>
+                                    <div class="small text-muted">Reflect on what you've read.</div>
+                                </div>
                             </div>
-                            <div>
-                                <div class="small fw-bold">Take Notes</div>
-                                <div class="small text-muted">Submit lessons learned after each resource.</div>
+                        </a>
+                        <a href="@Url.Action("ReadingHistory", "Home")" class="text-decoration-none">
+                            <div class="d-flex gap-2 align-items-center">
+                                <div class="flex-shrink-0" style="width: 36px; height: 36px; background: #ede9fe; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-clock-history text-purple" style="color: #7c3aed;"></i>
+                                </div>
+                                <div>
+                                    <div class="small fw-bold">View Reading History</div>
+                                    <div class="small text-muted">Pick up where you left off.</div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <div class="flex-shrink-0" style="width: 36px; height: 36px; background: #fef3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <i class="bi bi-people text-warning"></i>
-                            </div>
-                            <div>
-                                <div class="small fw-bold">Discuss & Share</div>
-                                <div class="small text-muted">Join discussions to deepen your understanding.</div>
-                            </div>
-                        </div>
+                        </a>
                     </div>
                 </div>
             </div>
 
+            <!-- Your Most Read Resources -->
+            @if (userMostRead.Any())
+            {
             <div class="col-12">
-                <!-- Trending This Week -->
                 <div class="ll-card mb-4">
                     <div class="ll-card-header">
-                        <h5 class="ll-card-title"><i class="bi bi-fire me-2 text-danger"></i>System Wide Trending</h5>
+                        <h5 class="ll-card-title"><i class="bi bi-book me-2 text-primary"></i>Your Most Read Resources</h5>
+                        <a href="@Url.Action("ReadingHistory", "Home")" class="ll-btn ll-btn-outline ll-btn-sm">View All</a>
+                    </div>
+                    <div class="ll-card-body p-0">
+                        <div class="table-responsive-xl">
+                            <table class="ll-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Resource</th>
+                                        <th>Views</th>
+                                        <th>Downloads</th>
+                                        <th>Rating</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (int i = 0; i < userMostRead.Count; i++)
+                                    {
+                                        var resource = userMostRead[i];
+                                    <tr>
+                                        <td>
+                                            @if (i < 3)
+                                            {
+                                                string[] medals = { "\U0001F947", "\U0001F948", "\U0001F949" };
+                                                string[] badgeClasses = { "bg-warning text-dark", "bg-secondary", "bg-danger" };
+                                                <span class="badge @badgeClasses[i]">@medals[i] @(i + 1)</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-light text-dark">@(i + 1)</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <a href="@Url.Action("ResourceDetail", "Home", new { id = resource.Id })" class="text-decoration-none text-dark">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="bi @resource.IconClass @resource.IconColor"></i>
+                                                    <div>
+                                                        <div class="fw-medium text-primary">@resource.Title</div>
+                                                        <small class="text-muted">@resource.GradeLevel · @resource.Subject</small>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </td>
+                                        <td>@resource.ViewCount.ToString("N0")</td>
+                                        <td>@resource.DownloadCount.ToString("N0")</td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <span>@resource.Rating.ToString("0.0")</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            }
+
+            <!-- Trending Resources -->
+            <div class="col-12">
+                <div class="ll-card mb-4">
+                    <div class="ll-card-header">
+                        <h5 class="ll-card-title"><i class="bi bi-fire me-2 text-danger"></i>Trending Resources</h5>
                         <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-outline ll-btn-sm">View All</a>
                     </div>
                     <div class="ll-card-body p-0">
@@ -510,8 +571,8 @@
                                 </thead>
                                 <tbody>
                                     @{
-                                        string[] medals = { "🥇", "🥈", "🥉" };
-                                        string[] badgeClasses = { "bg-warning text-dark", "bg-secondary", "bg-danger" };
+                                        string[] tMedals = { "\U0001F947", "\U0001F948", "\U0001F949" };
+                                        string[] tBadgeClasses = { "bg-warning text-dark", "bg-secondary", "bg-danger" };
                                     }
                                     @for (int i = 0; i < trending.Count; i++)
                                     {
@@ -520,7 +581,7 @@
                                         <td>
                                             @if (i < 3)
                                             {
-                                            <span class="badge @badgeClasses[i]">@medals[i] @(i + 1)</span>
+                                            <span class="badge @tBadgeClasses[i]">@tMedals[i] @(i + 1)</span>
                                             }
                                             else
                                             {
@@ -533,7 +594,7 @@
                                                     <i class="bi @resource.IconClass @resource.IconColor"></i>
                                                     <div>
                                                         <div class="fw-medium text-primary">@resource.Title</div>
-                                                        <small class="text-muted">@resource.GradeLevel • @resource.Subject</small>
+                                                        <small class="text-muted">@resource.GradeLevel · @resource.Subject</small>
                                                     </div>
                                                 </div>
                                             </a>
