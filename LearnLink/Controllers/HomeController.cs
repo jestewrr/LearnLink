@@ -3628,7 +3628,7 @@ namespace LearnLink.Controllers
             var lessons = await _context.LessonsLearned
                 .Include(l => l.User)
                 .Include(l => l.Resource).ThenInclude(r => r!.User)
-                .Include(l => l.Comments).ThenInclude(c => c.User)
+                // .Include(l => l.Comments).ThenInclude(c => c.User)
                 .OrderByDescending(l => l.DateSubmitted)
                 .ToListAsync();
 

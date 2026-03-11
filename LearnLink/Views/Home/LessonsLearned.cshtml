@@ -116,6 +116,7 @@
                         <button class="btn btn-sm btn-white border shadow-sm like-btn" data-id="@lesson.Id">
                             <i class="bi @(lesson.LikeCount > 0 ? "bi-hand-thumbs-up-fill text-primary" : "bi-hand-thumbs-up")"></i> <span class="fw-medium ms-1">@lesson.LikeCount</span>
                         </button>
+                        @* Disabled reply buttons for now until DB table propagate
                         @{
                             var canReply = (ViewBag.CurrentUserId != null && ViewBag.CurrentUserId == lesson.ResourceUploaderId)
                                 || User.IsInRole("SuperAdmin") || User.IsInRole("Manager");
@@ -126,10 +127,12 @@
                             <i class="bi bi-reply"></i> <span class="fw-medium ms-1">Reply</span>
                         </button>
                         }
+                        *@
                     </div>
                 </div>
 
-                <!-- Replies Section -->
+                <!-- Replies Section (Temporarily Disabled) -->
+                @*
                 @if (lesson.Comments.Any() || canReply)
                 {
                 <div class="mt-3">
@@ -178,6 +181,7 @@
                     }
                 </div>
                 }
+                *@
             </div>
         </div>
         }
