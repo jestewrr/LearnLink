@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Text.Json;
@@ -414,6 +415,39 @@ namespace LearnLink.Controllers
                         CreatedAt = c.DatePosted
                     }).ToList()
             };
+        }
+
+        private async Task TryEnsureLessonCommentsSchemaAsync()
+        {
+            try
+            {
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID('LessonComments') AND type in ('U'))
+                    BEGIN
+                        CREATE TABLE [LessonComments] (
+                            [LessonCommentId] int NOT NULL IDENTITY(1,1),
+                            [LessonId] int NOT NULL,
+                            [UserId] nvarchar(450) NOT NULL,
+                            [Content] nvarchar(2000) NOT NULL,
+                            [DatePosted] datetime2 NOT NULL,
+                            CONSTRAINT [PK_LessonComments] PRIMARY KEY ([LessonCommentId]),
+                            CONSTRAINT [FK_LessonComments_LessonsLearned_LessonId] FOREIGN KEY ([LessonId]) REFERENCES [LessonsLearned] ([LessonId]) ON DELETE CASCADE,
+                            CONSTRAINT [FK_LessonComments_AspNetUsers_UserId] FOREIGN KEY ([UserId]) REFERENCES [AspNetUsers] ([Id])
+                        );
+                        CREATE INDEX [IX_LessonComments_LessonId] ON [LessonComments] ([LessonId]);
+                        CREATE INDEX [IX_LessonComments_UserId] ON [LessonComments] ([UserId]);
+                    END
+                ");
+            }
+            catch
+            {
+                // Fall back to comment-free lesson rendering if the database cannot be updated from this request.
+            }
+        }
+
+        private static bool IsMissingLessonCommentsTable(SqlException exception)
+        {
+            return exception.Number == 208 && exception.Message.Contains("LessonComments", StringComparison.OrdinalIgnoreCase);
         }
 
         private DiscussionViewModel MapDiscussion(Discussion d, bool isLiked = false)
@@ -3626,12 +3660,33 @@ namespace LearnLink.Controllers
         {
             var currentUser = await GetCurrentUserAsync();
             ViewBag.CurrentUserId = currentUser?.Id;
-            var lessons = await _context.LessonsLearned
-                .Include(l => l.User)
-                .Include(l => l.Resource).ThenInclude(r => r!.User)
-                .Include(l => l.Comments).ThenInclude(c => c.User)
-                .OrderByDescending(l => l.DateSubmitted)
-                .ToListAsync();
+            await TryEnsureLessonCommentsSchemaAsync();
+
+            List<LessonLearned> lessons;
+            try
+            {
+                lessons = await _context.LessonsLearned
+                    .Include(l => l.User)
+                    .Include(l => l.Resource).ThenInclude(r => r!.User)
+                    .Include(l => l.Comments).ThenInclude(c => c.User)
+                    .OrderByDescending(l => l.DateSubmitted)
+                    .ToListAsync();
+            }
+            catch (SqlException ex) when (IsMissingLessonCommentsTable(ex))
+            {
+                lessons = await _context.LessonsLearned
+                    .Include(l => l.User)
+                    .Include(l => l.Resource).ThenInclude(r => r!.User)
+                    .OrderByDescending(l => l.DateSubmitted)
+                    .ToListAsync();
+
+                foreach (var lesson in lessons)
+                {
+                    lesson.Comments = new List<LessonComment>();
+                }
+
+                TempData["ErrorMessage"] = "Lesson replies are temporarily unavailable until the database update completes.";
+            }
 
             var likedIds = new HashSet<int>();
             if (currentUser != null)
@@ -3782,6 +3837,7 @@ namespace LearnLink.Controllers
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return RedirectToAction("Login");
+            await TryEnsureLessonCommentsSchemaAsync();
 
             if (string.IsNullOrWhiteSpace(content))
             {
@@ -3803,16 +3859,24 @@ namespace LearnLink.Controllers
                 return RedirectToAction("LessonsLearned");
             }
 
-            var comment = new LessonComment
+            try
             {
-                LessonId = lessonId,
-                UserId = currentUser.Id,
-                Content = content,
-                DatePosted = DateTime.Now
-            };
-            _context.LessonComments.Add(comment);
-            lesson.CommentCount++;
-            await _context.SaveChangesAsync();
+                var comment = new LessonComment
+                {
+                    LessonId = lessonId,
+                    UserId = currentUser.Id,
+                    Content = content,
+                    DatePosted = DateTime.Now
+                };
+                _context.LessonComments.Add(comment);
+                lesson.CommentCount++;
+                await _context.SaveChangesAsync();
+            }
+            catch (SqlException ex) when (IsMissingLessonCommentsTable(ex))
+            {
+                TempData["ErrorMessage"] = "Lesson replies are temporarily unavailable until the database update completes.";
+                return RedirectToAction("LessonsLearned");
+            }
 
             // Notify the student who submitted the lesson
             if (lesson.UserId != currentUser.Id)
@@ -3841,8 +3905,19 @@ namespace LearnLink.Controllers
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return RedirectToAction("Login");
+            await TryEnsureLessonCommentsSchemaAsync();
 
-            var comment = await _context.LessonComments.Include(c => c.Lesson).FirstOrDefaultAsync(c => c.LessonCommentId == id);
+            LessonComment? comment;
+            try
+            {
+                comment = await _context.LessonComments.Include(c => c.Lesson).FirstOrDefaultAsync(c => c.LessonCommentId == id);
+            }
+            catch (SqlException ex) when (IsMissingLessonCommentsTable(ex))
+            {
+                TempData["ErrorMessage"] = "Lesson replies are temporarily unavailable until the database update completes.";
+                return RedirectToAction("LessonsLearned");
+            }
+
             if (comment == null) return RedirectToAction("LessonsLearned");
 
             var isOwner = comment.UserId == currentUser.Id;
