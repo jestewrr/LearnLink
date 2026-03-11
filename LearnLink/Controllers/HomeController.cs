@@ -407,6 +407,7 @@ namespace LearnLink.Controllers
                         Id = c.LessonCommentId,
                         Content = c.Content,
                         Author = c.User?.FullName ?? "Unknown",
+                        UserId = c.UserId,
                         AuthorInitials = c.User?.Initials ?? "?",
                         AuthorColor = c.User?.AvatarColor ?? "",
                         AuthorRole = "",
@@ -3628,7 +3629,7 @@ namespace LearnLink.Controllers
             var lessons = await _context.LessonsLearned
                 .Include(l => l.User)
                 .Include(l => l.Resource).ThenInclude(r => r!.User)
-                // .Include(l => l.Comments).ThenInclude(c => c.User)
+                .Include(l => l.Comments).ThenInclude(c => c.User)
                 .OrderByDescending(l => l.DateSubmitted)
                 .ToListAsync();
 

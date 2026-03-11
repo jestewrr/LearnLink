@@ -228,7 +228,6 @@
                                     else
                                     {
                                         <li><a class="dropdown-item" href="@Url.Action("ResourceDetail", "Home", new { id = upload.Id })"><i class="bi bi-eye me-2"></i>View</a></li>
-                                        <li><a class="dropdown-item" href="#"><i class="bi bi-bar-chart me-2"></i>Analytics</a></li>
                                         <li><a class="dropdown-item" href="@Url.Action("Upload", "Home", new { id = upload.Id })"><i class="bi bi-pencil me-2"></i>Edit</a></li>
                                         <li><hr class="dropdown-divider"></li>
                                         <li><a class="dropdown-item text-danger delete-resource-btn" href="javascript:void(0)" data-id="@upload.Id"><i class="bi bi-trash me-2"></i>Delete</a></li>
@@ -251,7 +250,7 @@
                     ("Draft", _) => "Continue Editing|Submit for Review|Discard",
                     ("Pending", true) => "View|Edit|Reject",
                     ("Pending", false) => "View|Edit",
-                    (_, _) => "View|Edit|Analytics|Delete"
+                    (_, _) => "View|Edit|Delete"
                 };
             <div class="ll-mobile-card-item upload-row-mobile"
                  data-id="@upload.Id"

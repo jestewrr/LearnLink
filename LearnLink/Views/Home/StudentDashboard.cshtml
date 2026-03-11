@@ -148,7 +148,7 @@
     </div>
 
     <!-- Gamification Stack (Narrow) -->
-    <div class="col-lg-4 d-flex flex-column gap-4">
+    <div class="col-lg-4">
         <!-- Learning Streak -->
         <div class="ll-card border-0 shadow-sm flex-fill" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-radius: 16px;">
             <div class="ll-card-header bg-transparent border-bottom-0 pb-0 pt-4 px-4 text-center">
@@ -176,28 +176,6 @@
                     <div class="progress-bar rounded-pill" style="width: @streakPercent%; background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);"></div>
                 </div>
                 <div class="small fw-bold mt-2" style="color: #b45309;">@streakPercent% of your best streak</div>
-            </div>
-        </div>
-
-        <!-- Weekly Target -->
-        <div class="ll-card border-0 shadow-sm" style="border-radius: 16px;">
-            <div class="ll-card-header d-flex justify-content-between align-items-center border-bottom-0 pb-0 pt-4 px-4">
-                <h5 class="ll-card-title fw-bold mb-0"><i class="bi bi-bullseye me-2 text-info"></i>Weekly Target</h5>
-                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold rounded-pill px-3 py-2">@Model.WeeklyResourcesCompleted / @Model.WeeklyResourceGoal</span>
-            </div>
-            <div class="ll-card-body pb-4 pt-3 px-4">
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="fw-medium small text-muted">Resources Read</span>
-                    <span class="fw-bold small @(Model.WeeklyResourcesCompleted >= Model.WeeklyResourceGoal ? "text-success" : "text-dark")">
-                        @(Model.WeeklyResourcesCompleted >= Model.WeeklyResourceGoal ? "Goal Reached! 🎉" : $"{Model.WeeklyResourceGoal - Model.WeeklyResourcesCompleted} left")
-                    </span>
-                </div>
-                <div class="progress rounded-pill bg-light" style="height: 10px;">
-                    @{
-                        var weeklyGoalPercent = Model.WeeklyResourceGoal > 0 ? Math.Min(100, (int)Math.Round((double)Model.WeeklyResourcesCompleted / Model.WeeklyResourceGoal * 100)) : 0;
-                    }
-                    <div class="progress-bar rounded-pill @(weeklyGoalPercent >= 100 ? "bg-success" : "bg-primary") progress-bar-striped @(weeklyGoalPercent >= 100 ? "" : "progress-bar-animated")" style="width: @weeklyGoalPercent%"></div>
-                </div>
             </div>
         </div>
     </div>
