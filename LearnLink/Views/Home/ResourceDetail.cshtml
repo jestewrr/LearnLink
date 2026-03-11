@@ -10,6 +10,8 @@
     var canPreview = (bool?)(ViewBag.CanPreview ?? false) ?? false;
     var allowDownloads = (bool?)(ViewBag.AllowDownloads ?? true) ?? true;
     var allowComments = (bool?)(ViewBag.AllowComments ?? true) ?? true;
+    var allowRatings = (bool?)(ViewBag.AllowRatings ?? true) ?? true;
+    var enableVersionHistory = (bool?)(ViewBag.EnableVersionHistory ?? true) ?? true;
     var isPublicView = (bool?)(ViewBag.IsPublicView ?? false) ?? false;
     var externalSourceUrl = ViewBag.ExternalSourceUrl as string ?? string.Empty;
     var externalPreviewUrl = ViewBag.ExternalPreviewUrl as string ?? string.Empty;
@@ -213,7 +215,7 @@
         </div>
 
         <!-- Rating Widget -->
-        @if (!isPublicView)
+        @if (!isPublicView && allowRatings)
         {
         <div class="ll-scribd-rating-widget" id="ratingWidget" style="margin-top:28px;">
             <span class="ll-scribd-rating-label">Rate this resource</span>
@@ -252,7 +254,7 @@
         </div>
 
         <!-- Version History -->
-        @if (ViewBag.ResourceVersions != null)
+        @if (enableVersionHistory && ViewBag.ResourceVersions != null)
         {
             var versions = ViewBag.ResourceVersions as IEnumerable<LearnLink.Models.ResourceVersion>;
             if (versions != null && versions.Any())
@@ -426,6 +428,8 @@
 </div>
 
 <!-- ═══════════ LESSONS LEARNED CTA ═══════════ -->
+@if (!isPublicView && allowComments)
+{
 <div class="ll-reader-below" id="lessonsLearnedSection" style="margin-top:40px;padding:24px;">
     <div class="ll-scribd-panel text-center py-5">
         <div style="background:linear-gradient(135deg, #f59e0b, #d97706);width:80px;height:80px;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;box-shadow:0 10px 15px -3px rgba(245,158,11,0.3);">
@@ -440,8 +444,11 @@
         </button>
     </div>
 </div>
+}
 
 <!-- Submit Lesson Modal -->
+@if (!isPublicView && allowComments)
+{
 <div class="modal fade" id="submitLessonModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -481,6 +488,7 @@
         </div>
     </div>
 </div>
+}
 
 @section Scripts {
 <script>

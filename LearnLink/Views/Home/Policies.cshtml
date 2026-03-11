@@ -149,8 +149,8 @@
                     <div class="border rounded p-3 mb-3">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="fw-bold mb-1">Allow Comments</h6>
-                                <p class="text-muted small mb-0">Allow users to comment on this resource</p>
+                                <h6 class="fw-bold mb-1">Allow Users to Submit Lesson Learned</h6>
+                                <p class="text-muted small mb-0">Allow users to share lesson learned entries for this resource</p>
                             </div>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="policyAllowComments" checked style="width: 50px; height: 25px;">
@@ -158,7 +158,7 @@
                         </div>
                     </div>
 
-                    <div class="border rounded p-3 mb-3">
+                    <div class="border rounded p-3">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="fw-bold mb-1">Allow Ratings</h6>
@@ -166,18 +166,6 @@
                             </div>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="policyAllowRatings" checked style="width: 50px; height: 25px;">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="border rounded p-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="fw-bold mb-1">Moderate Comments</h6>
-                                <p class="text-muted small mb-0">Review comments before they are published</p>
-                            </div>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="policyModerateComments" style="width: 50px; height: 25px;">
                             </div>
                         </div>
                     </div>
@@ -272,7 +260,6 @@
     const elRequireVersionNotes = document.getElementById('policyRequireVersionNotes');
     const elAllowComments = document.getElementById('policyAllowComments');
     const elAllowRatings = document.getElementById('policyAllowRatings');
-    const elModerateComments = document.getElementById('policyModerateComments');
     const btnSelectUsers = document.getElementById('btnSelectUsers');
     const restrictedUsersModal = new bootstrap.Modal(document.getElementById('restrictedUsersModal'));
     const userSearchInput = document.getElementById('userSearchInput');
@@ -394,7 +381,6 @@
             elRequireVersionNotes.checked = data.requireVersionNotes || false;
             elAllowComments.checked = data.allowComments;
             elAllowRatings.checked = data.allowRatings;
-            elModerateComments.checked = data.moderateComments;
 
             // Show the policy area
             policyArea.style.display = 'block';
@@ -426,7 +412,7 @@
         formData.append('requireVersionNotes', elRequireVersionNotes.checked);
         formData.append('allowComments', elAllowComments.checked);
         formData.append('allowRatings', elAllowRatings.checked);
-        formData.append('moderateComments', elModerateComments.checked);
+        formData.append('moderateComments', false);
         
         // Add restricted user IDs
         selectedUserIds.forEach(userId => {
@@ -461,7 +447,6 @@
         elRequireVersionNotes.checked = false;
         elAllowComments.checked = true;
         elAllowRatings.checked = true;
-        elModerateComments.checked = false;
     });
 
     // Simple toast helper (uses existing site toast if available, otherwise falls back to alert)

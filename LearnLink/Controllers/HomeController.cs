@@ -2663,6 +2663,7 @@ namespace LearnLink.Controllers
             ViewBag.AllowDownloads = resource.AllowDownloads;
             ViewBag.AllowComments = resource.AllowComments;
             ViewBag.AllowRatings = resource.AllowRatings;
+            ViewBag.EnableVersionHistory = resource.EnableVersionHistory;
 
             // Load comments
             if (resource.AllowComments)
@@ -2682,7 +2683,7 @@ namespace LearnLink.Controllers
                 }
             }
 
-            // Always load versions — published edits always create version entries
+            if (resource.EnableVersionHistory)
             {
                 var versionList = await _context.ResourceVersions
                     .Where(v => v.ResourceId == resource.ResourceId)
@@ -2897,7 +2898,7 @@ namespace LearnLink.Controllers
             var resource = await _context.Resources.FindAsync(id);
             if (resource == null) return NotFound();
 
-            if (!resource.AllowComments && !resource.AllowRatings)
+            if (!resource.AllowRatings)
                 return Json(new { success = false, message = "Ratings are disabled for this resource." });
 
             if (rating < 1 || rating > 5) return BadRequest();
@@ -3595,6 +3596,7 @@ namespace LearnLink.Controllers
             ViewBag.AllowDownloads = resource.AllowDownloads;
             ViewBag.AllowComments = false; // Anonymous users can't comment
             ViewBag.AllowRatings = false;
+            ViewBag.EnableVersionHistory = resource.EnableVersionHistory;
             ViewBag.IsPublicView = true;
 
             // Load comments (read-only for public)
@@ -3615,7 +3617,7 @@ namespace LearnLink.Controllers
                 }
             }
 
-            // Always load versions
+            if (resource.EnableVersionHistory)
             {
                 var versionList = await _context.ResourceVersions
                     .Where(v => v.ResourceId == resource.ResourceId)
@@ -3735,6 +3737,12 @@ namespace LearnLink.Controllers
             {
                 TempData["ErrorMessage"] = "Please select a valid resource.";
                 return RedirectToAction("LessonsLearned");
+            }
+
+            if (!resource.AllowComments)
+            {
+                TempData["ErrorMessage"] = "Lesson learned submissions are disabled for this resource.";
+                return RedirectToAction("ResourceDetail", new { id = model.ResourceId });
             }
 
             var lesson = new LessonLearned
@@ -4718,8 +4726,8 @@ namespace LearnLink.Controllers
             // Track if this is an edit of a published resource
             bool isPublishedEdit = !isNew && resource.Status == "Published";
 
-            // For published resources, snapshot the current state before applying changes
-            if (isPublishedEdit)
+            // For published resources, snapshot the current state before applying changes when version history is enabled
+            if (isPublishedEdit && resource.EnableVersionHistory)
             {
                 var existingVersionCount = await _context.ResourceVersions.CountAsync(v => v.ResourceId == resource.ResourceId);
 
@@ -4767,7 +4775,6 @@ namespace LearnLink.Controllers
                 : null;
             resource.AllowDownloads = allowDownloads;
             resource.AllowComments = allowComments;
-            resource.AllowRatings = allowComments; // ratings follow comments toggle
             resource.EnableVersionHistory = enableVersionHistory;
 
             // Handle file upload — save to Google Drive
@@ -4818,7 +4825,7 @@ namespace LearnLink.Controllers
             }
 
             // For published edits, create a new version with the updated state
-            if (isPublishedEdit)
+            if (isPublishedEdit && resource.EnableVersionHistory)
             {
                 var versionCount = await _context.ResourceVersions.CountAsync(v => v.ResourceId == resource.ResourceId);
                 _context.ResourceVersions.Add(new ResourceVersion
@@ -4915,7 +4922,9 @@ namespace LearnLink.Controllers
 
             if (isPublishedEdit)
             {
-                TempData["SuccessMessage"] = "Resource updated successfully! A new version has been saved to the version history.";
+                TempData["SuccessMessage"] = resource.EnableVersionHistory
+                    ? "Resource updated successfully! A new version has been saved to the version history."
+                    : "Resource updated successfully!";
                 TempData["SuccessTitle"] = "Update Saved";
             }
             else if (isDraft)

@@ -12,6 +12,7 @@
     var existingTags = ViewBag.ExistingTags as string ?? "";
     var existingCategoryIds = ViewBag.ExistingCategoryIds as List<int> ?? new List<int>();
     var isPublishedEdit = (bool)(ViewBag.IsPublishedEdit ?? false);
+    var trackVersionHistory = Model?.EnableVersionHistory ?? false;
 
     var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx" };
     var maxFileSizeMB = 50;
@@ -195,7 +196,10 @@
                     {
                     <div class="alert alert-info" role="alert">
                         <i class="bi bi-info-circle-fill me-2"></i>
-                        <strong>Updating a published resource.</strong> Your changes will be saved immediately and a new version will be recorded in the version history.
+                        <strong>Updating a published resource.</strong>
+                        @(trackVersionHistory
+                            ? "Your changes will be saved immediately and a new version will be recorded in the version history."
+                            : "Your changes will be saved immediately.")
                     </div>
                     }
                     <div id="formFeedback" class="alert alert-danger d-none" role="alert"></div>
@@ -404,7 +408,7 @@
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" name="allowComments" value="true" id="allowComments"
                                @(Model == null || Model.AllowComments ? "checked" : "")>
-                        <label class="form-check-label" for="allowComments">Allow users to leave comments and ratings</label>
+                        <label class="form-check-label" for="allowComments">Allow users to submit lesson learned entries for this resource</label>
                     </div>
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" name="enableVersionHistory" value="true" id="trackHistory"
