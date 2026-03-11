@@ -51,6 +51,19 @@ namespace LearnLink.Models
         public bool IsLiked { get; set; }
         public int ResourceId { get; set; }
         public string ResourceTitle { get; set; } = "";
+        public string ResourceUploaderId { get; set; } = "";
+        public List<LessonCommentViewModel> Comments { get; set; } = new();
+    }
+
+    public class LessonCommentViewModel
+    {
+        public int Id { get; set; }
+        public string Content { get; set; } = "";
+        public string Author { get; set; } = "";
+        public string AuthorInitials { get; set; } = "";
+        public string AuthorColor { get; set; } = "";
+        public string AuthorRole { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
     }
 
     public class DiscussionViewModel

@@ -31,8 +31,10 @@ namespace LearnLink.Data
 
         // ===== Knowledge Management =====
         public DbSet<LessonLearned> LessonsLearned { get; set; }
+        public DbSet<LessonComment> LessonComments { get; set; }
         public DbSet<BestPractice> BestPractices { get; set; }
         public DbSet<Recommendation> Recommendations { get; set; }
+        public DbSet<AccountDeletionFeedback> AccountDeletionFeedbacks { get; set; }
 
         // ===== Discussions =====
         public DbSet<Discussion> Discussions { get; set; }
@@ -193,6 +195,19 @@ namespace LearnLink.Data
                 .HasOne(l => l.User)
                 .WithMany(u => u.LessonsLearned)
                 .HasForeignKey(l => l.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // ===== LessonComment → Lesson + User =====
+            builder.Entity<LessonComment>()
+                .HasOne(lc => lc.Lesson)
+                .WithMany(l => l.Comments)
+                .HasForeignKey(lc => lc.LessonId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<LessonComment>()
+                .HasOne(lc => lc.User)
+                .WithMany()
+                .HasForeignKey(lc => lc.UserId)
                 .OnDelete(DeleteBehavior.NoAction);
 
             // ===== BestPractice → Resource + User =====

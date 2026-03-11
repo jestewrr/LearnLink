@@ -429,6 +429,58 @@ namespace LearnLink.Models
 
         public int LikeCount { get; set; }
         public int CommentCount { get; set; }
+
+        // Navigation
+        public ICollection<LessonComment> Comments { get; set; } = new List<LessonComment>();
+    }
+
+    // ==================== Lesson Comments (uploader replies) ====================
+
+    public class LessonComment
+    {
+        [Key]
+        public int LessonCommentId { get; set; }
+
+        public int LessonId { get; set; }
+
+        [ForeignKey("LessonId")]
+        public LessonLearned? Lesson { get; set; }
+
+        [Required]
+        public string UserId { get; set; } = "";
+
+        [ForeignKey("UserId")]
+        public ApplicationUser? User { get; set; }
+
+        [Required, StringLength(2000)]
+        public string Content { get; set; } = "";
+
+        public DateTime DatePosted { get; set; } = DateTime.Now;
+    }
+
+    // ==================== Account Deletion Feedback ====================
+
+    public class AccountDeletionFeedback
+    {
+        [Key]
+        public int FeedbackId { get; set; }
+
+        [Required, StringLength(500)]
+        public string Reason { get; set; } = "";
+
+        [StringLength(2000)]
+        public string? Feedback { get; set; }
+
+        [StringLength(100)]
+        public string? UserEmail { get; set; }
+
+        [StringLength(100)]
+        public string? UserName { get; set; }
+
+        [StringLength(50)]
+        public string? UserRole { get; set; }
+
+        public DateTime DeletedAt { get; set; } = DateTime.Now;
     }
 
     // ==================== Best Practices ====================

@@ -398,7 +398,20 @@ namespace LearnLink.Controllers
                 CommentCount = l.CommentCount,
                 IsLiked = isLiked,
                 ResourceId = l.ResourceId,
-                ResourceTitle = l.Resource?.Title ?? "Unknown Resource"
+                ResourceTitle = l.Resource?.Title ?? "Unknown Resource",
+                ResourceUploaderId = l.Resource?.UserId ?? "",
+                Comments = (l.Comments ?? new List<LessonComment>())
+                    .OrderBy(c => c.DatePosted)
+                    .Select(c => new LessonCommentViewModel
+                    {
+                        Id = c.LessonCommentId,
+                        Content = c.Content,
+                        Author = c.User?.FullName ?? "Unknown",
+                        AuthorInitials = c.User?.Initials ?? "?",
+                        AuthorColor = c.User?.AvatarColor ?? "",
+                        AuthorRole = "",
+                        CreatedAt = c.DatePosted
+                    }).ToList()
             };
         }
 
@@ -3614,7 +3627,8 @@ namespace LearnLink.Controllers
             ViewBag.CurrentUserId = currentUser?.Id;
             var lessons = await _context.LessonsLearned
                 .Include(l => l.User)
-                .Include(l => l.Resource)
+                .Include(l => l.Resource).ThenInclude(r => r!.User)
+                .Include(l => l.Comments).ThenInclude(c => c.User)
                 .OrderByDescending(l => l.DateSubmitted)
                 .ToListAsync();
 
@@ -3759,6 +3773,148 @@ namespace LearnLink.Controllers
 
             await _context.SaveChangesAsync();
             return Json(new { success = true, likes = lesson.LikeCount, isLiked = true });
+        }
+
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> ReplyToLesson(int lessonId, string content)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return RedirectToAction("Login");
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                TempData["ErrorMessage"] = "Reply content cannot be empty.";
+                return RedirectToAction("LessonsLearned");
+            }
+
+            var lesson = await _context.LessonsLearned
+                .Include(l => l.Resource)
+                .FirstOrDefaultAsync(l => l.LessonId == lessonId);
+            if (lesson == null) return RedirectToAction("LessonsLearned");
+
+            // Only the resource uploader, managers, or admins can reply
+            var isUploader = lesson.Resource?.UserId == currentUser.Id;
+            var isPrivileged = User.IsInRole("Manager") || User.IsInRole("SuperAdmin");
+            if (!isUploader && !isPrivileged)
+            {
+                TempData["ErrorMessage"] = "Only the resource uploader or administrators can reply.";
+                return RedirectToAction("LessonsLearned");
+            }
+
+            var comment = new LessonComment
+            {
+                LessonId = lessonId,
+                UserId = currentUser.Id,
+                Content = content,
+                DatePosted = DateTime.Now
+            };
+            _context.LessonComments.Add(comment);
+            lesson.CommentCount++;
+            await _context.SaveChangesAsync();
+
+            // Notify the student who submitted the lesson
+            if (lesson.UserId != currentUser.Id)
+            {
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = lesson.UserId,
+                    Title = "Lesson Reply",
+                    Message = $"{currentUser.FullName} responded to your lesson \"{lesson.Title}\".",
+                    Type = "System",
+                    Icon = "bi-reply-fill",
+                    IconBg = "#dbeafe",
+                    ResourceId = lesson.ResourceId,
+                    Link = "/Home/LessonsLearned"
+                });
+                await _context.SaveChangesAsync();
+            }
+
+            TempData["SuccessMessage"] = "Reply posted successfully!";
+            return RedirectToAction("LessonsLearned");
+        }
+
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> DeleteLessonComment(int id)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return RedirectToAction("Login");
+
+            var comment = await _context.LessonComments.Include(c => c.Lesson).FirstOrDefaultAsync(c => c.LessonCommentId == id);
+            if (comment == null) return RedirectToAction("LessonsLearned");
+
+            var isOwner = comment.UserId == currentUser.Id;
+            var isPrivileged = User.IsInRole("Manager") || User.IsInRole("SuperAdmin");
+            if (!isOwner && !isPrivileged) return RedirectToAction("LessonsLearned");
+
+            if (comment.Lesson != null)
+                comment.Lesson.CommentCount = Math.Max(0, comment.Lesson.CommentCount - 1);
+
+            _context.LessonComments.Remove(comment);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Reply deleted.";
+            return RedirectToAction("LessonsLearned");
+        }
+
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> DeleteAccount(string reason, string? feedback)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return RedirectToAction("Login");
+
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                TempData["ErrorMessage"] = "Please provide a reason for account deletion.";
+                return RedirectToAction("Profile");
+            }
+
+            // Save farewell feedback before deleting
+            _context.AccountDeletionFeedbacks.Add(new AccountDeletionFeedback
+            {
+                Reason = reason.Trim(),
+                Feedback = string.IsNullOrWhiteSpace(feedback) ? null : feedback.Trim(),
+                UserEmail = currentUser.Email,
+                UserName = currentUser.FullName,
+                UserRole = (await _userManager.GetRolesAsync(currentUser)).FirstOrDefault() ?? "",
+                DeletedAt = DateTime.Now
+            });
+            await _context.SaveChangesAsync();
+
+            // Clean up entities with NoAction delete behavior
+            var lessonComments = await _context.LessonComments.Where(c => c.UserId == currentUser.Id).ToListAsync();
+            _context.LessonComments.RemoveRange(lessonComments);
+
+            var lessonsLearned = await _context.LessonsLearned.Where(l => l.UserId == currentUser.Id).ToListAsync();
+            _context.LessonsLearned.RemoveRange(lessonsLearned);
+
+            var bestPractices = await _context.BestPractices.Where(b => b.UserId == currentUser.Id).ToListAsync();
+            _context.BestPractices.RemoveRange(bestPractices);
+
+            var resourceComments = await _context.ResourceComments.Where(c => c.UserId == currentUser.Id).ToListAsync();
+            _context.ResourceComments.RemoveRange(resourceComments);
+
+            var discussionPosts = await _context.DiscussionPosts.Where(p => p.UserId == currentUser.Id).ToListAsync();
+            _context.DiscussionPosts.RemoveRange(discussionPosts);
+
+            var accessGrants = await _context.ResourceAccessGrants.Where(g => g.UserId == currentUser.Id).ToListAsync();
+            _context.ResourceAccessGrants.RemoveRange(accessGrants);
+
+            var likes = await _context.Likes.Where(l => l.UserId == currentUser.Id).ToListAsync();
+            _context.Likes.RemoveRange(likes);
+
+            await _context.SaveChangesAsync();
+
+            // Sign out before deleting
+            await _signInManager.SignOutAsync();
+
+            // Delete the user (cascades to Resources, Discussions, ReadingHistory, ActivityLogs, Notifications, Recommendations)
+            await _userManager.DeleteAsync(currentUser);
+
+            TempData["SuccessMessage"] = "Your account has been permanently deleted. We're sorry to see you go.";
+            return RedirectToAction("Landing");
         }
 
         // ==================== Reading History & Best Practices ====================
