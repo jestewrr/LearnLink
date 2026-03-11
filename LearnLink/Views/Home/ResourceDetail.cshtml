@@ -207,6 +207,13 @@
             }
             @if (!isPublicView)
             {
+            <button class="ll-reader-action-btn @((bool)(ViewBag.IsCompleted ?? false) ? "active" : "")" id="markCompleteBtn" onclick="markComplete(@resource.Id)">
+                <i class="bi @((bool)(ViewBag.IsCompleted ?? false) ? "bi-check-circle-fill" : "bi-check-circle")"></i>
+                <span>@((bool)(ViewBag.IsCompleted ?? false) ? "Completed" : "Complete")</span>
+            </button>
+            }
+            @if (!isPublicView)
+            {
             <button class="ll-reader-action-btn @(resource.IsLiked ? "active" : "")" id="likeBtn" onclick="toggleLike(this, @resource.Id)">
                 <i class="bi @(resource.IsLiked ? "bi-heart-fill" : "bi-heart")"></i>
                 <span>@(resource.IsLiked ? "Liked" : "Like")</span>
