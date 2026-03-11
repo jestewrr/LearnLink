@@ -5871,6 +5871,7 @@ namespace LearnLink.Controllers
                     school.IsActive,
                     school.AllowCrossSchoolSharing,
                     school.DateCreated,
+                    school.Address,
                     UserCount = userCount,
                     ResourceCount = resourceCount,
                     ManagerName = (await _userManager.Users
