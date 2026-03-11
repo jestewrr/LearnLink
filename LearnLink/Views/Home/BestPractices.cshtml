@@ -25,6 +25,13 @@
         "XLSX" => "bi-file-earmark-excel",
         _ => "bi-file-earmark"
     };
+
+    string PlainText(string? html)
+    {
+        var withoutTags = System.Text.RegularExpressions.Regex.Replace(html ?? "", "<.*?>", " ");
+        var decoded = System.Net.WebUtility.HtmlDecode(withoutTags);
+        return System.Text.RegularExpressions.Regex.Replace(decoded, @"\s+", " ").Trim();
+    }
 }
 
 <div class="ll-best-practices">
@@ -311,7 +318,6 @@
                 <div class="ll-card mb-4">
                     <div class="ll-card-header">
                         <h5 class="ll-card-title"><i class="bi bi-person-heart me-2 text-danger"></i>Recommended for You</h5>
-                        <span class="ll-badge ll-badge-info">Powered by KNN Algorithm</span>
                     </div>
                     <div class="ll-card-body">
                         @if (recommendations.Any())
@@ -330,7 +336,7 @@
                                         </div>
                                         <div class="flex-fill min-w-0">
                                             <h6 class="fw-bold mb-1 text-truncate">@resource.Title</h6>
-                                            <p class="small text-muted mb-2 text-truncate">@resource.Description</p>
+                                            <p class="small text-muted mb-2 text-truncate">@PlainText(resource.Description)</p>
                                             <div class="d-flex gap-2 flex-wrap">
                                                 <span class="ll-tag">@resource.Subject</span>
                                                 <span class="ll-badge ll-badge-success">@(matchScore)% match</span>

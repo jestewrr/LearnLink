@@ -15,6 +15,18 @@
         "background: linear-gradient(135deg, #e0e7ff, #6366f1)"
     };
     string[] iconColors = { "text-warning", "text-success", "text-primary", "text-danger", "text-info" };
+
+    string RelativeTime(DateTime value)
+    {
+        var span = DateTime.Now - value;
+        if (span.TotalSeconds < 60) return "just now";
+        if (span.TotalMinutes < 60) return $"{Math.Max(1, (int)span.TotalMinutes)} minute{((int)span.TotalMinutes == 1 ? "" : "s")} ago";
+        if (span.TotalHours < 24) return $"{Math.Max(1, (int)span.TotalHours)} hour{((int)span.TotalHours == 1 ? "" : "s")} ago";
+        if (span.TotalDays < 7) return $"{Math.Max(1, (int)span.TotalDays)} day{((int)span.TotalDays == 1 ? "" : "s")} ago";
+        if (span.TotalDays < 30) return $"{Math.Max(1, (int)(span.TotalDays / 7))} week{((int)(span.TotalDays / 7) == 1 ? "" : "s")} ago";
+        if (span.TotalDays < 365) return $"{Math.Max(1, (int)(span.TotalDays / 30))} month{((int)(span.TotalDays / 30) == 1 ? "" : "s")} ago";
+        return $"{Math.Max(1, (int)(span.TotalDays / 365))} year{((int)(span.TotalDays / 365) == 1 ? "" : "s")} ago";
+    }
 }
 
 <!-- Page Header -->
@@ -47,6 +59,10 @@
                     <button class="ll-btn ll-btn-primary ll-btn-sm lesson-sort-btn active" data-sort="">All Lessons</button>
                     <button class="ll-btn ll-btn-outline ll-btn-sm lesson-sort-btn" data-sort="likes">Most Liked</button>
                     <button class="ll-btn ll-btn-outline ll-btn-sm lesson-sort-btn" data-sort="recent">Recent</button>
+                    @if (User.IsInRole("SuperAdmin") || User.IsInRole("Manager") || User.IsInRole("Contributor"))
+                    {
+                    <button class="ll-btn ll-btn-outline ll-btn-sm lesson-sort-btn" data-sort="" data-filter="uploaded">From My Uploaded Resources</button>
+                    }
                     <div class="ms-auto">
                         <select class="ll-form-control ll-form-select" style="width: auto;" id="lessonCategoryFilter">
                             <option value="">All Categories</option>
@@ -66,7 +82,8 @@
         {
             var lesson = lessons[i];
             var gradientIndex = i % iconGradients.Length;
-        <div class="d-flex gap-3 border-bottom pb-4 mb-4 lesson-item" data-category="@lesson.Category" data-likes="@lesson.LikeCount" data-date="@lesson.CreatedAt.ToString("O")" data-index="@i">
+            var isRelatedToMyUpload = ViewBag.CurrentUserId != null && ViewBag.CurrentUserId == lesson.ResourceUploaderId;
+        <div class="d-flex gap-3 border-bottom pb-4 mb-4 lesson-item" data-category="@lesson.Category" data-likes="@lesson.LikeCount" data-date="@lesson.CreatedAt.ToString("O")" data-index="@i" data-related-upload="@isRelatedToMyUpload.ToString().ToLowerInvariant()">
             <div class="ll-discussion-avatar" style="width: 48px; height: 48px; font-size: 1.2rem; flex-shrink: 0; @(string.IsNullOrEmpty(lesson.AuthorColor) ? "" : lesson.AuthorColor)">
                 @lesson.AuthorInitials
             </div>
@@ -75,7 +92,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <div>
                         <span class="fw-bold fs-6">@lesson.Author</span>
-                        <span class="small text-muted ms-2">• @((DateTime.Now - lesson.CreatedAt).Days) days ago</span>
+                        <span class="small text-muted ms-2">• @RelativeTime(lesson.CreatedAt)</span>
                     </div>
                     <div class="d-inline-flex gap-2 align-items-center text-muted">
                         @if (ViewBag.CurrentUserId != null && ViewBag.CurrentUserId == lesson.UserId || User.IsInRole("SuperAdmin") || User.IsInRole("Manager")) 
@@ -142,7 +159,7 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <span class="fw-bold small">@reply.Author</span>
-                                    <span class="text-muted small ms-1">• @((DateTime.Now - reply.CreatedAt).Days) days ago</span>
+                                    <span class="text-muted small ms-1">• @RelativeTime(reply.CreatedAt)</span>
                                 </div>
                                 @if (ViewBag.CurrentUserId == reply.UserId || User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
                                 {
@@ -416,12 +433,14 @@
         function filterAndSort() {
             const activeBtn = document.querySelector('.lesson-sort-btn.active');
             const sortBy = activeBtn ? activeBtn.dataset.sort : '';
+            const filterBy = activeBtn ? activeBtn.dataset.filter : '';
             const category = categoryFilter.value;
 
             const arr = Array.from(items);
             arr.forEach(item => {
                 const matchCategory = !category || item.dataset.category === category;
-                item.classList.toggle('d-none', !matchCategory);
+                const matchUploaded = !filterBy || item.dataset.relatedUpload === 'true';
+                item.classList.toggle('d-none', !(matchCategory && matchUploaded));
             });
 
             if (sortBy === 'likes') {

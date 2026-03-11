@@ -5,6 +5,25 @@
     var myDiscussions = (List<LearnLink.Models.DiscussionViewModel>)ViewBag.MyDiscussions;
     var joinedDiscussions = (List<LearnLink.Models.DiscussionViewModel>)ViewBag.JoinedDiscussions;
     var likedResources = (List<LearnLink.Models.ResourceViewModel>)ViewBag.LikedResources;
+
+    string PlainText(string? html)
+    {
+        var withoutTags = System.Text.RegularExpressions.Regex.Replace(html ?? "", "<.*?>", " ");
+        var decoded = System.Net.WebUtility.HtmlDecode(withoutTags);
+        return System.Text.RegularExpressions.Regex.Replace(decoded, @"\s+", " ").Trim();
+    }
+
+    string RelativeTime(DateTime value)
+    {
+        var span = DateTime.Now - value;
+        if (span.TotalSeconds < 60) return "just now";
+        if (span.TotalMinutes < 60) return $"{Math.Max(1, (int)span.TotalMinutes)} minute{((int)span.TotalMinutes == 1 ? "" : "s")} ago";
+        if (span.TotalHours < 24) return $"{Math.Max(1, (int)span.TotalHours)} hour{((int)span.TotalHours == 1 ? "" : "s")} ago";
+        if (span.TotalDays < 7) return $"{Math.Max(1, (int)span.TotalDays)} day{((int)span.TotalDays == 1 ? "" : "s")} ago";
+        if (span.TotalDays < 30) return $"{Math.Max(1, (int)(span.TotalDays / 7))} week{((int)(span.TotalDays / 7) == 1 ? "" : "s")} ago";
+        if (span.TotalDays < 365) return $"{Math.Max(1, (int)(span.TotalDays / 30))} month{((int)(span.TotalDays / 30) == 1 ? "" : "s")} ago";
+        return $"{Math.Max(1, (int)(span.TotalDays / 365))} year{((int)(span.TotalDays / 365) == 1 ? "" : "s")} ago";
+    }
 }
 
 <!-- Breadcrumb -->
@@ -156,11 +175,11 @@
                                     <div class="d-flex justify-content-between align-items-start mb-1">
                                         <div>
                                             <span class="fw-bold small">@lesson.Title</span>
-                                            <span class="small text-muted ms-2">• @lesson.CreatedAt.ToString("MMM dd, yyyy")</span>
+                                            <span class="small text-muted ms-2">• @RelativeTime(lesson.CreatedAt)</span>
                                         </div>
                                         <span class="badge bg-warning bg-opacity-10 text-warning small">@lesson.Category</span>
                                     </div>
-                                    <p class="small text-muted mb-2" style="white-space: pre-wrap; max-height: 80px; overflow: hidden;">@lesson.Content</p>
+                                    <p class="small text-muted mb-2" style="white-space: pre-wrap; max-height: 80px; overflow: hidden;">@PlainText(lesson.Content)</p>
                                     <div class="d-flex align-items-center gap-3">
                                         <span class="small text-muted"><i class="bi bi-link-45deg me-1"></i>@lesson.ResourceTitle</span>
                                         <span class="small text-muted"><i class="bi bi-hand-thumbs-up me-1"></i>@lesson.LikeCount</span>
