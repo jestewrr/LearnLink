@@ -3,6 +3,9 @@ using LearnLink.Models;
 using LearnLink.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Globalization;
+using System.Threading.RateLimiting;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -29,16 +32,104 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    options.SignIn.RequireConfirmedAccount = false;
-    options.Password.RequireDigit = false;
-    options.Password.RequireLowercase = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequiredLength = 6;
+    options.SignIn.RequireConfirmedAccount = true;
+    options.SignIn.RequireConfirmedEmail = true;
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequiredLength = 10;
+    options.Password.RequiredUniqueChars = 4;
+
+    // Brute-force protection for login attempts.
+    options.Lockout.AllowedForNewUsers = true;
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders()
 .AddClaimsPrincipalFactory<SchoolClaimsPrincipalFactory>();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = 429;
+
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        var httpContext = context.HttpContext;
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            httpContext.Response.Headers.RetryAfter = Math.Ceiling(retryAfter.TotalSeconds).ToString(CultureInfo.InvariantCulture);
+        }
+
+        var path = httpContext.Request.Path;
+        var isAuthPath =
+            path.StartsWithSegments("/Home/Login") ||
+            path.StartsWithSegments("/Home/Register") ||
+            path.StartsWithSegments("/Home/ForgotPassword") ||
+            path.StartsWithSegments("/Home/ResetPassword") ||
+            path.StartsWithSegments("/Home/GoogleLogin") ||
+            path.StartsWithSegments("/Home/ConfirmLinkGoogle") ||
+            path.StartsWithSegments("/Home/CompleteProfile");
+
+        var acceptHeader = httpContext.Request.Headers.Accept.ToString();
+        var expectsHtml = acceptHeader.Contains("text/html", StringComparison.OrdinalIgnoreCase);
+
+        if (isAuthPath && expectsHtml)
+        {
+            httpContext.Response.Redirect("/Home/TooManyRequests");
+            return;
+        }
+
+        httpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        httpContext.Response.ContentType = "application/json";
+        await httpContext.Response.WriteAsync("{\"error\":\"Too many requests. Please wait and try again.\"}", cancellationToken);
+    };
+
+    options.AddPolicy("AuthLoginPolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            }));
+
+    options.AddPolicy("AuthRecoveryPolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 8,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            }));
+
+    options.AddPolicy("AuthRegistrationPolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 6,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            }));
+
+    options.AddPolicy("AuthExternalPolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 12,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            }));
+});
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
@@ -66,6 +157,11 @@ if (googleAuthEnabled)
 builder.Services.AddSingleton(new GoogleAuthFlag { IsEnabled = googleAuthEnabled });
 builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.Configure<TurnstileOptions>(builder.Configuration.GetSection("Turnstile"));
+builder.Services.AddHttpClient<ICaptchaVerificationService, TurnstileCaptchaVerificationService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 
 // Storage Configuration
 var storageProvider = builder.Configuration["Storage:Provider"] ?? "Local";
@@ -452,6 +548,74 @@ using (var scope = app.Services.CreateScope())
         }
 
         await SeedData.InitializeAsync(services);
+
+        // Migration policy decision: temporarily auto-confirm trusted legacy users
+        // created before the cutoff date to avoid immediate lockouts after enabling
+        // confirmed-email sign-in. New users still require email verification.
+        // DryRun can be used to observe impact without updating records.
+        var migrationSection = builder.Configuration.GetSection("IdentityMigration");
+        var autoConfirmTrustedLegacyUsers = migrationSection.GetValue("AutoConfirmTrustedLegacyUsers", true);
+        var excludeSuspendedUsers = migrationSection.GetValue("ExcludeSuspendedUsers", true);
+        var dryRun = migrationSection.GetValue("DryRun", false);
+        var maxUsersPerRun = Math.Clamp(migrationSection.GetValue("MaxUsersPerRun", 5000), 1, 50000);
+        var cutoffRaw = migrationSection["LegacyCutoffUtc"];
+        var policyLogger = services.GetRequiredService<ILogger<Program>>();
+
+        if (autoConfirmTrustedLegacyUsers || dryRun)
+        {
+            if (!DateTime.TryParse(
+                    cutoffRaw,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                    out var cutoffUtc))
+            {
+                policyLogger.LogWarning("IdentityMigration.LegacyCutoffUtc is invalid; skipping legacy email confirmation migration.");
+            }
+            else
+            {
+                var legacyUsersQuery = context.Users
+                    .Where(u => !u.EmailConfirmed && u.DateCreated <= cutoffUtc);
+
+                if (excludeSuspendedUsers)
+                {
+                    legacyUsersQuery = legacyUsersQuery.Where(u => u.Status != "Suspended");
+                }
+
+                var legacyUsers = await legacyUsersQuery
+                    .OrderBy(u => u.DateCreated)
+                    .Take(maxUsersPerRun)
+                    .ToListAsync();
+
+                if (legacyUsers.Count > 0)
+                {
+                    if (dryRun)
+                    {
+                        policyLogger.LogInformation(
+                            "Identity migration dry-run: {Count} legacy users would be auto-confirmed (cutoff: {CutoffUtc}, auto-confirm enabled: {AutoConfirm}).",
+                            legacyUsers.Count,
+                            cutoffUtc,
+                            autoConfirmTrustedLegacyUsers);
+                    }
+                    else if (autoConfirmTrustedLegacyUsers)
+                    {
+                        foreach (var legacyUser in legacyUsers)
+                        {
+                            legacyUser.EmailConfirmed = true;
+                        }
+
+                        await context.SaveChangesAsync();
+                        policyLogger.LogInformation(
+                            "Identity migration completed: auto-confirmed {Count} trusted legacy users (cutoff: {CutoffUtc}).",
+                            legacyUsers.Count,
+                            cutoffUtc);
+                    }
+                }
+            }
+        }
+        else
+        {
+            policyLogger.LogInformation("Identity migration is disabled (AutoConfirmTrustedLegacyUsers=false and DryRun=false).");
+        }
     }
     catch (Exception ex)
     {
@@ -474,6 +638,7 @@ else
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseRateLimiter();
 
 app.UseSession(); // Must be before Authentication for school switcher
 app.UseAuthentication();

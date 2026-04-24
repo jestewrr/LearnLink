@@ -61,6 +61,7 @@
                             </div>
 
                             <form asp-action="CompleteProfile" method="post">
+                                @Html.AntiForgeryToken()
                                 @if (ViewBag.Error != null)
                                 {
                                     <div class="alert alert-danger small py-2 mb-3">
@@ -115,7 +116,7 @@
                                                 <i class="bi bi-eye"></i>
                                             </button>
                                         </div>
-                                        <div class="form-text small text-muted">Min 6 characters</div>
+                                        <div class="form-text small text-muted">Use at least 10 characters with uppercase, lowercase, number, and symbol.</div>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label">Confirm Password <span class="text-danger">*</span></label>

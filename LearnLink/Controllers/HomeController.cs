@@ -7,18 +7,22 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
+using System.Net;
 using Resource = LearnLink.Models.Resource;
 
 namespace LearnLink.Controllers
 {
     public class HomeController : Controller
     {
+        private const string GenericAuthFailureMessage = "Invalid sign-in attempt. Check your credentials and verify your email.";
+        private const string GenericResendVerificationMessage = "If an unverified account with that email exists, a verification link has been sent.";
         private readonly ApplicationDbContext _context;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
@@ -26,6 +30,7 @@ namespace LearnLink.Controllers
         private readonly ISchoolContext _schoolContext;
         private readonly IRecommendationService _recommendationService;
         private readonly IEmailService _emailService;
+        private readonly ICaptchaVerificationService _captchaVerificationService;
         private readonly IStorageService _storage;
         private readonly bool _googleAuthEnabled;
         private readonly IMemoryCache _cache;
@@ -42,6 +47,7 @@ namespace LearnLink.Controllers
             GoogleAuthFlag googleAuth,
             IRecommendationService recommendationService,
             IEmailService emailService,
+            ICaptchaVerificationService captchaVerificationService,
             IStorageService storage,
             IMemoryCache cache,
             IConfiguration configuration)
@@ -54,6 +60,7 @@ namespace LearnLink.Controllers
             _googleAuthEnabled = googleAuth.IsEnabled;
             _recommendationService = recommendationService;
             _emailService = emailService;
+            _captchaVerificationService = captchaVerificationService;
             _storage = storage;
             _cache = cache;
             _configuration = configuration;
@@ -63,6 +70,98 @@ namespace LearnLink.Controllers
 
         private async Task<ApplicationUser?> GetCurrentUserAsync()
             => await _userManager.GetUserAsync(User);
+
+        private static string BuildAuthFormTimestamp()
+            => DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+
+        private static bool IsLikelyBotSubmission(string? honeypotField, string? formTimestamp)
+        {
+            if (!string.IsNullOrWhiteSpace(honeypotField))
+                return true;
+
+            if (!long.TryParse(formTimestamp, out var unixSeconds))
+                return true;
+
+            try
+            {
+                var age = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(unixSeconds);
+                return age < TimeSpan.FromSeconds(2) || age > TimeSpan.FromHours(2);
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        private void PrepareLoginView(string? email = null, bool rememberMe = false)
+        {
+            ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
+            ViewBag.Email = email;
+            ViewBag.RememberMe = rememberMe;
+            ViewBag.BotTimestamp = BuildAuthFormTimestamp();
+            ViewBag.CaptchaEnabled = _captchaVerificationService.IsEnabled;
+            ViewBag.TurnstileSiteKey = _captchaVerificationService.SiteKey;
+        }
+
+        private async Task PrepareRegisterViewAsync()
+        {
+            ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
+            ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
+            ViewBag.BotTimestamp = BuildAuthFormTimestamp();
+            ViewBag.CaptchaEnabled = _captchaVerificationService.IsEnabled;
+            ViewBag.TurnstileSiteKey = _captchaVerificationService.SiteKey;
+        }
+
+        private async Task<bool> IsCaptchaValidAsync(string? captchaToken, CancellationToken cancellationToken = default)
+        {
+            return await _captchaVerificationService.VerifyAsync(
+                captchaToken,
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                cancellationToken);
+        }
+
+        private async Task<bool> SendEmailConfirmationIfPossibleAsync(ApplicationUser user)
+        {
+            if (!_emailService.IsConfigured || string.IsNullOrWhiteSpace(user.Email))
+                return false;
+
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+            var confirmationUrl = Url.Action(
+                "ConfirmEmail",
+                "Home",
+                new { userId = user.Id, token = encodedToken },
+                protocol: Request.Scheme);
+
+            if (string.IsNullOrWhiteSpace(confirmationUrl))
+                return false;
+
+            var safeName = string.IsNullOrWhiteSpace(user.FirstName)
+                ? "there"
+                : WebUtility.HtmlEncode(user.FirstName);
+
+            var body = $@"
+                <div style=""font-family:Segoe UI,Arial,sans-serif;color:#1e293b;line-height:1.6"">
+                    <h2 style=""margin-bottom:12px;"">Verify your LearnLink account</h2>
+                    <p>Hello {safeName},</p>
+                    <p>Thanks for registering. Please confirm your email address to activate your account and sign in.</p>
+                    <p style=""margin:24px 0;"">
+                        <a href=""{confirmationUrl}"" style=""background:#3B7DD8;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;display:inline-block;font-weight:600;"">Verify Email</a>
+                    </p>
+                    <p>If you did not create this account, you can safely ignore this message.</p>
+                    <p style=""font-size:13px;color:#64748b;"">If the button does not work, copy and paste this link into your browser:<br>{confirmationUrl}</p>
+                </div>";
+
+            try
+            {
+                await _emailService.SendAsync(user.Email, "Verify your LearnLink account", body);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
         private IActionResult RedirectToUploadForm(int? resourceId = null)
         {
@@ -749,17 +848,35 @@ namespace LearnLink.Controllers
         {
             if (_signInManager.IsSignedIn(User))
                 return RedirectToAction("Dashboard");
-            ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
-            ViewBag.RememberMe = false;
+
+            PrepareLoginView();
             return View();
         }
 
         [HttpPost]
-        public async Task<IActionResult> Login(string email, string password, bool rememberMe)
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting("AuthLoginPolicy")]
+        public async Task<IActionResult> Login(
+            string email,
+            string password,
+            bool rememberMe,
+            string? website,
+            string? formTimestamp,
+            [FromForm(Name = "cf-turnstile-response")] string? captchaResponse)
         {
-            ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
-            ViewBag.Email = email;
-            ViewBag.RememberMe = rememberMe;
+            PrepareLoginView(email, rememberMe);
+
+            if (IsLikelyBotSubmission(website, formTimestamp))
+            {
+                ViewBag.Error = GenericAuthFailureMessage;
+                return View();
+            }
+
+            if (!await IsCaptchaValidAsync(captchaResponse))
+            {
+                ViewBag.Error = "Security verification failed. Please try again.";
+                return View();
+            }
 
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
             {
@@ -767,40 +884,45 @@ namespace LearnLink.Controllers
                 return View();
             }
 
-            var user = await _userManager.FindByEmailAsync(email);
-            if (user == null)
-            {
-                ViewBag.Error = "Invalid email or password.";
-                return View();
-            }
+            email = email.Trim();
 
-            // Check if user is suspended
-            if (user.Status == "Suspended")
-            {
-                ViewBag.Error = "Your account has been suspended. Please contact the administrator.";
-                return View();
-            }
-
-            // Check if user's school is active (skip for platform admins with no school)
-            if (user.SchoolId.HasValue)
-            {
-                var school = await _context.Schools.FindAsync(user.SchoolId.Value);
-                if (school != null && !school.IsActive)
-                {
-                    ViewBag.Error = "Your school account is currently inactive. Please contact the platform administrator.";
-                    return View();
-                }
-            }
-
-            var result = await _signInManager.PasswordSignInAsync(user, password, rememberMe, false);
+            var result = await _signInManager.PasswordSignInAsync(email, password, rememberMe, lockoutOnFailure: true);
             if (result.Succeeded)
             {
+                var user = await _userManager.FindByEmailAsync(email);
+                if (user == null)
+                {
+                    await _signInManager.SignOutAsync();
+                    ViewBag.Error = GenericAuthFailureMessage;
+                    return View();
+                }
+
+                // Do not disclose account status details on login failure paths.
+                if (user.Status == "Suspended")
+                {
+                    await _signInManager.SignOutAsync();
+                    ViewBag.Error = GenericAuthFailureMessage;
+                    return View();
+                }
+
+                // Check if user's school is active (skip for platform admins with no school).
+                if (user.SchoolId.HasValue)
+                {
+                    var school = await _context.Schools.FindAsync(user.SchoolId.Value);
+                    if (school != null && !school.IsActive)
+                    {
+                        await _signInManager.SignOutAsync();
+                        ViewBag.Error = GenericAuthFailureMessage;
+                        return View();
+                    }
+                }
+
                 // Reload the user entity because PasswordSignInAsync may have updated the database
                 // and incremented the ConcurrencyStamp, which causes a DbUpdateConcurrencyException
                 // if we try to update the stale tracked entity.
                 await _context.Entry(user).ReloadAsync();
 
-                // Mark user as active on login
+                // Mark user as active on login.
                 user.Status = "Active";
                 await _userManager.UpdateAsync(user);
 
@@ -810,7 +932,13 @@ namespace LearnLink.Controllers
                     : RedirectToAction("Dashboard");
             }
 
-            ViewBag.Error = "Invalid email or password.";
+            if (result.IsLockedOut)
+            {
+                ViewBag.Error = "Too many failed sign-in attempts. Please try again after 15 minutes.";
+                return View();
+            }
+
+            ViewBag.Error = GenericAuthFailureMessage;
             return View();
         }
 
@@ -822,6 +950,8 @@ namespace LearnLink.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting("AuthRecoveryPolicy")]
         public async Task<IActionResult> ForgotPassword(string email)
         {
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
@@ -888,6 +1018,8 @@ namespace LearnLink.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting("AuthRecoveryPolicy")]
         public async Task<IActionResult> ResetPassword(string email, string token, string password, string confirmPassword)
         {
             ViewBag.Email = email;
@@ -936,36 +1068,70 @@ namespace LearnLink.Controllers
 
         public async Task<IActionResult> Register()
         {
-            // Load available schools for the dropdown/info
-            var schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
-            ViewBag.Schools = schools;
-            ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
+            await PrepareRegisterViewAsync();
             return View();
         }
 
         [HttpPost]
-        public async Task<IActionResult> Register(string firstName, string middleName, string lastName, string email, string password, string confirmPassword, int schoolId, string gradeOrPosition)
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting("AuthRegistrationPolicy")]
+        public async Task<IActionResult> Register(
+            string firstName,
+            string middleName,
+            string lastName,
+            string email,
+            string password,
+            string confirmPassword,
+            int schoolId,
+            string gradeOrPosition,
+            string? website,
+            string? formTimestamp,
+            [FromForm(Name = "cf-turnstile-response")] string? captchaResponse)
         {
+            await PrepareRegisterViewAsync();
+
+            if (IsLikelyBotSubmission(website, formTimestamp))
+            {
+                TempData["SuccessMessage"] = GenericResendVerificationMessage;
+                return RedirectToAction("Login");
+            }
+
+            if (!await IsCaptchaValidAsync(captchaResponse))
+            {
+                ViewBag.Error = "Security verification failed. Please try again.";
+                return View();
+            }
+
             if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName) ||
                 string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
             {
                 ViewBag.Error = "All fields are required.";
-                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
                 return View();
             }
 
             if (password != confirmPassword)
             {
                 ViewBag.Error = "Passwords do not match.";
-                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
                 return View();
             }
 
             if (schoolId <= 0)
             {
                 ViewBag.Error = "Please select your school.";
-                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
                 return View();
+            }
+
+            var normalizedEmail = email.Trim();
+            var existingUser = await _userManager.FindByEmailAsync(normalizedEmail);
+            if (existingUser != null)
+            {
+                if (!existingUser.EmailConfirmed)
+                {
+                    await SendEmailConfirmationIfPossibleAsync(existingUser);
+                }
+
+                TempData["SuccessMessage"] = GenericResendVerificationMessage;
+                return RedirectToAction("Login");
             }
 
             // Validate school exists and is active
@@ -973,7 +1139,6 @@ namespace LearnLink.Controllers
             if (school == null)
             {
                 ViewBag.Error = "Invalid school selected. Please try again.";
-                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
                 return View();
             }
 
@@ -981,15 +1146,16 @@ namespace LearnLink.Controllers
 
             var user = new ApplicationUser
             {
-                UserName = email,
-                Email = email,
+                UserName = normalizedEmail,
+                Email = normalizedEmail,
+                EmailConfirmed = false,
                 FirstName = firstName.Trim(),
                 MiddleName = string.IsNullOrWhiteSpace(middleName) ? null : middleName.Trim(),
                 LastName = lastName.Trim(),
                 Initials = initials,
                 GradeOrPosition = gradeOrPosition?.Trim() ?? "",
                 AvatarColor = "background: linear-gradient(135deg, #6366f1, #4f46e5)", 
-                Status = "Active",
+                Status = "Inactive",
                 DateCreated = DateTime.Now,
                 SchoolId = school.SchoolId
             };
@@ -1000,20 +1166,95 @@ namespace LearnLink.Controllers
                 // Every user registers as a Student (Registered User) by default
                 await _userManager.AddToRoleAsync(user, "Student");
                 await LogActivity(user.Id, "Register", "New account created");
-                
-                // Sign out old session (if admin testing), then sign in new student
-                if (_signInManager.IsSignedIn(User))
-                {
-                    await _signInManager.SignOutAsync();
-                }
-                await _signInManager.SignInAsync(user, isPersistent: false);
-                
-                TempData["SuccessMessage"] = "Account created successfully! Welcome to LearnLink.";
-                return RedirectToAction("Repository");
+
+                var verificationEmailSent = await SendEmailConfirmationIfPossibleAsync(user);
+                TempData["SuccessMessage"] = verificationEmailSent
+                    ? "Account created. Please verify your email before signing in."
+                    : "Account created, but verification email is currently unavailable. Please contact your administrator.";
+                return RedirectToAction("Login");
+            }
+
+            if (result.Errors.Any(e => e.Code.Contains("Duplicate", StringComparison.OrdinalIgnoreCase)))
+            {
+                TempData["SuccessMessage"] = GenericResendVerificationMessage;
+                return RedirectToAction("Login");
             }
 
             ViewBag.Error = string.Join(" ", result.Errors.Select(e => e.Description));
             return View();
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> ConfirmEmail(string userId, string token)
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(token))
+            {
+                TempData["ErrorMessage"] = "The verification link is invalid or has expired.";
+                return RedirectToAction("Login");
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                TempData["ErrorMessage"] = "The verification link is invalid or has expired.";
+                return RedirectToAction("Login");
+            }
+
+            string decodedToken;
+            try
+            {
+                decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+            }
+            catch
+            {
+                TempData["ErrorMessage"] = "The verification link is invalid or has expired.";
+                return RedirectToAction("Login");
+            }
+
+            var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
+            if (result.Succeeded)
+            {
+                TempData["SuccessMessage"] = "Your email has been verified. You can now sign in.";
+                return RedirectToAction("Login");
+            }
+
+            TempData["ErrorMessage"] = "The verification link is invalid or has expired.";
+            return RedirectToAction("Login");
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ResendConfirmation()
+        {
+            ViewBag.BotTimestamp = BuildAuthFormTimestamp();
+            ViewBag.CaptchaEnabled = _captchaVerificationService.IsEnabled;
+            ViewBag.TurnstileSiteKey = _captchaVerificationService.SiteKey;
+            return View();
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting("AuthRecoveryPolicy")]
+        public async Task<IActionResult> ResendConfirmation(
+            string email,
+            string? website,
+            string? formTimestamp,
+            [FromForm(Name = "cf-turnstile-response")] string? captchaResponse)
+        {
+            var captchaValid = await IsCaptchaValidAsync(captchaResponse);
+            if (captchaValid && !IsLikelyBotSubmission(website, formTimestamp) && !string.IsNullOrWhiteSpace(email))
+            {
+                var user = await _userManager.FindByEmailAsync(email.Trim());
+                if (user != null && !user.EmailConfirmed)
+                {
+                    await SendEmailConfirmationIfPossibleAsync(user);
+                }
+            }
+
+            TempData["SuccessMessage"] = GenericResendVerificationMessage;
+            return RedirectToAction("ResendConfirmation");
         }
 
         // ==================== Google Authentication ====================
@@ -1023,6 +1264,8 @@ namespace LearnLink.Controllers
         /// lands after completing the profile (Login vs Register).
         /// </summary>
         [HttpPost]
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting("AuthExternalPolicy")]
         public IActionResult GoogleLogin(string returnUrl = "/Home/Register")
         {
             var redirectUrl = Url.Action("GoogleCallback", "Home", new { returnUrl });
@@ -1120,6 +1363,8 @@ namespace LearnLink.Controllers
         /// to their account and signs them in.
         /// </summary>
         [HttpPost]
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting("AuthLoginPolicy")]
         public async Task<IActionResult> ConfirmLinkGoogle(string password)
         {
             var email = TempData.Peek("LinkGoogleEmail")?.ToString();
@@ -1222,6 +1467,8 @@ namespace LearnLink.Controllers
         /// links the Google login, assigns Student role, and signs them in.
         /// </summary>
         [HttpPost]
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting("AuthRegistrationPolicy")]
         public async Task<IActionResult> CompleteProfile(
             string firstName, string middleName, string lastName,
             string email, string password, string confirmPassword,
@@ -1344,6 +1591,13 @@ namespace LearnLink.Controllers
         }
 
         public IActionResult AccessDenied() => View();
+
+        [AllowAnonymous]
+        public IActionResult TooManyRequests()
+        {
+            Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            return View();
+        }
 
         // ==================== Profile ====================
 
@@ -1472,9 +1726,9 @@ namespace LearnLink.Controllers
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return RedirectToAction("Login");
 
-            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 10)
             {
-                TempData["ErrorMessage"] = "New password must be at least 6 characters.";
+                TempData["ErrorMessage"] = "New password must be at least 10 characters.";
                 return RedirectToAction("Profile");
             }
 
