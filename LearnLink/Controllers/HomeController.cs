@@ -100,7 +100,7 @@ namespace LearnLink.Controllers
             ViewBag.RememberMe = rememberMe;
             ViewBag.BotTimestamp = BuildAuthFormTimestamp();
             ViewBag.CaptchaEnabled = _captchaVerificationService.IsEnabled;
-            ViewBag.TurnstileSiteKey = _captchaVerificationService.SiteKey;
+            ViewBag.CaptchaSiteKey = _captchaVerificationService.SiteKey;
         }
 
         private async Task PrepareRegisterViewAsync()
@@ -109,7 +109,7 @@ namespace LearnLink.Controllers
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
             ViewBag.BotTimestamp = BuildAuthFormTimestamp();
             ViewBag.CaptchaEnabled = _captchaVerificationService.IsEnabled;
-            ViewBag.TurnstileSiteKey = _captchaVerificationService.SiteKey;
+            ViewBag.CaptchaSiteKey = _captchaVerificationService.SiteKey;
         }
 
         private async Task<bool> IsCaptchaValidAsync(string? captchaToken, CancellationToken cancellationToken = default)
@@ -862,7 +862,7 @@ namespace LearnLink.Controllers
             bool rememberMe,
             string? website,
             string? formTimestamp,
-            [FromForm(Name = "cf-turnstile-response")] string? captchaResponse)
+            [FromForm(Name = "captchaResponse")] string? captchaResponse)
         {
             PrepareLoginView(email, rememberMe);
 
@@ -1086,7 +1086,7 @@ namespace LearnLink.Controllers
             string gradeOrPosition,
             string? website,
             string? formTimestamp,
-            [FromForm(Name = "cf-turnstile-response")] string? captchaResponse)
+            [FromForm(Name = "captchaResponse")] string? captchaResponse)
         {
             await PrepareRegisterViewAsync();
 
@@ -1229,7 +1229,7 @@ namespace LearnLink.Controllers
         {
             ViewBag.BotTimestamp = BuildAuthFormTimestamp();
             ViewBag.CaptchaEnabled = _captchaVerificationService.IsEnabled;
-            ViewBag.TurnstileSiteKey = _captchaVerificationService.SiteKey;
+            ViewBag.CaptchaSiteKey = _captchaVerificationService.SiteKey;
             return View();
         }
 
@@ -1241,7 +1241,7 @@ namespace LearnLink.Controllers
             string email,
             string? website,
             string? formTimestamp,
-            [FromForm(Name = "cf-turnstile-response")] string? captchaResponse)
+            [FromForm(Name = "captchaResponse")] string? captchaResponse)
         {
             var captchaValid = await IsCaptchaValidAsync(captchaResponse);
             if (captchaValid && !IsLikelyBotSubmission(website, formTimestamp) && !string.IsNullOrWhiteSpace(email))
