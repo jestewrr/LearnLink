@@ -157,8 +157,19 @@ if (googleAuthEnabled)
 builder.Services.AddSingleton(new GoogleAuthFlag { IsEnabled = googleAuthEnabled });
 builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
-// Captcha registration: Turnstile removed. Use a no-op implementation for now.
-builder.Services.AddSingleton<ICaptchaVerificationService, NoopCaptchaVerificationService>();
+// Google reCAPTCHA v2 registration (falls back to no-op when keys are not configured)
+var recaptchaSiteKey = builder.Configuration["Recaptcha:SiteKey"];
+var recaptchaSecretKey = builder.Configuration["Recaptcha:SecretKey"];
+if (!string.IsNullOrWhiteSpace(recaptchaSiteKey) && !string.IsNullOrWhiteSpace(recaptchaSecretKey))
+{
+    builder.Services.Configure<RecaptchaSettings>(builder.Configuration.GetSection("Recaptcha"));
+    builder.Services.AddHttpClient();
+    builder.Services.AddSingleton<ICaptchaVerificationService, GoogleRecaptchaVerificationService>();
+}
+else
+{
+    builder.Services.AddSingleton<ICaptchaVerificationService, NoopCaptchaVerificationService>();
+}
 
 // Storage Configuration
 var storageProvider = builder.Configuration["Storage:Provider"] ?? "Local";

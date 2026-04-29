@@ -862,7 +862,7 @@ namespace LearnLink.Controllers
             bool rememberMe,
             string? website,
             string? formTimestamp,
-            [FromForm(Name = "captchaResponse")] string? captchaResponse)
+            [FromForm(Name = "g-recaptcha-response")] string? captchaResponse)
         {
             PrepareLoginView(email, rememberMe);
 
@@ -946,16 +946,28 @@ namespace LearnLink.Controllers
         public IActionResult ForgotPassword()
         {
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
+            ViewBag.CaptchaEnabled = _captchaVerificationService.IsEnabled;
+            ViewBag.CaptchaSiteKey = _captchaVerificationService.SiteKey;
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         [EnableRateLimiting("AuthRecoveryPolicy")]
-        public async Task<IActionResult> ForgotPassword(string email)
+        public async Task<IActionResult> ForgotPassword(
+            string email,
+            [FromForm(Name = "g-recaptcha-response")] string? captchaResponse)
         {
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
+            ViewBag.CaptchaEnabled = _captchaVerificationService.IsEnabled;
+            ViewBag.CaptchaSiteKey = _captchaVerificationService.SiteKey;
             ViewBag.Email = email;
+
+            if (!await IsCaptchaValidAsync(captchaResponse))
+            {
+                ViewBag.Error = "Security verification failed. Please try again.";
+                return View();
+            }
 
             if (string.IsNullOrWhiteSpace(email))
             {
@@ -1086,7 +1098,7 @@ namespace LearnLink.Controllers
             string gradeOrPosition,
             string? website,
             string? formTimestamp,
-            [FromForm(Name = "captchaResponse")] string? captchaResponse)
+            [FromForm(Name = "g-recaptcha-response")] string? captchaResponse)
         {
             await PrepareRegisterViewAsync();
 
@@ -1241,7 +1253,7 @@ namespace LearnLink.Controllers
             string email,
             string? website,
             string? formTimestamp,
-            [FromForm(Name = "captchaResponse")] string? captchaResponse)
+            [FromForm(Name = "g-recaptcha-response")] string? captchaResponse)
         {
             var captchaValid = await IsCaptchaValidAsync(captchaResponse);
             if (captchaValid && !IsLikelyBotSubmission(website, formTimestamp) && !string.IsNullOrWhiteSpace(email))
