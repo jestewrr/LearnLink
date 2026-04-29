@@ -157,11 +157,8 @@ if (googleAuthEnabled)
 builder.Services.AddSingleton(new GoogleAuthFlag { IsEnabled = googleAuthEnabled });
 builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
-builder.Services.Configure<TurnstileOptions>(builder.Configuration.GetSection("Turnstile"));
-builder.Services.AddHttpClient<ICaptchaVerificationService, TurnstileCaptchaVerificationService>(client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(10);
-});
+// Captcha registration: Turnstile removed. Use a no-op implementation for now.
+builder.Services.AddSingleton<ICaptchaVerificationService, NoopCaptchaVerificationService>();
 
 // Storage Configuration
 var storageProvider = builder.Configuration["Storage:Provider"] ?? "Local";
