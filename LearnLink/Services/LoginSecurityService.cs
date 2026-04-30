@@ -28,9 +28,6 @@ public class LoginSecuritySettings
 
     /// <summary>Days to retain login attempt audit records (0 = no purge).</summary>
     public int AuditLogRetentionDays { get; set; } = 90;
-
-    /// <summary>Send email to the user when their account is locked.</summary>
-    public bool SendLockoutEmail { get; set; } = true;
 }
 
 // ==================== Result Enums ====================
@@ -128,11 +125,8 @@ public sealed class LoginSecurityService : ILoginSecurityService
         if (IsIpRateSuspicious(ip))
             return true;
 
-        // 2. No trusted device cookie → require CAPTCHA
-        if (!HasTrustedDeviceCookie(httpContext))
-            return true;
-
-        // 3. If email is provided, check consecutive failure count
+        // 2. If email is provided, check consecutive failure count
+        //    CAPTCHA is required only after CaptchaThreshold (default 3) consecutive failures
         if (!string.IsNullOrWhiteSpace(email))
         {
             var failures = await GetConsecutiveFailuresAsync(email);
@@ -173,24 +167,31 @@ public sealed class LoginSecurityService : ILoginSecurityService
     public async Task RecordLoginAttemptAsync(string email, string? userId, string ip, string userAgent,
         string result, string? failureReason, bool captchaRequired, bool captchaPassed)
     {
-        var attempt = new LoginAttempt
+        try
         {
-            Email = email?.Trim() ?? "",
-            UserId = userId,
-            IpAddress = ip,
-            UserAgent = userAgent.Length > 512 ? userAgent[..512] : userAgent,
-            Result = result,
-            FailureReason = failureReason,
-            WasCaptchaRequired = captchaRequired,
-            WasCaptchaPassed = captchaPassed,
-            AttemptedAt = DateTime.UtcNow
-        };
+            var attempt = new LoginAttempt
+            {
+                Email = email?.Trim() ?? "",
+                UserId = userId,
+                IpAddress = ip,
+                UserAgent = userAgent.Length > 512 ? userAgent[..512] : userAgent,
+                Result = result,
+                FailureReason = failureReason,
+                WasCaptchaRequired = captchaRequired,
+                WasCaptchaPassed = captchaPassed,
+                AttemptedAt = DateTime.UtcNow
+            };
 
-        _context.LoginAttempts.Add(attempt);
-        await _context.SaveChangesAsync();
+            _context.LoginAttempts.Add(attempt);
+            await _context.SaveChangesAsync();
 
-        // Track IP-level rate in cache
-        IncrementIpRate(ip);
+            // Track IP-level rate in cache
+            IncrementIpRate(ip);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to record login attempt for {Email}", email);
+        }
     }
 
     // ===================== Failed Login Handling =====================
@@ -208,29 +209,6 @@ public sealed class LoginSecurityService : ILoginSecurityService
             _logger.LogWarning(
                 "Account locked for {Email} after {Failures} consecutive failures. Locked until {LockedUntil}",
                 user.Email, user.ConsecutiveFailedLogins, user.AccountLockedUntil);
-
-            // Send lockout email
-            if (_settings.SendLockoutEmail && _emailService.IsConfigured && !string.IsNullOrWhiteSpace(user.Email))
-            {
-                try
-                {
-                    var safeName = string.IsNullOrWhiteSpace(user.FirstName) ? "there" : user.FirstName;
-                    var body = $@"
-                        <div style=""font-family:Segoe UI,Arial,sans-serif;color:#1e293b;line-height:1.6"">
-                            <h2 style=""margin-bottom:12px;color:#dc2626;"">Security Alert: Account Temporarily Locked</h2>
-                            <p>Hello {System.Net.WebUtility.HtmlEncode(safeName)},</p>
-                            <p>Your LearnLink account has been temporarily locked due to <strong>{user.ConsecutiveFailedLogins} consecutive failed login attempts</strong>.</p>
-                            <p>Your account will be automatically unlocked after <strong>{_settings.LockoutDurationMinutes} minutes</strong>.</p>
-                            <p>If this was not you, we recommend resetting your password immediately after the lockout period ends.</p>
-                            <p style=""font-size:13px;color:#64748b;"">If you did not attempt to sign in, someone may be trying to access your account. Consider changing your password and contacting your administrator.</p>
-                        </div>";
-                    await _emailService.SendAsync(user.Email, "Security Alert: Account Temporarily Locked", body);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to send lockout notification email to {Email}", user.Email);
-                }
-            }
 
             return LoginFailureAction.LockAccount;
         }
