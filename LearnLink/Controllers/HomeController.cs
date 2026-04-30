@@ -6108,8 +6108,29 @@ namespace LearnLink.Controllers
             // Find currently locked accounts for quick-unlock display
             var lockedUsers = await _context.Users
                 .Where(u => u.AccountLockedUntil != null && u.AccountLockedUntil > DateTime.UtcNow)
-                .Select(u => new { u.Email, u.AccountLockedUntil, u.ConsecutiveFailedLogins })
+                .Select(u => new LockedAccountViewModel
+                {
+                    Email = u.Email ?? "",
+                    AccountLockedUntil = u.AccountLockedUntil,
+                    ConsecutiveFailedLogins = u.ConsecutiveFailedLogins
+                })
                 .ToListAsync();
+            
+            // Managers can only see locked accounts in their own school
+            if (User.IsInRole("Manager"))
+            {
+                var currentUser = await GetCurrentUserAsync();
+                if (currentUser?.SchoolId != null)
+                {
+                    var managerSchoolId = currentUser.SchoolId;
+                    var usersInSchool = await _context.Users
+                        .Where(u => u.SchoolId == managerSchoolId)
+                        .Select(u => u.Email)
+                        .ToListAsync();
+                    lockedUsers = lockedUsers.Where(l => usersInSchool.Contains(l.Email)).ToList();
+                }
+            }
+
             ViewBag.LockedAccounts = lockedUsers;
 
             return View();

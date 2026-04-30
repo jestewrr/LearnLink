@@ -1,5 +1,12 @@
 namespace LearnLink.Models
 {
+    public class LockedAccountViewModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public DateTime? AccountLockedUntil { get; set; }
+        public int ConsecutiveFailedLogins { get; set; }
+    }
+
     public class ResourceViewModel
     {
         public int Id { get; set; }

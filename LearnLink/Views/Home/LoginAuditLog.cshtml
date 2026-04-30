@@ -5,7 +5,7 @@
     var totalCount = (int)(ViewBag.TotalCount ?? 0);
     var currentPage = (int)(ViewBag.CurrentPage ?? 1);
     var totalPages = (int)(ViewBag.TotalPages ?? 1);
-    var lockedAccounts = ViewBag.LockedAccounts as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var lockedAccounts = ViewBag.LockedAccounts as List<LockedAccountViewModel> ?? new List<LockedAccountViewModel>();
 }
 
 <div class="ll-page-header">
