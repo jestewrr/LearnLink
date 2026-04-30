@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/css/learnlink.css" asp-append-version="true" />
-    @if (ViewBag.CaptchaEnabled == true)
+    @if (ViewBag.CaptchaRequired == true)
     {
         <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     }
@@ -82,6 +82,33 @@
                                 </div>
                             }
 
+                            @if (ViewBag.AccountLocked == true)
+                            {
+                                <div class="alert alert-danger small py-2" role="alert">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i class="bi bi-lock-fill me-2"></i>
+                                        <strong>Account Temporarily Locked</strong>
+                                    </div>
+                                    <div>Your account has been locked due to multiple failed login attempts.</div>
+                                    @if (ViewBag.AccountLockedUntil != null)
+                                    {
+                                        <div class="mt-1"><i class="bi bi-clock me-1"></i>Please try again <span id="lockCountdown" data-until="@(((DateTime)ViewBag.AccountLockedUntil).ToString("o"))"></span>.</div>
+                                    }
+                                </div>
+                            }
+
+                            @if (ViewBag.ShowFailureWarning == true && ViewBag.AccountLocked != true)
+                            {
+                                var remaining = 7 - (int)(ViewBag.FailedAttemptCount ?? 0);
+                                <div class="alert alert-warning d-flex align-items-start small py-2" role="alert">
+                                    <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+                                    <div>
+                                        <strong>Security Warning</strong><br/>
+                                        Multiple failed login attempts detected. You have <strong>@remaining</strong> attempt(s) remaining before your account is temporarily locked.
+                                    </div>
+                                </div>
+                            }
+
                             <form asp-action="Login" asp-controller="Home" method="post">
                                 @Html.AntiForgeryToken()
                                 <input type="text" name="website" value="" class="d-none" tabindex="-1" autocomplete="off" aria-hidden="true" />
@@ -113,14 +140,14 @@
                                     <label class="form-check-label small" for="rememberMe">Remember me for 30 days</label>
                                 </div>
 
-                                @if (ViewBag.CaptchaEnabled == true)
+                                @if (ViewBag.CaptchaRequired == true)
                                 {
                                     <div class="mb-3 d-flex justify-content-center">
                                         <div class="g-recaptcha" data-sitekey="@ViewBag.CaptchaSiteKey"></div>
                                     </div>
                                 }
 
-                                <button type="submit" class="btn ll-auth-btn-primary w-100 py-2 mb-3">
+                                <button type="submit" class="btn ll-auth-btn-primary w-100 py-2 mb-3" @(ViewBag.AccountLocked == true ? "disabled" : "")>
                                     <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
                                 </button>
 
@@ -175,6 +202,26 @@
                 icon.classList.add('bi-eye');
             }
         }
+
+        // Lockout countdown timer
+        (function() {
+            const el = document.getElementById('lockCountdown');
+            if (!el) return;
+            const until = new Date(el.dataset.until);
+            function update() {
+                const now = new Date();
+                const diff = Math.max(0, Math.floor((until - now) / 1000));
+                if (diff <= 0) {
+                    el.textContent = 'now (refresh the page)';
+                    return;
+                }
+                const mins = Math.floor(diff / 60);
+                const secs = diff % 60;
+                el.textContent = 'in ' + mins + 'm ' + secs + 's';
+                setTimeout(update, 1000);
+            }
+            update();
+        })();
     </script>
 </body>
 </html>

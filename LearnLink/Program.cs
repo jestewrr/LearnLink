@@ -43,8 +43,8 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 
     // Brute-force protection for login attempts.
     options.Lockout.AllowedForNewUsers = true;
-    options.Lockout.MaxFailedAccessAttempts = 5;
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 7;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(30);
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders()
@@ -170,6 +170,10 @@ else
 {
     builder.Services.AddSingleton<ICaptchaVerificationService, NoopCaptchaVerificationService>();
 }
+
+// Login security service (adaptive CAPTCHA, progressive lockout, audit logging)
+builder.Services.Configure<LoginSecuritySettings>(builder.Configuration.GetSection("LoginSecurity"));
+builder.Services.AddScoped<ILoginSecurityService, LoginSecurityService>();
 
 // Storage Configuration
 var storageProvider = builder.Configuration["Storage:Provider"] ?? "Local";
@@ -496,6 +500,41 @@ using (var scope = app.Services.CreateScope())
                     CREATE INDEX [IX_ResourceCategoryMaps_ResourceId] ON [ResourceCategoryMaps] ([ResourceId]);
                 END
 
+            ");
+
+            // Ensure LoginAttempts table exists for security audit logging
+            await context.Database.ExecuteSqlRawAsync(@"
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('LoginAttempts') AND type in ('U'))
+                BEGIN
+                    CREATE TABLE [LoginAttempts] (
+                        [LoginAttemptId] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
+                        [Email] nvarchar(256) NOT NULL DEFAULT '',
+                        [UserId] nvarchar(450) NULL,
+                        [IpAddress] nvarchar(45) NOT NULL DEFAULT '',
+                        [UserAgent] nvarchar(512) NOT NULL DEFAULT '',
+                        [Result] nvarchar(20) NOT NULL DEFAULT '',
+                        [FailureReason] nvarchar(200) NULL,
+                        [WasCaptchaRequired] bit NOT NULL DEFAULT 0,
+                        [WasCaptchaPassed] bit NOT NULL DEFAULT 0,
+                        [AttemptedAt] datetime2 NOT NULL DEFAULT GETUTCDATE(),
+                        CONSTRAINT [FK_LoginAttempts_AspNetUsers_UserId] FOREIGN KEY ([UserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE SET NULL
+                    );
+                    CREATE INDEX [IX_LoginAttempts_Email] ON [LoginAttempts] ([Email]);
+                    CREATE INDEX [IX_LoginAttempts_AttemptedAt] ON [LoginAttempts] ([AttemptedAt]);
+                    CREATE INDEX [IX_LoginAttempts_IpAddress] ON [LoginAttempts] ([IpAddress]);
+                END
+
+                -- Ensure security columns exist on AspNetUsers
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AspNetUsers') AND name = 'ConsecutiveFailedLogins')
+                    ALTER TABLE [AspNetUsers] ADD [ConsecutiveFailedLogins] int NOT NULL DEFAULT 0;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AspNetUsers') AND name = 'LastFailedLoginAt')
+                    ALTER TABLE [AspNetUsers] ADD [LastFailedLoginAt] datetime2 NULL;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AspNetUsers') AND name = 'AccountLockedUntil')
+                    ALTER TABLE [AspNetUsers] ADD [AccountLockedUntil] datetime2 NULL;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AspNetUsers') AND name = 'PasswordResetRequestCount')
+                    ALTER TABLE [AspNetUsers] ADD [PasswordResetRequestCount] int NOT NULL DEFAULT 0;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AspNetUsers') AND name = 'PasswordResetWindowStart')
+                    ALTER TABLE [AspNetUsers] ADD [PasswordResetWindowStart] datetime2 NULL;
             ");
 
             // Add indexes and foreign keys for SchoolId columns (safe: checks for existence)

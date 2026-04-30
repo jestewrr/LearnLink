@@ -119,6 +119,15 @@ namespace LearnLink.Models
         public string? SuspensionReason { get; set; }
         public DateTime? SuspensionDate { get; set; }
 
+        // ----- Security: App-level progressive lockout (separate from Identity lockout) -----
+        public int ConsecutiveFailedLogins { get; set; } = 0;
+        public DateTime? LastFailedLoginAt { get; set; }
+        public DateTime? AccountLockedUntil { get; set; }
+
+        // ----- Password reset abuse prevention -----
+        public int PasswordResetRequestCount { get; set; } = 0;
+        public DateTime? PasswordResetWindowStart { get; set; }
+
         // Navigation
         public ICollection<Resource> Resources { get; set; } = new List<Resource>();
         public ICollection<LessonLearned> LessonsLearned { get; set; } = new List<LessonLearned>();
@@ -763,5 +772,38 @@ namespace LearnLink.Models
         public ApplicationUser? User { get; set; }
 
         public DateTime GrantedAt { get; set; } = DateTime.Now;
+    }
+
+    // ==================== Login Attempts (security audit log) ====================
+
+    public class LoginAttempt
+    {
+        [Key]
+        public int LoginAttemptId { get; set; }
+
+        [StringLength(256)]
+        public string Email { get; set; } = "";
+
+        public string? UserId { get; set; }
+
+        [ForeignKey("UserId")]
+        public ApplicationUser? User { get; set; }
+
+        [StringLength(45)]
+        public string IpAddress { get; set; } = "";
+
+        [StringLength(512)]
+        public string UserAgent { get; set; } = "";
+
+        [StringLength(20)]
+        public string Result { get; set; } = "";  // "Success", "Failed", "Locked", "Suspended"
+
+        [StringLength(200)]
+        public string? FailureReason { get; set; }
+
+        public bool WasCaptchaRequired { get; set; }
+        public bool WasCaptchaPassed { get; set; }
+
+        public DateTime AttemptedAt { get; set; } = DateTime.UtcNow;
     }
 }

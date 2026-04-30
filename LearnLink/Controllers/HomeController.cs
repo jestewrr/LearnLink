@@ -31,6 +31,7 @@ namespace LearnLink.Controllers
         private readonly IRecommendationService _recommendationService;
         private readonly IEmailService _emailService;
         private readonly ICaptchaVerificationService _captchaVerificationService;
+        private readonly ILoginSecurityService _loginSecurity;
         private readonly IStorageService _storage;
         private readonly bool _googleAuthEnabled;
         private readonly IMemoryCache _cache;
@@ -48,6 +49,7 @@ namespace LearnLink.Controllers
             IRecommendationService recommendationService,
             IEmailService emailService,
             ICaptchaVerificationService captchaVerificationService,
+            ILoginSecurityService loginSecurity,
             IStorageService storage,
             IMemoryCache cache,
             IConfiguration configuration)
@@ -61,6 +63,7 @@ namespace LearnLink.Controllers
             _recommendationService = recommendationService;
             _emailService = emailService;
             _captchaVerificationService = captchaVerificationService;
+            _loginSecurity = loginSecurity;
             _storage = storage;
             _cache = cache;
             _configuration = configuration;
@@ -93,7 +96,7 @@ namespace LearnLink.Controllers
             }
         }
 
-        private void PrepareLoginView(string? email = null, bool rememberMe = false)
+        private async Task PrepareLoginViewAsync(string? email = null, bool rememberMe = false)
         {
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
             ViewBag.Email = email;
@@ -101,6 +104,21 @@ namespace LearnLink.Controllers
             ViewBag.BotTimestamp = BuildAuthFormTimestamp();
             ViewBag.CaptchaEnabled = _captchaVerificationService.IsEnabled;
             ViewBag.CaptchaSiteKey = _captchaVerificationService.SiteKey;
+
+            // Adaptive CAPTCHA: determine if CAPTCHA should actually be shown
+            var captchaRequired = _captchaVerificationService.IsEnabled
+                && await _loginSecurity.ShouldRequireCaptchaAsync(email, HttpContext);
+            ViewBag.CaptchaRequired = captchaRequired;
+
+            // Account lock status
+            var (isLocked, lockedUntil) = await _loginSecurity.IsAccountLockedAsync(email);
+            ViewBag.AccountLocked = isLocked;
+            ViewBag.AccountLockedUntil = lockedUntil;
+
+            // Failed attempt info for warning display
+            var failedCount = await _loginSecurity.GetConsecutiveFailuresAsync(email);
+            ViewBag.FailedAttemptCount = failedCount;
+            ViewBag.ShowFailureWarning = failedCount >= 3;
         }
 
         private async Task PrepareRegisterViewAsync()
@@ -844,12 +862,12 @@ namespace LearnLink.Controllers
         // ==================== Auth Pages ====================
 
         [HttpGet]
-        public IActionResult Login()
+        public async Task<IActionResult> Login()
         {
             if (_signInManager.IsSignedIn(User))
                 return RedirectToAction("Dashboard");
 
-            PrepareLoginView();
+            await PrepareLoginViewAsync();
             return View();
         }
 
@@ -864,18 +882,43 @@ namespace LearnLink.Controllers
             string? formTimestamp,
             [FromForm(Name = "g-recaptcha-response")] string? captchaResponse)
         {
-            PrepareLoginView(email, rememberMe);
+            await PrepareLoginViewAsync(email, rememberMe);
+
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var userAgent = HttpContext.Request.Headers.UserAgent.ToString();
 
             if (IsLikelyBotSubmission(website, formTimestamp))
             {
+                await _loginSecurity.RecordLoginAttemptAsync(email ?? "", null, ip, userAgent, "Failed", "Bot detection", false, false);
                 ViewBag.Error = GenericAuthFailureMessage;
                 return View();
             }
 
-            if (!await IsCaptchaValidAsync(captchaResponse))
+            // Check app-level account lock BEFORE attempting sign-in
+            var (isLocked, lockedUntil) = await _loginSecurity.IsAccountLockedAsync(email);
+            if (isLocked)
             {
-                ViewBag.Error = "Security verification failed. Please try again.";
+                await _loginSecurity.RecordLoginAttemptAsync(email ?? "", null, ip, userAgent, "Locked", "Account locked", false, false);
+                var remainingMinutes = lockedUntil.HasValue
+                    ? (int)Math.Ceiling((lockedUntil.Value - DateTime.UtcNow).TotalMinutes)
+                    : 30;
+                ViewBag.Error = $"Your account has been temporarily locked due to multiple failed login attempts. Please try again after {remainingMinutes} minute(s).";
+                ViewBag.AccountLocked = true;
+                ViewBag.AccountLockedUntil = lockedUntil;
                 return View();
+            }
+
+            // Adaptive CAPTCHA: validate only if CAPTCHA was required for this attempt
+            var captchaWasRequired = _captchaVerificationService.IsEnabled
+                && await _loginSecurity.ShouldRequireCaptchaAsync(email, HttpContext);
+            if (captchaWasRequired)
+            {
+                if (!await IsCaptchaValidAsync(captchaResponse))
+                {
+                    await _loginSecurity.RecordLoginAttemptAsync(email ?? "", null, ip, userAgent, "Failed", "CAPTCHA failed", true, false);
+                    ViewBag.Error = "Security verification failed. Please try again.";
+                    return View();
+                }
             }
 
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
@@ -893,6 +936,7 @@ namespace LearnLink.Controllers
                 if (user == null)
                 {
                     await _signInManager.SignOutAsync();
+                    await _loginSecurity.RecordLoginAttemptAsync(email, null, ip, userAgent, "Failed", "User not found post-signin", captchaWasRequired, true);
                     ViewBag.Error = GenericAuthFailureMessage;
                     return View();
                 }
@@ -901,6 +945,7 @@ namespace LearnLink.Controllers
                 if (user.Status == "Suspended")
                 {
                     await _signInManager.SignOutAsync();
+                    await _loginSecurity.RecordLoginAttemptAsync(email, user.Id, ip, userAgent, "Suspended", "Account suspended", captchaWasRequired, true);
                     ViewBag.Error = GenericAuthFailureMessage;
                     return View();
                 }
@@ -912,6 +957,7 @@ namespace LearnLink.Controllers
                     if (school != null && !school.IsActive)
                     {
                         await _signInManager.SignOutAsync();
+                        await _loginSecurity.RecordLoginAttemptAsync(email, user.Id, ip, userAgent, "Failed", "School inactive", captchaWasRequired, true);
                         ViewBag.Error = GenericAuthFailureMessage;
                         return View();
                     }
@@ -926,6 +972,11 @@ namespace LearnLink.Controllers
                 user.Status = "Active";
                 await _userManager.UpdateAsync(user);
 
+                // Reset security counters and set trusted device cookie
+                await _context.Entry(user).ReloadAsync();
+                await _loginSecurity.HandleSuccessfulLoginAsync(user, HttpContext);
+                await _loginSecurity.RecordLoginAttemptAsync(email, user.Id, ip, userAgent, "Success", null, captchaWasRequired, captchaWasRequired);
+
                 await LogActivity(user.Id, "Login", "System Login");
                 return await _userManager.IsInRoleAsync(user, "Student")
                     ? RedirectToAction("Repository")
@@ -934,20 +985,57 @@ namespace LearnLink.Controllers
 
             if (result.IsLockedOut)
             {
-                ViewBag.Error = "Too many failed sign-in attempts. Please try again after 15 minutes.";
+                await _loginSecurity.RecordLoginAttemptAsync(email, null, ip, userAgent, "Locked", "Identity lockout", captchaWasRequired, !string.IsNullOrEmpty(captchaResponse));
+                ViewBag.Error = "Your account has been temporarily locked due to multiple failed login attempts. Please try again after 30 minutes.";
+                ViewBag.AccountLocked = true;
                 return View();
+            }
+
+            // Handle progressive failure at app level
+            var failedUser = await _userManager.FindByEmailAsync(email);
+            if (failedUser != null)
+            {
+                await _context.Entry(failedUser).ReloadAsync();
+                var failureAction = await _loginSecurity.HandleFailedLoginAsync(failedUser);
+
+                if (failureAction == LoginFailureAction.LockAccount)
+                {
+                    await _loginSecurity.RecordLoginAttemptAsync(email, failedUser.Id, ip, userAgent, "Locked", "App-level lockout (7+ failures)", captchaWasRequired, !string.IsNullOrEmpty(captchaResponse));
+                    // Re-prepare view so locked state is reflected
+                    await PrepareLoginViewAsync(email, rememberMe);
+                    ViewBag.Error = "Your account has been temporarily locked due to multiple failed login attempts. Please try again after 30 minutes.";
+                    return View();
+                }
+
+                if (failureAction == LoginFailureAction.ShowCaptchaWarning)
+                {
+                    await _loginSecurity.RecordLoginAttemptAsync(email, failedUser.Id, ip, userAgent, "Failed", "Bad credentials (CAPTCHA threshold reached)", captchaWasRequired, !string.IsNullOrEmpty(captchaResponse));
+                    // Re-prepare view so CAPTCHA required state is reflected
+                    await PrepareLoginViewAsync(email, rememberMe);
+                    ViewBag.Error = $"Invalid credentials. You have {7 - failedUser.ConsecutiveFailedLogins} attempt(s) remaining before your account is temporarily locked.";
+                    return View();
+                }
+
+                await _loginSecurity.RecordLoginAttemptAsync(email, failedUser.Id, ip, userAgent, "Failed", "Bad credentials", captchaWasRequired, !string.IsNullOrEmpty(captchaResponse));
+            }
+            else
+            {
+                await _loginSecurity.RecordLoginAttemptAsync(email, null, ip, userAgent, "Failed", "User not found", captchaWasRequired, !string.IsNullOrEmpty(captchaResponse));
             }
 
             ViewBag.Error = GenericAuthFailureMessage;
             return View();
+
         }
 
         [HttpGet]
-        public IActionResult ForgotPassword()
+        public async Task<IActionResult> ForgotPassword()
         {
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
             ViewBag.CaptchaEnabled = _captchaVerificationService.IsEnabled;
             ViewBag.CaptchaSiteKey = _captchaVerificationService.SiteKey;
+            // Always show CAPTCHA on forgot password (security-sensitive)
+            ViewBag.CaptchaRequired = _captchaVerificationService.IsEnabled;
             return View();
         }
 
@@ -961,9 +1049,10 @@ namespace LearnLink.Controllers
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
             ViewBag.CaptchaEnabled = _captchaVerificationService.IsEnabled;
             ViewBag.CaptchaSiteKey = _captchaVerificationService.SiteKey;
+            ViewBag.CaptchaRequired = _captchaVerificationService.IsEnabled;
             ViewBag.Email = email;
 
-            if (!await IsCaptchaValidAsync(captchaResponse))
+            if (_captchaVerificationService.IsEnabled && !await IsCaptchaValidAsync(captchaResponse))
             {
                 ViewBag.Error = "Security verification failed. Please try again.";
                 return View();
@@ -984,6 +1073,14 @@ namespace LearnLink.Controllers
             var user = await _userManager.FindByEmailAsync(email.Trim());
             if (user != null)
             {
+                // Rate limit: max N reset requests per hour
+                if (!await _loginSecurity.IsPasswordResetAllowedAsync(user))
+                {
+                    // Don't reveal rate limiting to prevent enumeration – just show generic success
+                    TempData["SuccessMessage"] = "If an account with that email exists, a password reset link has been sent.";
+                    return RedirectToAction("ForgotPassword");
+                }
+
                 var token = await _userManager.GeneratePasswordResetTokenAsync(user);
                 var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
                 var resetUrl = Url.Action(
@@ -1009,11 +1106,14 @@ namespace LearnLink.Controllers
 
                     await _emailService.SendAsync(user.Email!, "Reset your LearnLink password", body);
                 }
+
+                await _loginSecurity.RecordPasswordResetRequestAsync(user);
             }
 
             TempData["SuccessMessage"] = "If an account with that email exists, a password reset link has been sent.";
             return RedirectToAction("ForgotPassword");
         }
+
 
         [HttpGet]
         public IActionResult ResetPassword(string email, string token)
@@ -5983,6 +6083,65 @@ namespace LearnLink.Controllers
             }
             return RedirectToAction("Users");
         }
+
+        // ==================== Login Audit & Account Unlock ====================
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        public async Task<IActionResult> LoginAuditLog(string? email, string? result, string? fromDate, string? toDate, int page = 1)
+        {
+            DateTime? from = null, to = null;
+            if (DateTime.TryParse(fromDate, out var parsedFrom)) from = parsedFrom;
+            if (DateTime.TryParse(toDate, out var parsedTo)) to = parsedTo;
+
+            const int pageSize = 25;
+            var (items, totalCount) = await _loginSecurity.GetLoginAttemptsAsync(email, result, from, to, page, pageSize);
+
+            ViewBag.LoginAttempts = items;
+            ViewBag.TotalCount = totalCount;
+            ViewBag.CurrentPage = page;
+            ViewBag.TotalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+            ViewBag.FilterEmail = email;
+            ViewBag.FilterResult = result;
+            ViewBag.FilterFromDate = fromDate;
+            ViewBag.FilterToDate = toDate;
+
+            // Find currently locked accounts for quick-unlock display
+            var lockedUsers = await _context.Users
+                .Where(u => u.AccountLockedUntil != null && u.AccountLockedUntil > DateTime.UtcNow)
+                .Select(u => new { u.Email, u.AccountLockedUntil, u.ConsecutiveFailedLogins })
+                .ToListAsync();
+            ViewBag.LockedAccounts = lockedUsers;
+
+            return View();
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [HttpPost]
+        public async Task<IActionResult> UnlockAccount(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                TempData["ErrorMessage"] = "Email is required.";
+                return RedirectToAction("LoginAuditLog");
+            }
+
+            var user = await _userManager.FindByEmailAsync(email.Trim());
+            if (user == null)
+            {
+                TempData["ErrorMessage"] = "User not found.";
+                return RedirectToAction("LoginAuditLog");
+            }
+
+            await _loginSecurity.UnlockAccountAsync(user);
+
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser != null)
+                await LogActivity(currentUser.Id, "Unlock Account", user.Email ?? "Unknown");
+
+            TempData["SuccessMessage"] = $"Account for {user.Email} has been unlocked.";
+            return RedirectToAction("LoginAuditLog");
+        }
+
 
         [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]

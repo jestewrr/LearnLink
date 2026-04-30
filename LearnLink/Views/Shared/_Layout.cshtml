@@ -187,6 +187,12 @@
                             <span class="nav-text">Settings</span>
                         </a>
                     </div>
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("LoginAuditLog", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "LoginAuditLog" ? "active" : "")">
+                            <i class="bi bi-shield-exclamation"></i>
+                            <span class="nav-text">Login Audit Log</span>
+                        </a>
+                    </div>
                     }
                     @if (canReport)
                     {

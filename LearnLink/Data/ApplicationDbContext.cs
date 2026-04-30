@@ -49,6 +49,7 @@ namespace LearnLink.Data
 
         public DbSet<Like> Likes { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<LoginAttempt> LoginAttempts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -325,6 +326,17 @@ namespace LearnLink.Data
             builder.Entity<ResourceAccessGrant>()
                 .HasIndex(g => new { g.ResourceId, g.UserId })
                 .IsUnique();
+
+            // ===== LoginAttempt → User =====
+            builder.Entity<LoginAttempt>()
+                .HasOne(la => la.User)
+                .WithMany()
+                .HasForeignKey(la => la.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<LoginAttempt>().HasIndex(la => la.Email);
+            builder.Entity<LoginAttempt>().HasIndex(la => la.AttemptedAt);
+            builder.Entity<LoginAttempt>().HasIndex(la => la.IpAddress);
         }
     }
 }

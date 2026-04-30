@@ -1,0 +1,303 @@
+@using LearnLink.Models
+@{
+    ViewData["Title"] = "Login Audit Log";
+    var attempts = ViewBag.LoginAttempts as List<LoginAttempt> ?? new List<LoginAttempt>();
+    var totalCount = (int)(ViewBag.TotalCount ?? 0);
+    var currentPage = (int)(ViewBag.CurrentPage ?? 1);
+    var totalPages = (int)(ViewBag.TotalPages ?? 1);
+    var lockedAccounts = ViewBag.LockedAccounts as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+}
+
+<div class="ll-page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h1 class="ll-page-title"><i class="bi bi-shield-exclamation me-2"></i>Login Audit Log</h1>
+            <div class="ll-breadcrumb">
+                <a href="@Url.Action("Dashboard", "Home")">Dashboard</a>
+                <i class="bi bi-chevron-right small"></i>
+                <span>Login Audit Log</span>
+            </div>
+        </div>
+        <div>
+            <a href="@Url.Action("Users", "Home")" class="ll-btn ll-btn-outline">
+                <i class="bi bi-people me-1"></i> User Management
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Locked Accounts Alert -->
+@{
+    var lockedList = lockedAccounts.ToList();
+}
+@if (lockedList.Any())
+{
+    <div class="alert alert-danger mb-4">
+        <div class="d-flex align-items-center mb-2">
+            <i class="bi bi-lock-fill me-2 fs-5"></i>
+            <strong>Currently Locked Accounts (@lockedList.Count)</strong>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-borderless mb-0" style="font-size: 0.85rem;">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Failed Attempts</th>
+                        <th>Locked Until</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var locked in lockedList)
+                    {
+                        <tr>
+                            <td><i class="bi bi-person-fill me-1"></i>@locked.Email</td>
+                            <td><span class="badge bg-danger">@locked.ConsecutiveFailedLogins failures</span></td>
+                            <td>@(((DateTime?)locked.AccountLockedUntil)?.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt") ?? "N/A")</td>
+                            <td class="text-end">
+                                <form asp-action="UnlockAccount" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="email" value="@locked.Email" />
+                                    <button type="submit" class="btn btn-sm btn-outline-success" onclick="return confirm('Unlock this account?')">
+                                        <i class="bi bi-unlock me-1"></i>Unlock
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success d-flex align-items-center small py-2 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        @TempData["SuccessMessage"]
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger d-flex align-items-center small py-2 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+<!-- Filters -->
+<div class="ll-card mb-4">
+    <div class="ll-card-body">
+        <form method="get" asp-action="LoginAuditLog" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted text-uppercase" style="font-size: 0.7rem;">Email</label>
+                <input type="text" name="email" class="form-control form-control-sm" placeholder="Search by email..." value="@ViewBag.FilterEmail" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted text-uppercase" style="font-size: 0.7rem;">Result</label>
+                <select name="result" class="form-select form-select-sm">
+                    <option value="">All Results</option>
+                    <option value="Success" selected="@(ViewBag.FilterResult == "Success")">Success</option>
+                    <option value="Failed" selected="@(ViewBag.FilterResult == "Failed")">Failed</option>
+                    <option value="Locked" selected="@(ViewBag.FilterResult == "Locked")">Locked</option>
+                    <option value="Suspended" selected="@(ViewBag.FilterResult == "Suspended")">Suspended</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted text-uppercase" style="font-size: 0.7rem;">From Date</label>
+                <input type="date" name="fromDate" class="form-control form-control-sm" value="@ViewBag.FilterFromDate" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted text-uppercase" style="font-size: 0.7rem;">To Date</label>
+                <input type="date" name="toDate" class="form-control form-control-sm" value="@ViewBag.FilterToDate" />
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="ll-btn ll-btn-primary btn-sm flex-fill">
+                    <i class="bi bi-search me-1"></i>Filter
+                </button>
+                <a href="@Url.Action("LoginAuditLog")" class="ll-btn ll-btn-outline btn-sm">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="ll-card">
+            <div class="ll-card-body text-center py-3">
+                <div class="fs-4 fw-bold" style="color: var(--ll-primary);">@totalCount</div>
+                <div class="small text-muted fw-medium text-uppercase" style="font-size: 0.7rem;">Total Records</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="ll-card">
+            <div class="ll-card-body text-center py-3">
+                <div class="fs-4 fw-bold text-success">@attempts.Count(a => a.Result == "Success")</div>
+                <div class="small text-muted fw-medium text-uppercase" style="font-size: 0.7rem;">Successful (this page)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="ll-card">
+            <div class="ll-card-body text-center py-3">
+                <div class="fs-4 fw-bold text-danger">@attempts.Count(a => a.Result == "Failed")</div>
+                <div class="small text-muted fw-medium text-uppercase" style="font-size: 0.7rem;">Failed (this page)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="ll-card">
+            <div class="ll-card-body text-center py-3">
+                <div class="fs-4 fw-bold text-warning">@lockedList.Count</div>
+                <div class="small text-muted fw-medium text-uppercase" style="font-size: 0.7rem;">Locked Accounts</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Audit Log Table -->
+<div class="ll-card">
+    <div class="ll-card-header d-flex justify-content-between align-items-center">
+        <h5 class="ll-card-title mb-0">Login Attempts</h5>
+        <span class="text-muted small">Page @currentPage of @totalPages (@totalCount total)</span>
+    </div>
+    <div class="ll-card-body p-0">
+        @if (attempts.Any())
+        {
+            <div class="table-responsive">
+                <table class="ll-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Email</th>
+                            <th>Result</th>
+                            <th>Reason</th>
+                            <th>IP Address</th>
+                            <th>CAPTCHA</th>
+                            <th>User Agent</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var attempt in attempts)
+                        {
+                            var resultBadge = attempt.Result switch
+                            {
+                                "Success" => "ll-badge-success",
+                                "Failed" => "ll-badge-danger",
+                                "Locked" => "ll-badge-warning",
+                                "Suspended" => "ll-badge-danger",
+                                _ => "ll-badge-info"
+                            };
+                            var resultIcon = attempt.Result switch
+                            {
+                                "Success" => "bi-check-circle-fill text-success",
+                                "Failed" => "bi-x-circle-fill text-danger",
+                                "Locked" => "bi-lock-fill text-warning",
+                                "Suspended" => "bi-slash-circle-fill text-danger",
+                                _ => "bi-question-circle text-muted"
+                            };
+                            <tr>
+                                <td>
+                                    <div class="small fw-medium">@attempt.AttemptedAt.ToLocalTime().ToString("MMM dd, yyyy")</div>
+                                    <div class="small text-muted">@attempt.AttemptedAt.ToLocalTime().ToString("hh:mm:ss tt")</div>
+                                </td>
+                                <td>
+                                    <div class="fw-medium">@attempt.Email</div>
+                                </td>
+                                <td>
+                                    <span class="ll-badge @resultBadge">
+                                        <i class="bi @resultIcon me-1"></i>@attempt.Result
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="small text-muted">@(attempt.FailureReason ?? "—")</span>
+                                </td>
+                                <td>
+                                    <code class="small">@attempt.IpAddress</code>
+                                </td>
+                                <td>
+                                    @if (attempt.WasCaptchaRequired)
+                                    {
+                                        <span class="ll-badge @(attempt.WasCaptchaPassed ? "ll-badge-success" : "ll-badge-danger")">
+                                            <i class="bi @(attempt.WasCaptchaPassed ? "bi-check" : "bi-x") me-1"></i>
+                                            @(attempt.WasCaptchaPassed ? "Passed" : "Failed")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">Not required</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="small text-muted text-truncate d-inline-block" style="max-width: 200px;" title="@attempt.UserAgent">
+                                        @(attempt.UserAgent.Length > 50 ? attempt.UserAgent[..50] + "..." : attempt.UserAgent)
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-shield-check text-muted fs-1 mb-3 d-block"></i>
+                <p class="text-muted">No login attempts found matching your criteria.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Pagination -->
+@if (totalPages > 1)
+{
+    <nav class="d-flex justify-content-center mt-4">
+        <ul class="pagination pagination-sm">
+            <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("LoginAuditLog", new { email = ViewBag.FilterEmail, result = ViewBag.FilterResult, fromDate = ViewBag.FilterFromDate, toDate = ViewBag.FilterToDate, page = currentPage - 1 })">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+
+            @{
+                var startPage = Math.Max(1, currentPage - 2);
+                var endPage = Math.Min(totalPages, currentPage + 2);
+            }
+
+            @if (startPage > 1)
+            {
+                <li class="page-item">
+                    <a class="page-link" href="@Url.Action("LoginAuditLog", new { email = ViewBag.FilterEmail, result = ViewBag.FilterResult, fromDate = ViewBag.FilterFromDate, toDate = ViewBag.FilterToDate, page = 1 })">1</a>
+                </li>
+                @if (startPage > 2) { <li class="page-item disabled"><span class="page-link">…</span></li> }
+            }
+
+            @for (var i = startPage; i <= endPage; i++)
+            {
+                <li class="page-item @(i == currentPage ? "active" : "")">
+                    <a class="page-link" href="@Url.Action("LoginAuditLog", new { email = ViewBag.FilterEmail, result = ViewBag.FilterResult, fromDate = ViewBag.FilterFromDate, toDate = ViewBag.FilterToDate, page = i })">@i</a>
+                </li>
+            }
+
+            @if (endPage < totalPages)
+            {
+                @if (endPage < totalPages - 1) { <li class="page-item disabled"><span class="page-link">…</span></li> }
+                <li class="page-item">
+                    <a class="page-link" href="@Url.Action("LoginAuditLog", new { email = ViewBag.FilterEmail, result = ViewBag.FilterResult, fromDate = ViewBag.FilterFromDate, toDate = ViewBag.FilterToDate, page = totalPages })">@totalPages</a>
+                </li>
+            }
+
+            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("LoginAuditLog", new { email = ViewBag.FilterEmail, result = ViewBag.FilterResult, fromDate = ViewBag.FilterFromDate, toDate = ViewBag.FilterToDate, page = currentPage + 1 })">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+}
