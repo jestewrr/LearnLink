@@ -1,4 +1,4 @@
-﻿@model ErrorViewModel
+@model ErrorViewModel
 @{
     ViewData["Title"] = "Error";
 }
@@ -13,7 +13,7 @@
     </p>
 }
 
-@if (User.IsInRole("SuperAdmin") && !string.IsNullOrEmpty(Model.ExceptionMessage))
+@if ((User.IsInRole("SuperAdmin") || User.IsInRole("Manager")) && !string.IsNullOrEmpty(Model.ExceptionMessage))
 {
     <div class="alert alert-danger mt-4">
         <h4 class="alert-heading"><i class="bi bi-bug-fill me-2"></i>Exception Details (visible to admins only)</h4>

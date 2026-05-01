@@ -173,8 +173,8 @@ public sealed class LoginSecurityService : ILoginSecurityService
             {
                 Email = email?.Trim() ?? "",
                 UserId = userId,
-                IpAddress = ip,
-                UserAgent = userAgent.Length > 512 ? userAgent[..512] : userAgent,
+                IpAddress = ip ?? "Unknown",
+                UserAgent = (userAgent ?? "Unknown").Length > 1024 ? (userAgent ?? "Unknown").Substring(0, 1024) : (userAgent ?? "Unknown"),
                 Result = result,
                 FailureReason = failureReason,
                 WasCaptchaRequired = captchaRequired,

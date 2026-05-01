@@ -413,17 +413,20 @@ using (var scope = app.Services.CreateScope())
                 -- Fix missing LessonComments table
                 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('LessonComments') AND type in ('U'))
                 BEGIN
-                    CREATE TABLE [LessonComments] (
-                        [LessonCommentId] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
-                        [LessonId] int NOT NULL,
-                        [UserId] nvarchar(450) NOT NULL,
-                        [Content] nvarchar(2000) NOT NULL,
-                        [DatePosted] datetime2 NOT NULL DEFAULT GETDATE(),
-                        CONSTRAINT [FK_LessonComments_LessonsLearned_LessonId] FOREIGN KEY ([LessonId]) REFERENCES [LessonsLearned] ([LessonId]) ON DELETE CASCADE,
-                        CONSTRAINT [FK_LessonComments_AspNetUsers_UserId] FOREIGN KEY ([UserId]) REFERENCES [AspNetUsers] ([Id])
-                    );
-                    CREATE INDEX [IX_LessonComments_LessonId] ON [LessonComments] ([LessonId]);
-                    CREATE INDEX [IX_LessonComments_UserId] ON [LessonComments] ([UserId]);
+                    IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('LessonsLearned') AND type in ('U'))
+                    BEGIN
+                        CREATE TABLE [LessonComments] (
+                            [LessonCommentId] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
+                            [LessonId] int NOT NULL,
+                            [UserId] nvarchar(450) NOT NULL,
+                            [Content] nvarchar(2000) NOT NULL,
+                            [DatePosted] datetime2 NOT NULL DEFAULT GETDATE(),
+                            CONSTRAINT [FK_LessonComments_LessonsLearned_LessonId] FOREIGN KEY ([LessonId]) REFERENCES [LessonsLearned] ([LessonId]) ON DELETE CASCADE,
+                            CONSTRAINT [FK_LessonComments_AspNetUsers_UserId] FOREIGN KEY ([UserId]) REFERENCES [AspNetUsers] ([Id])
+                        );
+                        CREATE INDEX [IX_LessonComments_LessonId] ON [LessonComments] ([LessonId]);
+                        CREATE INDEX [IX_LessonComments_UserId] ON [LessonComments] ([UserId]);
+                    END
                 END
 
                 -- Fix missing AccountDeletionFeedbacks table
@@ -511,7 +514,7 @@ using (var scope = app.Services.CreateScope())
                         [Email] nvarchar(256) NOT NULL DEFAULT '',
                         [UserId] nvarchar(450) NULL,
                         [IpAddress] nvarchar(45) NOT NULL DEFAULT '',
-                        [UserAgent] nvarchar(512) NOT NULL DEFAULT '',
+                        [UserAgent] nvarchar(1024) NOT NULL DEFAULT '',
                         [Result] nvarchar(20) NOT NULL DEFAULT '',
                         [FailureReason] nvarchar(200) NULL,
                         [WasCaptchaRequired] bit NOT NULL DEFAULT 0,
