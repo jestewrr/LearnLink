@@ -8083,10 +8083,14 @@ a.ll-resource-card-link:hover {
 
 /* Table overrides and borders ensuring contrast (Pasted Image 7) */
 [data-theme="dark"] th,
+[data-theme="dark"] thead,
+[data-theme="dark"] thead tr,
 [data-theme="dark"] .table th,
 [data-theme="dark"] .ll-table th,
-[data-theme="dark"] .ll-table thead th {
-    background-color: #334155 !important;
+[data-theme="dark"] .ll-table thead,
+[data-theme="dark"] .ll-table thead th,
+[data-theme="dark"] table thead tr th {
+    background-color: #1e293b !important;
     color: #f1f5f9 !important;
     border-color: #475569 !important;
     border-bottom-color: #475569 !important;
@@ -8123,6 +8127,14 @@ a.ll-resource-card-link:hover {
     background-color: #334155 !important;
     border-color: #64748b !important;
     color: #fff !important;
+}
+[data-theme="dark"] .text-dark,
+[data-theme="dark"] .text-black,
+[data-theme="dark"] .text-body {
+    color: #f1f5f9 !important;
+}
+[data-theme="dark"] body {
+    color: #e2e8f0 !important;
 }
 
 /* Forms & Text inputs */

@@ -234,8 +234,8 @@
                                     }
                                 </td>
                                 <td>
-                                    <span class="small text-muted text-truncate d-inline-block" style="max-width: 200px;" title="@attempt.UserAgent">
-                                        @(attempt.UserAgent.Length > 50 ? attempt.UserAgent[..50] + "..." : attempt.UserAgent)
+                                    <span class="small text-muted text-truncate d-inline-block" style="max-width: 200px;" title="@(attempt.UserAgent ?? "")">
+                                        @((attempt.UserAgent ?? "").Length > 50 ? (attempt.UserAgent ?? "")[..50] + "..." : (attempt.UserAgent ?? ""))
                                     </span>
                                 </td>
                             </tr>

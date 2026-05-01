@@ -6136,6 +6136,11 @@ namespace LearnLink.Controllers
         [HttpPost]
         public async Task<IActionResult> SuspendUser(string email, string reason)
         {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                TempData["ErrorMessage"] = "Email is required.";
+                return RedirectToAction("Users");
+            }
             var user = await _userManager.FindByEmailAsync(email);
             if (user != null && IsSameSchool(user))
             {
@@ -6152,6 +6157,11 @@ namespace LearnLink.Controllers
         [HttpPost]
         public async Task<IActionResult> ReactivateUser(string email)
         {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                TempData["ErrorMessage"] = "Email is required.";
+                return RedirectToAction("Users");
+            }
             var user = await _userManager.FindByEmailAsync(email);
             if (user != null && IsSameSchool(user))
             {
