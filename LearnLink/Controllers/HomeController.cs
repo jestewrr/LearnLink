@@ -36,6 +36,7 @@ namespace LearnLink.Controllers
         private readonly bool _googleAuthEnabled;
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<HomeController> _logger;
         private static readonly SemaphoreSlim _googleBooksSemaphore = new SemaphoreSlim(1, 1);
         private static DateTime _lastGoogleBooksRequest = DateTime.MinValue;
 
@@ -52,7 +53,8 @@ namespace LearnLink.Controllers
             ILoginSecurityService loginSecurity,
             IStorageService storage,
             IMemoryCache cache,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ILogger<HomeController> logger)
         {
             _context = context;
             _signInManager = signInManager;
@@ -67,6 +69,7 @@ namespace LearnLink.Controllers
             _storage = storage;
             _cache = cache;
             _configuration = configuration;
+            _logger = logger;
         }
 
         // ==================== Helpers ====================
@@ -210,7 +213,18 @@ namespace LearnLink.Controllers
         /// SuperAdmin sees all if no school is switched; otherwise returns the switched/user school.
         /// </summary>
         private int? GetEffectiveSchoolId()
-            => _schoolContext.CurrentSchoolId;
+        {
+            try
+            {
+                return _schoolContext.CurrentSchoolId;
+            }
+            catch
+            {
+                // Security/session context can be unavailable for legacy or partially-migrated accounts.
+                // Fallback to platform-wide scope so authenticated pages still load.
+                return null;
+            }
+        }
 
         /// <summary>
         /// Verifies that the target user belongs to the same school as the current user.
@@ -218,9 +232,17 @@ namespace LearnLink.Controllers
         /// </summary>
         private bool IsSameSchool(ApplicationUser targetUser)
         {
-            if (_schoolContext.IsPlatformAdmin && _schoolContext.CurrentSchoolId == null)
-                return true; // Platform admin viewing all schools
-            return targetUser.SchoolId == _schoolContext.CurrentSchoolId;
+            try
+            {
+                if (_schoolContext.IsPlatformAdmin && _schoolContext.CurrentSchoolId == null)
+                    return true; // Platform admin viewing all schools
+                return targetUser.SchoolId == _schoolContext.CurrentSchoolId;
+            }
+            catch
+            {
+                // If school context cannot be resolved, fall back to strict same-school check.
+                return targetUser.SchoolId == null;
+            }
         }
 
         /// <summary>
@@ -265,10 +287,18 @@ namespace LearnLink.Controllers
             ViewBag.SchoolQuarters = ParseSettingOrDefault(settings?.Quarters, 
                 new List<string> { "1st Quarter", "2nd Quarter", "3rd Quarter", "4th Quarter", "All Quarters" });
 
-            // School context info for layout
+            // School context info for layout (defensive for incomplete session/claims state)
             ViewBag.CurrentSchoolId = schoolId;
-            ViewBag.CurrentSchoolName = _schoolContext.CurrentSchoolName;
-            ViewBag.IsPlatformAdmin = _schoolContext.IsPlatformAdmin;
+            try
+            {
+                ViewBag.CurrentSchoolName = _schoolContext.CurrentSchoolName;
+                ViewBag.IsPlatformAdmin = _schoolContext.IsPlatformAdmin;
+            }
+            catch
+            {
+                ViewBag.CurrentSchoolName = null;
+                ViewBag.IsPlatformAdmin = false;
+            }
         }
 
         private static string GetIconClass(string format) => format?.ToUpper() switch
@@ -1902,92 +1932,107 @@ namespace LearnLink.Controllers
         [Authorize]
         public async Task<IActionResult> Dashboard()
         {
-            if (User.IsInRole("Student"))
-                return RedirectToAction("StudentDashboard");
-            if (User.IsInRole("Contributor"))
-                return RedirectToAction("Repository");
-
-            await AutoRejectExpiredPendingResourcesAsync();
-
-            await LoadSchoolSettingsToViewBag();
-            var schoolId = GetEffectiveSchoolId();
-
-            // Resources are auto-filtered by global query filter
-            var resources = await _context.Resources.Include(r => r.User).ToListAsync();
-
-            // Users need manual filtering since UserManager doesn't use global filters
-            var allUsers = await _userManager.Users.ToListAsync();
-            var users = schoolId.HasValue
-                ? allUsers.Where(u => u.SchoolId == schoolId.Value).ToList()
-                : allUsers;
-
-            // Yesterday snapshots for KPI comparison
-            var yesterday = DateTime.Now.Date; // start of today = end of yesterday
-            var yesterdayResources = resources.Where(r => r.DateUploaded < yesterday).ToList();
-            var yesterdayUsers = users.Where(u => u.DateCreated < yesterday).ToList();
-            var yesterdayDiscussionCount = await _context.Discussions.CountAsync(d => d.DateCreated < yesterday);
-
-            ViewBag.Stats = new DashboardStatsViewModel
+            try
             {
-                TotalResources = resources.Count,
-                ActiveUsers = users.Count(u => u.Status == "Active"),
-                TotalDownloads = resources.Sum(r => r.DownloadCount),
-                ActiveDiscussions = await _context.Discussions.CountAsync(),
-                YesterdayResources = yesterdayResources.Count,
-                YesterdayActiveUsers = yesterdayUsers.Count(u => u.Status == "Active"),
-                YesterdayDownloads = yesterdayResources.Sum(r => r.DownloadCount),
-                YesterdayDiscussions = yesterdayDiscussionCount
-            };
-            ViewBag.RecentResources = resources.Where(r => r.Status == "Published").OrderByDescending(r => r.DateUploaded).Take(5).Select(MapResource).ToList();
-            ViewBag.PendingApprovals = resources.Where(r => r.Status == "Pending").OrderBy(r => r.DateUploaded).Select(MapResource).ToList();
+                if (User.IsInRole("Student"))
+                    return RedirectToAction("StudentDashboard");
+                if (User.IsInRole("Contributor"))
+                    return RedirectToAction("Repository");
 
-            // Recent activity
-            var activities = await _context.UserActivityLogs
-                .Include(a => a.User)
-                .OrderByDescending(a => a.ActivityDate)
-                .Take(10)
-                .ToListAsync();
+                await AutoRejectExpiredPendingResourcesAsync();
 
-            ViewBag.RecentActivity = activities.Select(a => new ActivityViewModel
+                await LoadSchoolSettingsToViewBag();
+                var schoolId = GetEffectiveSchoolId();
+
+                // Resources are auto-filtered by global query filter
+                var resources = await _context.Resources.Include(r => r.User).ToListAsync();
+
+                // Users need manual filtering since UserManager doesn't use global filters
+                var allUsers = await _userManager.Users.ToListAsync();
+                var users = schoolId.HasValue
+                    ? allUsers.Where(u => u.SchoolId == schoolId.Value).ToList()
+                    : allUsers;
+
+                // Yesterday snapshots for KPI comparison
+                var yesterday = DateTime.Now.Date; // start of today = end of yesterday
+                var yesterdayResources = resources.Where(r => r.DateUploaded < yesterday).ToList();
+                var yesterdayUsers = users.Where(u => u.DateCreated < yesterday).ToList();
+                var yesterdayDiscussionCount = await _context.Discussions.CountAsync(d => d.DateCreated < yesterday);
+
+                ViewBag.Stats = new DashboardStatsViewModel
+                {
+                    TotalResources = resources.Count,
+                    ActiveUsers = users.Count(u => u.Status == "Active"),
+                    TotalDownloads = resources.Sum(r => r.DownloadCount),
+                    ActiveDiscussions = await _context.Discussions.CountAsync(),
+                    YesterdayResources = yesterdayResources.Count,
+                    YesterdayActiveUsers = yesterdayUsers.Count(u => u.Status == "Active"),
+                    YesterdayDownloads = yesterdayResources.Sum(r => r.DownloadCount),
+                    YesterdayDiscussions = yesterdayDiscussionCount
+                };
+                ViewBag.RecentResources = resources.Where(r => r.Status == "Published").OrderByDescending(r => r.DateUploaded).Take(5).Select(MapResource).ToList();
+                ViewBag.PendingApprovals = resources.Where(r => r.Status == "Pending").OrderBy(r => r.DateUploaded).Select(MapResource).ToList();
+
+                // Recent activity
+                var activities = await _context.UserActivityLogs
+                    .Include(a => a.User)
+                    .OrderByDescending(a => a.ActivityDate)
+                    .Take(10)
+                    .ToListAsync();
+
+                ViewBag.RecentActivity = activities.Select(a => new ActivityViewModel
+                {
+                    User = a.User?.FullName ?? "Unknown",
+                    UserInitials = a.User?.Initials ?? "?",
+                    UserColor = a.User?.AvatarColor ?? "",
+                    Action = a.ActivityType.ToLower() switch
+                    {
+                        "upload" => "uploaded",
+                        "comment" => "commented on",
+                        "download" => "downloaded",
+                        "approve" => "approved",
+                        "discussion" => "started discussion",
+                        "login" => "logged in",
+                        "register" => "registered",
+                        _ => a.ActivityType
+                    },
+                    Target = a.TargetTitle,
+                    TimeAgo = GetTimeAgo(a.ActivityDate),
+                    IconClass = a.ActivityType.ToLower() switch
+                    {
+                        "upload" => "bi-cloud-arrow-up",
+                        "comment" => "bi-chat-dots",
+                        "download" => "bi-download",
+                        "approve" => "bi-check-circle",
+                        "discussion" => "bi-chat-square-text",
+                        "login" => "bi-box-arrow-in-right",
+                        _ => "bi-activity"
+                    },
+                    IconColor = a.ActivityType.ToLower() switch
+                    {
+                        "upload" => "text-primary",
+                        "comment" => "text-success",
+                        "download" => "text-info",
+                        "approve" => "text-warning",
+                        "discussion" => "text-danger",
+                        _ => "text-muted"
+                    }
+                }).ToList();
+
+                return View();
+            }
+            catch (Exception ex)
             {
-                User = a.User?.FullName ?? "Unknown",
-                UserInitials = a.User?.Initials ?? "?",
-                UserColor = a.User?.AvatarColor ?? "",
-                Action = a.ActivityType.ToLower() switch
-                {
-                    "upload" => "uploaded",
-                    "comment" => "commented on",
-                    "download" => "downloaded",
-                    "approve" => "approved",
-                    "discussion" => "started discussion",
-                    "login" => "logged in",
-                    "register" => "registered",
-                    _ => a.ActivityType
-                },
-                Target = a.TargetTitle,
-                TimeAgo = GetTimeAgo(a.ActivityDate),
-                IconClass = a.ActivityType.ToLower() switch
-                {
-                    "upload" => "bi-cloud-arrow-up",
-                    "comment" => "bi-chat-dots",
-                    "download" => "bi-download",
-                    "approve" => "bi-check-circle",
-                    "discussion" => "bi-chat-square-text",
-                    "login" => "bi-box-arrow-in-right",
-                    _ => "bi-activity"
-                },
-                IconColor = a.ActivityType.ToLower() switch
-                {
-                    "upload" => "text-primary",
-                    "comment" => "text-success",
-                    "download" => "text-info",
-                    "approve" => "text-warning",
-                    "discussion" => "text-danger",
-                    _ => "text-muted"
-                }
-            }).ToList();
+                _logger.LogError(ex, "Dashboard failed for user {UserId}.", _userManager.GetUserId(User));
 
-            return View();
+                // Keep users inside the app with a safe fallback dashboard state.
+                ViewBag.Stats = new DashboardStatsViewModel();
+                ViewBag.RecentResources = new List<ResourceViewModel>();
+                ViewBag.PendingApprovals = new List<ResourceViewModel>();
+                ViewBag.RecentActivity = new List<ActivityViewModel>();
+                TempData["ErrorMessage"] = "Some dashboard data could not be loaded. Please refresh.";
+                return View();
+            }
         }
 
         [Authorize(Roles = "SuperAdmin,Manager")]
