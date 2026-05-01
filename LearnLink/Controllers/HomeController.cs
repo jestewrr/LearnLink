@@ -822,6 +822,37 @@ namespace LearnLink.Controllers
                 ViewBag.ShowForgotPasswordModal = true;
                 ViewBag.FailedAttempts = 7;
                 ViewBag.AttemptsRemaining = 0;
+                // Notify admins (SuperAdmin and Manager) about the locked account
+                try
+                {
+                    var admins = new List<ApplicationUser>();
+                    var superAdmins = await _userManager.GetUsersInRoleAsync("SuperAdmin");
+                    var managers = await _userManager.GetUsersInRoleAsync("Manager");
+                    if (superAdmins != null) admins.AddRange(superAdmins);
+                    if (managers != null) admins.AddRange(managers);
+
+                    var recipients = admins.GroupBy(a => a.Id).Select(g => g.First()).ToList();
+                    foreach (var admin in recipients)
+                    {
+                        _context.Notifications.Add(new Notification
+                        {
+                            UserId = admin.Id,
+                            Title = "Account Locked",
+                            Message = $"User {user.Email} has been locked out due to multiple failed sign-in attempts. They are locked for {remainingMinutes} minute(s).",
+                            Type = "Security",
+                            Icon = "bi-lock-fill",
+                            IconBg = "#fee2e2",
+                            Link = $"/Home/UserDetails?email={Uri.EscapeDataString(user.Email ?? "")}",
+                            CreatedAt = DateTime.Now
+                        });
+                    }
+                    await _context.SaveChangesAsync();
+                }
+                catch
+                {
+                    // swallow — notification failure should not block login flow
+                }
+
                 return View();
             }
 
