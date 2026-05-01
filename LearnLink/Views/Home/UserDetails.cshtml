@@ -23,6 +23,16 @@
             <a href="@Url.Action("Users", "Home")" class="ll-btn ll-btn-outline">
                 <i class="bi bi-arrow-left"></i> Back to List
             </a>
+            @if (user.IsLockedOut)
+            {
+                <form asp-action="UnlockAccount" method="post" class="d-inline">
+                    <input type="hidden" name="email" value="@user.Email">
+                    <input type="hidden" name="returnUrl" value="@Url.Action("UserDetails", "Home", new { email = user.Email })">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-unlock"></i> Unlock Account
+                    </button>
+                </form>
+            }
             <button class="ll-btn ll-btn-primary" data-bs-toggle="modal" data-bs-target="#editUserModal">
                 <i class="bi bi-pencil"></i> Edit Profile
             </button>
@@ -42,6 +52,18 @@
                     <span class="ll-badge @user.RoleBadgeClass">@user.Role</span>
                     <span class="ll-badge @user.StatusBadgeClass">@user.Status</span>
                 </div>
+
+                @if (user.IsLockedOut)
+                {
+                    <div class="alert alert-warning text-start small mb-0">
+                        <div class="fw-bold mb-1"><i class="bi bi-lock-fill me-1"></i> Account Locked</div>
+                        <div>This user has been locked out due to failed login attempts.</div>
+                        @if (user.LockoutEnd.HasValue)
+                        {
+                            <div class="mt-1"><strong>Until:</strong> @user.LockoutEnd.Value.LocalDateTime.ToString("MMM dd, yyyy h:mm tt")</div>
+                        }
+                    </div>
+                }
                 
                 @if (user.Status == "Suspended")
                 {

@@ -894,38 +894,46 @@ namespace LearnLink.Controllers
                 return View();
             }
 
-            var user = await _userManager.FindByEmailAsync(email.Trim());
-            if (user != null)
+            try
             {
-                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-                var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-                var resetUrl = Url.Action(
-                    "ResetPassword",
-                    "Home",
-                    new { email = user.Email, token = encodedToken },
-                    protocol: Request.Scheme);
-
-                if (!string.IsNullOrWhiteSpace(resetUrl))
+                var user = await _userManager.FindByEmailAsync(email.Trim());
+                if (user != null)
                 {
-                    var safeName = string.IsNullOrWhiteSpace(user.FirstName) ? "there" : user.FirstName;
-                    var body = $@"
-                        <div style=""font-family:Segoe UI,Arial,sans-serif;color:#1e293b;line-height:1.6"">
-                            <h2 style=""margin-bottom:12px;"">Reset your LearnLink password</h2>
-                            <p>Hello {safeName},</p>
-                            <p>We received a request to reset your password. Click the button below to choose a new one.</p>
-                            <p style=""margin:24px 0;"">
-                                <a href=""{resetUrl}"" style=""background:#3B7DD8;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;display:inline-block;font-weight:600;"">Reset Password</a>
-                            </p>
-                            <p>If you did not request this, you can safely ignore this email.</p>
-                            <p style=""font-size:13px;color:#64748b;"">If the button does not work, copy and paste this link into your browser:<br>{resetUrl}</p>
-                        </div>";
+                    var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                    var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+                    var resetUrl = Url.Action(
+                        "ResetPassword",
+                        "Home",
+                        new { email = user.Email, token = encodedToken },
+                        protocol: Request.Scheme);
 
-                    await _emailService.SendAsync(user.Email!, "Reset your LearnLink password", body);
+                    if (!string.IsNullOrWhiteSpace(resetUrl))
+                    {
+                        var safeName = string.IsNullOrWhiteSpace(user.FirstName) ? "there" : user.FirstName;
+                        var body = $@"
+                            <div style=""font-family:Segoe UI,Arial,sans-serif;color:#1e293b;line-height:1.6"">
+                                <h2 style=""margin-bottom:12px;"">Reset your LearnLink password</h2>
+                                <p>Hello {safeName},</p>
+                                <p>We received a request to reset your password. Click the button below to choose a new one.</p>
+                                <p style=""margin:24px 0;"">
+                                    <a href=""{resetUrl}"" style=""background:#3B7DD8;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;display:inline-block;font-weight:600;"">Reset Password</a>
+                                </p>
+                                <p>If you did not request this, you can safely ignore this email.</p>
+                                <p style=""font-size:13px;color:#64748b;"">If the button does not work, copy and paste this link into your browser:<br>{resetUrl}</p>
+                            </div>";
+
+                        await _emailService.SendAsync(user.Email!, "Reset your LearnLink password", body);
+                    }
                 }
-            }
 
-            TempData["SuccessMessage"] = "If an account with that email exists, a password reset link has been sent.";
-            return RedirectToAction("ForgotPassword");
+                TempData["SuccessMessage"] = "If an account with that email exists, a password reset link has been sent.";
+                return RedirectToAction("ForgotPassword");
+            }
+            catch
+            {
+                ViewBag.Error = "We couldn't send the reset link right now. Please try again later or contact the administrator.";
+                return View();
+            }
         }
 
         [HttpGet]
@@ -5445,6 +5453,8 @@ namespace LearnLink.Controllers
                 var roles = await _userManager.GetRolesAsync(u);
                 var roleStr = roles.FirstOrDefault() ?? "Student";
                 var resourceCount = await _context.Resources.CountAsync(r => r.UserId == u.Id);
+                var isLockedOut = await _userManager.IsLockedOutAsync(u);
+                var lockoutEnd = await _userManager.GetLockoutEndDateAsync(u);
 
                 userViewModels.Add(new UserViewModel
                 {
@@ -5461,7 +5471,9 @@ namespace LearnLink.Controllers
                     LastActive = GetTimeAgo(u.DateCreated),
                     ResourceCount = resourceCount,
                     SuspensionReason = u.SuspensionReason,
-                    SuspensionDate = u.SuspensionDate
+                    SuspensionDate = u.SuspensionDate,
+                    IsLockedOut = isLockedOut,
+                    LockoutEnd = lockoutEnd
                 });
             }
 
@@ -5657,6 +5669,8 @@ namespace LearnLink.Controllers
             var roles = await _userManager.GetRolesAsync(user);
             var role = roles.FirstOrDefault() ?? "Student";
             var resourceCount = await _context.Resources.CountAsync(r => r.UserId == user.Id);
+            var isLockedOut = await _userManager.IsLockedOutAsync(user);
+            var lockoutEnd = await _userManager.GetLockoutEndDateAsync(user);
 
             ViewBag.UserDetails = new UserViewModel
             {
@@ -5673,7 +5687,9 @@ namespace LearnLink.Controllers
                 LastActive = GetTimeAgo(user.DateCreated),
                 ResourceCount = resourceCount,
                 SuspensionReason = user.SuspensionReason,
-                SuspensionDate = user.SuspensionDate
+                SuspensionDate = user.SuspensionDate,
+                IsLockedOut = isLockedOut,
+                LockoutEnd = lockoutEnd
             };
 
             ViewBag.UserActivity = await _context.UserActivityLogs
@@ -5770,6 +5786,26 @@ namespace LearnLink.Controllers
                 await _userManager.UpdateAsync(user);
                 TempData["SuccessMessage"] = $"{user.FullName} has been reactivated.";
             }
+            return RedirectToAction("Users");
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [HttpPost]
+        public async Task<IActionResult> UnlockAccount(string email, string? returnUrl = null)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user != null && IsSameSchool(user))
+            {
+                await _userManager.SetLockoutEndDateAsync(user, null);
+                await _userManager.ResetAccessFailedCountAsync(user);
+                TempData["SuccessMessage"] = $"{user.FullName}'s account has been unlocked.";
+            }
+
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
             return RedirectToAction("Users");
         }
 

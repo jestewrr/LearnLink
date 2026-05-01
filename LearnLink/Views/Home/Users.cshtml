@@ -188,7 +188,8 @@
                         data-role="@user.Role"
                         data-status="@user.Status"
                         data-grade="@user.GradeOrPosition"
-                        data-joined="@user.JoinedAt.ToString("MMMM dd, yyyy")">
+                        data-joined="@user.JoinedAt.ToString("MMMM dd, yyyy")"
+                        data-locked="@user.IsLockedOut">
                         <td><input type="checkbox" class="form-check-input user-checkbox"></td>
                         <td>
                             <div class="d-flex align-items-center gap-3">
@@ -227,6 +228,14 @@
                                     else
                                     {
                                     <li><a class="dropdown-item view-profile-action" href="#" data-bs-toggle="modal" data-bs-target="#userDetailsModal" data-email="@user.Email" data-name="@user.Name" data-role="@user.Role" data-status="@user.Status" data-joined="@user.JoinedAt.ToString("MMMM dd, yyyy")"><i class="bi bi-eye me-2"></i>View Profile</a></li>
+                                    @if (user.IsLockedOut)
+                                    {
+                                    <li><form asp-action="UnlockAccount" method="post" class="d-inline"><input type="hidden" name="email" value="@user.Email"><button type="submit" class="dropdown-item text-success"><i class="bi bi-unlock me-2"></i>Unlock Account</button></form></li>
+                                    }
+                                    @if (user.IsLockedOut)
+                                    {
+                                    <li><form asp-action="UnlockAccount" method="post" class="d-inline"><input type="hidden" name="email" value="@user.Email"><button type="submit" class="dropdown-item text-success"><i class="bi bi-unlock me-2"></i>Unlock Account</button></form></li>
+                                    }
                                     <li><a class="dropdown-item edit-user-action" href="#" data-bs-toggle="modal" data-bs-target="#editUserModal" data-email="@user.Email" data-name="@user.Name" data-grade="@user.GradeOrPosition"><i class="bi bi-pencil me-2"></i>Edit User</a></li>
                                     <li><a class="dropdown-item change-role-action" href="#" data-bs-toggle="modal" data-bs-target="#changeRoleModal" data-email="@user.Email" data-name="@user.Name" data-role="@user.Role"><i class="bi bi-shield me-2"></i>Change Role</a></li>
                                     <li><hr class="dropdown-divider"></li>
@@ -255,6 +264,7 @@
                  data-email="@user.Email.ToLower()"
                  data-role="@user.Role"
                  data-status="@user.Status"
+                  data-locked="@user.IsLockedOut"
                  data-grade="@user.GradeOrPosition.ToLower()"
                  data-res-title="@user.Name"
                  data-res-uploader="@user.Email"
@@ -475,6 +485,12 @@
                 </div>
             </div>
             <div class="modal-footer border-0 p-3 pt-0 flex-column gap-2">
+                <form asp-action="UnlockAccount" method="post" class="w-100">
+                    <input type="hidden" name="email" id="unlockUserEmail">
+                    <button type="submit" class="btn btn-success w-100 d-none" id="mobileUnlockBtn">
+                        <i class="bi bi-unlock"></i> Unlock Account
+                    </button>
+                </form>
                 <a href="#" id="viewFullProfileBtn" class="ll-btn ll-btn-outline w-100 text-center">View Profile</a>
                 <button type="button" class="ll-btn ll-btn-outline w-100" id="mobileEditBtn">Edit User</button>
                 <button type="button" class="ll-btn ll-btn-outline w-100" id="mobileRoleBtn">Change Role</button>
@@ -634,7 +650,7 @@
         }
 
         // --- User Details Modal Population ---
-        function populateUserDetails(email, name, role, status, joined) {
+        function populateUserDetails(email, name, role, status, joined, locked) {
             document.getElementById('detailsUserName').textContent = name;
             document.getElementById('detailsUserEmail').textContent = email;
             document.getElementById('detailsUserRole').textContent = role;
@@ -649,6 +665,13 @@
             document.getElementById('detailsRoleField').textContent = role;
             document.getElementById('detailsEmailField').textContent = email;
             document.getElementById('detailsJoinedField').textContent = joined;
+
+            var unlockBtn = document.getElementById('mobileUnlockBtn');
+            var unlockEmail = document.getElementById('unlockUserEmail');
+            if (unlockBtn && unlockEmail) {
+                unlockEmail.value = email;
+                unlockBtn.classList.toggle('d-none', !locked);
+            }
             
             // Configure buttons if needed (for mobile flow)
             // If viewing from table, buttons in modal are generic.
@@ -690,7 +713,8 @@
                 var role = this.dataset.role;
                 var status = this.dataset.status;
                 var joined = this.dataset.joined;
-                populateUserDetails(email, name, role, status, joined);
+                var locked = this.closest('.user-row')?.dataset.locked === 'True' || this.closest('.user-row')?.dataset.locked === 'true' || this.dataset.locked === 'True' || this.dataset.locked === 'true';
+                populateUserDetails(email, name, role, status, joined, locked);
                 
                 // Hide action buttons in this modal if opened from desktop table?
                 // The desktop table has actions in dropdown. 
@@ -719,8 +743,9 @@
                 var status = this.dataset.status;
                 var joined = this.dataset.joined;
                 var grade = this.dataset.resGrade;
+                var locked = this.dataset.locked === 'True' || this.dataset.locked === 'true';
                 
-                populateUserDetails(email, realName, role, status, joined);
+                populateUserDetails(email, realName, role, status, joined, locked);
                 
                 // Set data for action buttons
                 var editBtn = document.getElementById('mobileEditBtn');
