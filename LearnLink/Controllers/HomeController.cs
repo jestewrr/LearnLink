@@ -792,7 +792,7 @@ namespace LearnLink.Controllers
                 }
             }
 
-            var result = await _signInManager.PasswordSignInAsync(user, password, rememberMe, false);
+            var result = await _signInManager.PasswordSignInAsync(user, password, rememberMe, lockoutOnFailure: true);
             if (result.Succeeded)
             {
                 // Reload the user entity because PasswordSignInAsync may have updated the database
@@ -808,6 +808,28 @@ namespace LearnLink.Controllers
                 return await _userManager.IsInRoleAsync(user, "Student")
                     ? RedirectToAction("Repository")
                     : RedirectToAction("Dashboard");
+            }
+
+            if (result.IsLockedOut)
+            {
+                var lockedOutUser = await _userManager.FindByIdAsync(user.Id);
+                var lockoutEnd = lockedOutUser?.LockoutEnd;
+                var remainingMinutes = lockoutEnd.HasValue
+                    ? Math.Max(1, (int)Math.Ceiling((lockoutEnd.Value.UtcDateTime - DateTime.UtcNow).TotalMinutes))
+                    : 15;
+
+                ViewBag.Error = $"Too many failed login attempts. Please wait {remainingMinutes} minute(s) before trying again.";
+                ViewBag.ShowForgotPasswordModal = true;
+                ViewBag.FailedAttempts = 7;
+                return View();
+            }
+
+            var failedUser = await _userManager.FindByIdAsync(user.Id);
+            var failedAttempts = failedUser?.AccessFailedCount ?? 0;
+            if (failedAttempts >= 3)
+            {
+                ViewBag.ShowForgotPasswordModal = true;
+                ViewBag.FailedAttempts = failedAttempts;
             }
 
             ViewBag.Error = "Invalid email or password.";

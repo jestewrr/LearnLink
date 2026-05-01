@@ -140,6 +140,35 @@
         </div>
     </div>
 
+    <div class="modal fade" id="failedLoginHelpModal" tabindex="-1" aria-labelledby="failedLoginHelpModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="failedLoginHelpModalLabel">Need help signing in?</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">We noticed multiple failed sign-in attempts on this account.</p>
+                    @if (ViewBag.FailedAttempts != null)
+                    {
+                        <p class="text-muted small mb-0">Failed attempts: @ViewBag.FailedAttempts</p>
+                    }
+                    <p class="text-muted small mt-2 mb-0">You can reset your password, or use Google Sign-In if that's what your account currently supports for testing.</p>
+                </div>
+                <div class="modal-footer">
+                    <a href="@Url.Action("ForgotPassword", "Home")" class="btn btn-outline-primary">Forgot Password</a>
+                    @if (ViewBag.GoogleAuthEnabled == true)
+                    {
+                        <form asp-action="GoogleLogin" method="post" class="m-0">
+                            <input type="hidden" name="returnUrl" value="@Url.Action("Login", "Home")" />
+                            <button type="submit" class="btn ll-auth-btn-primary">Sign in with Google</button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -156,6 +185,21 @@
                 icon.classList.add('bi-eye');
             }
         }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const shouldShowFailedLoginModal = @((ViewBag.ShowForgotPasswordModal == true).ToString().ToLowerInvariant());
+            if (!shouldShowFailedLoginModal) {
+                return;
+            }
+
+            const modalEl = document.getElementById('failedLoginHelpModal');
+            if (!modalEl || typeof bootstrap === 'undefined') {
+                return;
+            }
+
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        });
     </script>
 </body>
 </html>
