@@ -99,6 +99,14 @@
                                             <i class="bi bi-eye"></i>
                                         </button>
                                     </div>
+                                    @if (ViewBag.AttemptsRemaining != null)
+                                    {
+                                        var rem = (int)ViewBag.AttemptsRemaining;
+                                        if (rem > 0)
+                                        {
+                                            <div class="small mt-2" style="color:@(rem <= 2 ? "#b91c1c" : "#6b7280")">Attempts remaining before lockout: @rem</div>
+                                        }
+                                    }
                                 </div>
 
                                 <div class="form-check mb-4">
@@ -157,13 +165,6 @@
                 </div>
                 <div class="modal-footer">
                     <a href="@Url.Action("ForgotPassword", "Home")" class="btn btn-outline-primary">Forgot Password</a>
-                    @if (ViewBag.GoogleAuthEnabled == true)
-                    {
-                        <form asp-action="GoogleLogin" method="post" class="m-0">
-                            <input type="hidden" name="returnUrl" value="@Url.Action("Login", "Home")" />
-                            <button type="submit" class="btn ll-auth-btn-primary">Sign in with Google</button>
-                        </form>
-                    }
                 </div>
             </div>
         </div>

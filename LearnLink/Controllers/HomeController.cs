@@ -821,6 +821,7 @@ namespace LearnLink.Controllers
                 ViewBag.Error = $"Too many failed login attempts. Please wait {remainingMinutes} minute(s) before trying again.";
                 ViewBag.ShowForgotPasswordModal = true;
                 ViewBag.FailedAttempts = 7;
+                ViewBag.AttemptsRemaining = 0;
                 return View();
             }
 
@@ -830,6 +831,7 @@ namespace LearnLink.Controllers
             {
                 ViewBag.ShowForgotPasswordModal = true;
                 ViewBag.FailedAttempts = failedAttempts;
+                ViewBag.AttemptsRemaining = Math.Max(0, _userManager.Options.Lockout.MaxFailedAccessAttempts - failedAttempts);
             }
 
             ViewBag.Error = "Invalid email or password.";
