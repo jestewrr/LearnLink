@@ -115,22 +115,10 @@
                                 </div>
 
                                 @* Show reCAPTCHA for login when required *@
-                                @if ((ViewBag.ShowReCaptchaForLogin == true) && !string.IsNullOrWhiteSpace(ViewBag.ReCaptchaSiteKey as string))
-                                {
-                                    <div class="mb-3 text-center">
-                                        <div class="g-recaptcha" data-sitekey="@ViewBag.ReCaptchaSiteKey"></div>
-                                    </div>
-                                }
-
                                 <button type="submit" class="btn ll-auth-btn-primary w-100 py-2 mb-3">
                                     <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
                                 </button>
                             </form>
-
-                            @if ((ViewBag.ShowReCaptchaForLogin == true) && !string.IsNullOrWhiteSpace(ViewBag.ReCaptchaSiteKey as string))
-                            {
-                                <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-                            }
 
                             @if (ViewBag.GoogleAuthEnabled == true)
                             {

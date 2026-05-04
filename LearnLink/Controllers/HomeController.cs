@@ -747,6 +747,96 @@ namespace LearnLink.Controllers
 
         // ==================== Auth Pages ====================
 
+        private bool ShouldRequirePostAuthRecaptcha(ApplicationUser? user = null)
+        {
+            // Known devices skip the extra challenge; unknown/incognito sessions get it.
+            var knownDevice = Request.Cookies["LearnLink.KnownDevice"];
+            var suspiciousFailures = user?.AccessFailedCount >= 3;
+            return string.IsNullOrWhiteSpace(knownDevice) || suspiciousFailures;
+        }
+
+        private IActionResult StartPostAuthRecaptchaFlow(string userId, string flow, bool rememberMe)
+        {
+            TempData["PostAuthUserId"] = userId;
+            TempData["PostAuthFlow"] = flow;
+            TempData["PostAuthRememberMe"] = rememberMe ? "true" : "false";
+            return RedirectToAction(nameof(PostAuthRecaptcha));
+        }
+
+        private async Task<IActionResult> FinishPostAuthLoginAsync(string userId, bool rememberMe)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                TempData["ErrorMessage"] = "Your sign-in session expired. Please sign in again.";
+                return RedirectToAction("Login");
+            }
+
+            await _signInManager.SignInAsync(user, isPersistent: rememberMe);
+
+            await _context.Entry(user).ReloadAsync();
+            user.Status = "Active";
+            await _userManager.UpdateAsync(user);
+            await LogActivity(user.Id, "Login", "System Login");
+
+            try
+            {
+                var cookieOptions = new CookieOptions
+                {
+                    Expires = DateTimeOffset.UtcNow.AddDays(365),
+                    HttpOnly = true,
+                    Secure = Request.IsHttps,
+                    SameSite = SameSiteMode.Lax
+                };
+                Response.Cookies.Append("LearnLink.KnownDevice", Guid.NewGuid().ToString(), cookieOptions);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to set known-device cookie for user {UserId}", user.Id);
+            }
+
+            return await _userManager.IsInRoleAsync(user, "Student")
+                ? RedirectToAction("Repository")
+                : RedirectToAction("Dashboard");
+        }
+
+        private async Task<IActionResult> FinishGoogleLoginAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                TempData["ErrorMessage"] = "Your sign-in session expired. Please sign in with Google again.";
+                return RedirectToAction("Login");
+            }
+
+            await _signInManager.SignInAsync(user, isPersistent: false);
+
+            await _context.Entry(user).ReloadAsync();
+            user.Status = "Active";
+            await _userManager.UpdateAsync(user);
+            await LogActivity(user.Id, "Login", "Google Sign-In");
+
+            try
+            {
+                var cookieOptions = new CookieOptions
+                {
+                    Expires = DateTimeOffset.UtcNow.AddDays(365),
+                    HttpOnly = true,
+                    Secure = Request.IsHttps,
+                    SameSite = SameSiteMode.Lax
+                };
+                Response.Cookies.Append("LearnLink.KnownDevice", Guid.NewGuid().ToString(), cookieOptions);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to set known-device cookie after Google login for user {UserId}", user.Id);
+            }
+
+            return await _userManager.IsInRoleAsync(user, "Student")
+                ? RedirectToAction("Repository")
+                : RedirectToAction("Dashboard");
+        }
+
         [HttpGet]
         public IActionResult Login()
         {
@@ -754,11 +844,6 @@ namespace LearnLink.Controllers
                 return RedirectToAction("Dashboard");
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
             ViewBag.RememberMe = false;
-            ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
-
-            // Show reCAPTCHA on login when the device is unfamiliar (no persistent known-device cookie)
-            var knownDevice = Request.Cookies["LearnLink.KnownDevice"];
-            ViewBag.ShowReCaptchaForLogin = string.IsNullOrWhiteSpace(knownDevice);
             return View();
         }
 
@@ -768,55 +853,6 @@ namespace LearnLink.Controllers
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
             ViewBag.Email = email;
             ViewBag.RememberMe = rememberMe;
-
-            // If device is unfamiliar, require reCAPTCHA verification
-            var knownDevice = Request.Cookies["LearnLink.KnownDevice"];
-            var requireRecaptcha = string.IsNullOrWhiteSpace(knownDevice);
-            if (requireRecaptcha)
-            {
-                try
-                {
-                    var recaptchaSecret = _configuration["ReCaptcha:Secret"];
-                    var recaptchaResponse = Request.Form["g-recaptcha-response"].ToString();
-                    if (!string.IsNullOrWhiteSpace(recaptchaSecret))
-                    {
-                        if (string.IsNullOrWhiteSpace(recaptchaResponse))
-                        {
-                            ViewBag.Error = "Please complete the reCAPTCHA challenge to continue.";
-                            ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
-                            ViewBag.ShowForgotPasswordModal = false;
-                            return View();
-                        }
-
-                        using var http = new HttpClient();
-                        var values = new Dictionary<string, string>
-                        {
-                            { "secret", recaptchaSecret },
-                            { "response", recaptchaResponse },
-                            { "remoteip", HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty }
-                        };
-                        var resp = await http.PostAsync("https://www.google.com/recaptcha/api/siteverify", new FormUrlEncodedContent(values));
-                        var json = await resp.Content.ReadAsStringAsync();
-                        using var doc = JsonDocument.Parse(json);
-                        if (!doc.RootElement.TryGetProperty("success", out var success) || !success.GetBoolean())
-                        {
-                            _logger?.LogWarning("reCAPTCHA verification failed for Login attempt from {IP}", HttpContext.Connection.RemoteIpAddress);
-                            ViewBag.Error = "reCAPTCHA verification failed. Please try again.";
-                            ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
-                            ViewBag.ShowForgotPasswordModal = false;
-                            return View();
-                        }
-                    }
-                }
-                catch (Exception rex)
-                {
-                    _logger?.LogWarning(rex, "Error while verifying reCAPTCHA on login");
-                    ViewBag.Error = "reCAPTCHA verification error. Please try again.";
-                    ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
-                    ViewBag.ShowForgotPasswordModal = false;
-                    return View();
-                }
-            }
 
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
             {
@@ -849,38 +885,15 @@ namespace LearnLink.Controllers
                 }
             }
 
-            var result = await _signInManager.PasswordSignInAsync(user, password, rememberMe, lockoutOnFailure: true);
+            var result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
             if (result.Succeeded)
             {
-                // Reload the user entity because PasswordSignInAsync may have updated the database
-                // and incremented the ConcurrencyStamp, which causes a DbUpdateConcurrencyException
-                // if we try to update the stale tracked entity.
-                await _context.Entry(user).ReloadAsync();
-
-                // Mark user as active on login
-                user.Status = "Active";
-                await _userManager.UpdateAsync(user);
-
-                await LogActivity(user.Id, "Login", "System Login");
-                try
+                if (ShouldRequirePostAuthRecaptcha(user))
                 {
-                    // Mark device as known by setting a persistent cookie so future logins won't require reCAPTCHA
-                    var cookieOptions = new CookieOptions
-                    {
-                        Expires = DateTimeOffset.UtcNow.AddDays(365),
-                        HttpOnly = true,
-                        Secure = Request.IsHttps,
-                        SameSite = SameSiteMode.Lax
-                    };
-                    Response.Cookies.Append("LearnLink.KnownDevice", Guid.NewGuid().ToString(), cookieOptions);
+                    return StartPostAuthRecaptchaFlow(user.Id, "Password", rememberMe);
                 }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Failed to set known-device cookie for user {UserId}", user.Id);
-                }
-                return await _userManager.IsInRoleAsync(user, "Student")
-                    ? RedirectToAction("Repository")
-                    : RedirectToAction("Dashboard");
+
+                return await FinishPostAuthLoginAsync(user.Id, rememberMe);
             }
 
             if (result.IsLockedOut)
@@ -948,6 +961,87 @@ namespace LearnLink.Controllers
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
             ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
             return View();
+        }
+
+        [HttpGet]
+        public IActionResult PostAuthRecaptcha()
+        {
+            var userId = TempData.Peek("PostAuthUserId")?.ToString();
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                TempData["ErrorMessage"] = "Your sign-in session expired. Please sign in again.";
+                return RedirectToAction("Login");
+            }
+
+            ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
+            ViewBag.PostAuthFlow = TempData.Peek("PostAuthFlow")?.ToString() ?? "Login";
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> PostAuthRecaptcha(string? flow)
+        {
+            var userId = TempData["PostAuthUserId"]?.ToString();
+            var rememberMe = string.Equals(TempData["PostAuthRememberMe"]?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+            var postAuthFlow = string.IsNullOrWhiteSpace(flow) ? TempData["PostAuthFlow"]?.ToString() : flow;
+
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                TempData["ErrorMessage"] = "Your sign-in session expired. Please sign in again.";
+                return RedirectToAction("Login");
+            }
+
+            try
+            {
+                var recaptchaSecret = _configuration["ReCaptcha:Secret"];
+                var recaptchaResponse = Request.Form["g-recaptcha-response"].ToString();
+
+                if (!string.IsNullOrWhiteSpace(recaptchaSecret))
+                {
+                    if (string.IsNullOrWhiteSpace(recaptchaResponse))
+                    {
+                        ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
+                        ViewBag.PostAuthFlow = postAuthFlow ?? "Login";
+                        ViewBag.Error = "Please complete the reCAPTCHA challenge to continue.";
+                        return View();
+                    }
+
+                    using var http = new HttpClient();
+                    var values = new Dictionary<string, string>
+                    {
+                        { "secret", recaptchaSecret },
+                        { "response", recaptchaResponse },
+                        { "remoteip", HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty }
+                    };
+
+                    var resp = await http.PostAsync("https://www.google.com/recaptcha/api/siteverify", new FormUrlEncodedContent(values));
+                    var json = await resp.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(json);
+                    if (!doc.RootElement.TryGetProperty("success", out var success) || !success.GetBoolean())
+                    {
+                        _logger?.LogWarning("Post-auth reCAPTCHA verification failed for flow {Flow} from {IP}", postAuthFlow, HttpContext.Connection.RemoteIpAddress);
+                        ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
+                        ViewBag.PostAuthFlow = postAuthFlow ?? "Login";
+                        ViewBag.Error = "reCAPTCHA verification failed. Please try again.";
+                        return View();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Error while verifying post-auth reCAPTCHA");
+                ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
+                ViewBag.PostAuthFlow = postAuthFlow ?? "Login";
+                ViewBag.Error = "reCAPTCHA verification error. Please try again.";
+                return View();
+            }
+
+            if (string.Equals(postAuthFlow, "Google", StringComparison.OrdinalIgnoreCase))
+            {
+                return await FinishGoogleLoginAsync(userId);
+            }
+
+            return await FinishPostAuthLoginAsync(userId, rememberMe);
         }
 
         [HttpPost]
@@ -1240,14 +1334,13 @@ namespace LearnLink.Controllers
                 var existingUser = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
                 if (existingUser != null)
                 {
-                    await _context.Entry(existingUser).ReloadAsync();
-                    existingUser.Status = "Active";
-                    await _userManager.UpdateAsync(existingUser);
-                    await LogActivity(existingUser.Id, "Login", "Google Sign-In");
+                    if (ShouldRequirePostAuthRecaptcha(existingUser))
+                    {
+                        await _signInManager.SignOutAsync();
+                        return StartPostAuthRecaptchaFlow(existingUser.Id, "Google", false);
+                    }
 
-                    return await _userManager.IsInRoleAsync(existingUser, "Student")
-                        ? RedirectToAction("Repository")
-                        : RedirectToAction("Dashboard");
+                    return await FinishGoogleLoginAsync(existingUser.Id);
                 }
             }
 
@@ -1350,14 +1443,16 @@ namespace LearnLink.Controllers
             var existingLogins = await _userManager.GetLoginsAsync(user);
             if (existingLogins.Any(login => login.LoginProvider == loginProvider && login.ProviderKey == providerKey))
             {
-                await _signInManager.SignInAsync(user, isPersistent: false);
                 TempData.Remove("LinkGoogleEmail");
                 TempData.Remove("LinkGoogleProviderKey");
                 TempData.Remove("LinkGoogleLoginProvider");
+                if (ShouldRequirePostAuthRecaptcha(user))
+                {
+                    return StartPostAuthRecaptchaFlow(user.Id, "Google", false);
+                }
+
                 TempData["SuccessMessage"] = "Your Google account is already linked.";
-                return await _userManager.IsInRoleAsync(user, "Student")
-                    ? RedirectToAction("Repository")
-                    : RedirectToAction("Dashboard");
+                return await FinishGoogleLoginAsync(user.Id);
             }
 
             // Link Google login and sign in
@@ -1370,20 +1465,17 @@ namespace LearnLink.Controllers
                 return View();
             }
 
-            await _signInManager.SignInAsync(user, isPersistent: false);
-
-            user.Status = "Active";
-            await _userManager.UpdateAsync(user);
-            await LogActivity(user.Id, "Login", "Google Sign-In (linked)");
-
             TempData.Remove("LinkGoogleEmail");
             TempData.Remove("LinkGoogleProviderKey");
             TempData.Remove("LinkGoogleLoginProvider");
 
+            if (ShouldRequirePostAuthRecaptcha())
+            {
+                return StartPostAuthRecaptchaFlow(user.Id, "Google", false);
+            }
+
             TempData["SuccessMessage"] = "Google account linked successfully!";
-            return await _userManager.IsInRoleAsync(user, "Student")
-                ? RedirectToAction("Repository")
-                : RedirectToAction("Dashboard");
+            return await FinishGoogleLoginAsync(user.Id);
         }
 
         /// <summary>
@@ -1501,9 +1593,13 @@ namespace LearnLink.Controllers
                 if (_signInManager.IsSignedIn(User))
                     await _signInManager.SignOutAsync();
 
-                await _signInManager.SignInAsync(user, isPersistent: false);
+                if (!string.IsNullOrEmpty(googleProviderKey) && !string.IsNullOrEmpty(googleLoginProvider) && ShouldRequirePostAuthRecaptcha(user))
+                {
+                    return StartPostAuthRecaptchaFlow(user.Id, "Google", false);
+                }
+
                 TempData["SuccessMessage"] = "Account created successfully! Welcome to LearnLink.";
-                return RedirectToAction("Repository");
+                return await FinishGoogleLoginAsync(user.Id);
             }
 
             ViewBag.Error = string.Join(" ", result.Errors.Select(e => e.Description));
