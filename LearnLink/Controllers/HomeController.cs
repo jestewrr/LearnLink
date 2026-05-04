@@ -922,6 +922,18 @@ namespace LearnLink.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> CheckLockoutStatus(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return Json(new { isLocked = false });
+            
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null) return Json(new { isLocked = false });
+
+            var isLocked = await _userManager.IsLockedOutAsync(user);
+            return Json(new { isLocked = isLocked });
+        }
+
+        [HttpGet]
         public IActionResult Login()
         {
             if (_signInManager.IsSignedIn(User))
@@ -1820,6 +1832,14 @@ namespace LearnLink.Controllers
         [Authorize]
         public async Task<IActionResult> Dashboard()
         {
+            // #region agent log
+            try
+            {
+                global::LearnLink.AgentDebugLog.AppendWithContentRoot(_environment.ContentRootPath, "H4,H5", "HomeController.Dashboard:entry", "dashboard entered",
+                    new { userId = _userManager.GetUserId(User), roles = string.Join(",", User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value)) });
+            }
+            catch { /* swallow */ }
+            // #endregion
             if (User.IsInRole("Student"))
                 return RedirectToAction("StudentDashboard");
             if (User.IsInRole("Contributor"))
@@ -6687,6 +6707,21 @@ namespace LearnLink.Controllers
         public IActionResult Error()
         {
             var exceptionFeature = HttpContext.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+            // #region agent log
+            try
+            {
+                var ex = exceptionFeature?.Error;
+                global::LearnLink.AgentDebugLog.AppendWithContentRoot(_environment.ContentRootPath, "H2,H4,H5", "HomeController.Error", "unhandled exception",
+                    new
+                    {
+                        path = exceptionFeature?.Path,
+                        type = ex?.GetType().FullName,
+                        message = ex?.Message,
+                        inner = ex?.InnerException?.GetType().Name
+                    });
+            }
+            catch { /* swallow */ }
+            // #endregion
             var model = new ErrorViewModel
             {
                 RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier,

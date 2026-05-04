@@ -109,6 +109,36 @@ else
 builder.Services.AddScoped<IRecommendationService, KnnRecommendationService>();
 
 builder.Services.AddRazorPages();
+
+// #region agent log
+try
+{
+    var cr = builder.Environment.ContentRootPath;
+    var localDev = Path.Combine(cr, "appsettings.Development.local.json");
+    var localProd = Path.Combine(cr, "appsettings.Production.local.json");
+    var conn = builder.Configuration.GetConnectionString("DefaultConnection");
+    var connTrim = conn?.Trim() ?? "";
+    var gid = builder.Configuration["Authentication:Google:ClientId"];
+    var recSite = builder.Configuration["ReCaptcha:SiteKey"] ?? builder.Configuration["Recaptcha:SiteKey"];
+    var recSecret = builder.Configuration["ReCaptcha:Secret"] ?? builder.Configuration["Recaptcha:SecretKey"];
+    global::LearnLink.AgentDebugLog.AppendWithContentRoot(cr, "H1,H2,H5", "Program.cs:pre-build", "startup config probe", new
+    {
+        environment = builder.Environment.EnvironmentName,
+        contentRoot = cr,
+        developmentLocalExists = File.Exists(localDev),
+        productionLocalExists = File.Exists(localProd),
+        connectionConfigured = !string.IsNullOrWhiteSpace(conn),
+        connectionLooksPlaceholder = connTrim.StartsWith("${", StringComparison.Ordinal),
+        googleAuthEnabledFlag = googleAuthEnabled,
+        googleClientIdLength = gid?.Length ?? 0,
+        googleClientIdPlaceholder = !string.IsNullOrEmpty(gid) && gid.Trim().StartsWith("${") && gid.Trim().EndsWith("}"),
+        recaptchaSiteKeyLength = recSite?.Length ?? 0,
+        recaptchaSecretLength = recSecret?.Length ?? 0
+    });
+}
+catch { /* swallow */ }
+// #endregion
+
 var app = builder.Build();
 
 // Auto-apply migrations and seed data

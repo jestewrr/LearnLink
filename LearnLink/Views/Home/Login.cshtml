@@ -83,7 +83,7 @@
                                     <label class="form-label">Email Address</label>
                                     <div class="ll-auth-input-group">
                                         <i class="bi bi-envelope ll-auth-input-icon"></i>
-                                        <input type="email" name="email" class="form-control" placeholder="Enter your email" value="@(ViewBag.Email ?? string.Empty)" required>
+                                        <input type="email" name="email" id="loginEmail" class="form-control" placeholder="Enter your email" value="@(ViewBag.Email ?? string.Empty)" required>
                                     </div>
                                 </div>
 
@@ -115,7 +115,7 @@
                                 </div>
 
                                 @* Show reCAPTCHA for login when required *@
-                                <button type="submit" class="btn ll-auth-btn-primary w-100 py-2 mb-3">
+                                <button type="submit" id="loginSubmitBtn" class="btn ll-auth-btn-primary w-100 py-2 mb-3">
                                     <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
                                 </button>
                             </form>
@@ -201,6 +201,68 @@
 
             const modal = new bootstrap.Modal(modalEl);
             modal.show();
+        });
+
+        // Lockout Check Logic
+        document.addEventListener('DOMContentLoaded', function () {
+            const emailInput = document.getElementById('loginEmail');
+            const passwordInput = document.getElementById('loginPassword');
+            const submitBtn = document.getElementById('loginSubmitBtn');
+            let lockoutTimeout;
+            let debounceTimer;
+
+            function checkLockout() {
+                const email = emailInput.value.trim();
+                if (!email) {
+                    unlockFields();
+                    return;
+                }
+                
+                fetch('/Home/CheckLockoutStatus?email=' + encodeURIComponent(email))
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.isLocked) {
+                            lockFields();
+                            // Check again in 30 seconds to automatically unlock when cooldown expires
+                            clearTimeout(lockoutTimeout);
+                            lockoutTimeout = setTimeout(checkLockout, 30000);
+                        } else {
+                            unlockFields();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking lockout status:', error);
+                    });
+            }
+
+            function lockFields() {
+                passwordInput.disabled = true;
+                passwordInput.value = '';
+                passwordInput.placeholder = 'Account temporarily locked';
+                if(submitBtn) submitBtn.disabled = true;
+            }
+
+            function unlockFields() {
+                if (passwordInput.disabled) {
+                    passwordInput.disabled = false;
+                    passwordInput.placeholder = 'Enter your password';
+                    if(submitBtn) submitBtn.disabled = false;
+                }
+                clearTimeout(lockoutTimeout);
+            }
+
+            if (emailInput) {
+                emailInput.addEventListener('input', function() {
+                    clearTimeout(debounceTimer);
+                    // Check if email changed to avoid unnecessary API calls
+                    debounceTimer = setTimeout(checkLockout, 400);
+                });
+                
+                // Initial check on load if email is pre-filled
+                if (emailInput.value.trim()) {
+                    checkLockout();
+                }
+            }
         });
     </script>
 </body>
