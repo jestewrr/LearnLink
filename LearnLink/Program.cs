@@ -55,7 +55,22 @@ builder.Services.ConfigureApplicationCookie(options =>
 // Google Authentication
 var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
 var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
-bool googleAuthEnabled = !string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret);
+bool IsConfigPlaceholder(string? value)
+{
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        return false;
+    }
+
+    var trimmed = value.Trim();
+    return trimmed.StartsWith("${") && trimmed.EndsWith("}");
+}
+
+bool googleAuthEnabled =
+    !string.IsNullOrWhiteSpace(googleClientId) &&
+    !string.IsNullOrWhiteSpace(googleClientSecret) &&
+    !IsConfigPlaceholder(googleClientId) &&
+    !IsConfigPlaceholder(googleClientSecret);
 if (googleAuthEnabled)
 {
     builder.Services.AddAuthentication()
