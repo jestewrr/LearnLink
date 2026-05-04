@@ -3,6 +3,7 @@ using System.Security.Claims;
 using LearnLink.Data;
 using LearnLink.Models;
 using LearnLink.Services;
+using System.Net.Mail;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -755,11 +756,15 @@ namespace LearnLink.Controllers
             return string.IsNullOrWhiteSpace(knownDevice) || suspiciousFailures;
         }
 
-        private IActionResult StartPostAuthRecaptchaFlow(string userId, string flow, bool rememberMe)
+        private bool ShouldRequireForgotPasswordRecaptcha()
+            => string.IsNullOrWhiteSpace(Request.Cookies["LearnLink.KnownDevice"]);
+
+        private IActionResult StartPostAuthRecaptchaFlow(string flow, string? userId = null, bool rememberMe = false, string? email = null)
         {
-            TempData["PostAuthUserId"] = userId;
             TempData["PostAuthFlow"] = flow;
+            TempData["PostAuthUserId"] = userId ?? string.Empty;
             TempData["PostAuthRememberMe"] = rememberMe ? "true" : "false";
+            TempData["PostAuthEmail"] = email ?? string.Empty;
             return RedirectToAction(nameof(PostAuthRecaptcha));
         }
 
@@ -837,6 +842,85 @@ namespace LearnLink.Controllers
                 : RedirectToAction("Dashboard");
         }
 
+        private async Task<IActionResult> SendForgotPasswordEmailAsync(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                ViewBag.Error = "Please enter your email address.";
+                return View("ForgotPassword");
+            }
+
+            if (!_emailService.IsConfigured)
+            {
+                ViewBag.Error = "Password reset email is not configured yet. Add SMTP settings first.";
+                return View("ForgotPassword");
+            }
+
+            try
+            {
+                var user = await _userManager.FindByEmailAsync(email.Trim());
+                if (user != null)
+                {
+                    var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                    var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+                    var resetUrl = Url.Action(
+                        "ResetPassword",
+                        "Home",
+                        new { email = user.Email, token = encodedToken },
+                        protocol: Request.Scheme);
+
+                    if (!string.IsNullOrWhiteSpace(resetUrl))
+                    {
+                        var safeName = string.IsNullOrWhiteSpace(user.FirstName) ? "there" : user.FirstName;
+                        var body = $@"
+                            <div style=""font-family:Segoe UI,Arial,sans-serif;color:#1e293b;line-height:1.6"">
+                                <h2 style=""margin-bottom:12px;"">Reset your LearnLink password</h2>
+                                <p>Hello {safeName},</p>
+                                <p>We received a request to reset your password. Click the button below to choose a new one.</p>
+                                <p style=""margin:24px 0;"">
+                                    <a href=""{resetUrl}"" style=""background:#3B7DD8;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;display:inline-block;font-weight:600;"">Reset Password</a>
+                                </p>
+                                <p>If you did not request this, you can safely ignore this email.</p>
+                                <p style=""font-size:13px;color:#64748b;"">If the button does not work, copy and paste this link into your browser:<br>{resetUrl}</p>
+                            </div>";
+
+                        await _emailService.SendAsync(user.Email!, "Reset your LearnLink password", body);
+                    }
+                }
+
+                TempData["SuccessMessage"] = "If an account with that email exists, a password reset link has been sent.";
+                return RedirectToAction("ForgotPassword");
+            }
+            catch (SmtpException ex)
+            {
+                _logger?.LogError(ex, "SMTP failure sending password reset email to {Email}", email);
+                ViewBag.Error = GetPasswordResetErrorMessage(ex);
+                return View("ForgotPassword");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Unexpected failure sending password reset email to {Email}", email);
+                ViewBag.Error = "We couldn't send the reset link right now. Please try again later or contact the administrator.";
+                return View("ForgotPassword");
+            }
+        }
+
+        private static string GetPasswordResetErrorMessage(Exception ex)
+        {
+            if (ex is SmtpException smtpEx)
+            {
+                return smtpEx.StatusCode switch
+                {
+                    SmtpStatusCode.GeneralFailure => "We couldn't send the reset link right now because the SMTP server returned a general failure. Please check your Gmail App Password, host, and SSL settings.",
+                    SmtpStatusCode.ClientNotPermitted or SmtpStatusCode.MustIssueStartTlsFirst => "We couldn't send the reset link right now because Gmail rejected the SMTP connection. Please check TLS/SSL, port 587, and your App Password.",
+                    SmtpStatusCode.MailboxBusy or SmtpStatusCode.MailboxUnavailable => "We couldn't send the reset link right now because the SMTP server could not accept the message. Please try again later.",
+                    _ => "We couldn't send the reset link right now. Please check SMTP configuration. If you use Gmail, ensure you're using an App Password (or configure OAuth2) and that Host/Port/SSL are correct. Contact the administrator for assistance."
+                };
+            }
+
+            return "We couldn't send the reset link right now. Please check SMTP configuration. If you use Gmail, ensure you're using an App Password (or configure OAuth2) and that Host/Port/SSL are correct. Contact the administrator for assistance.";
+        }
+
         [HttpGet]
         public IActionResult Login()
         {
@@ -890,7 +974,7 @@ namespace LearnLink.Controllers
             {
                 if (ShouldRequirePostAuthRecaptcha(user))
                 {
-                    return StartPostAuthRecaptchaFlow(user.Id, "Password", rememberMe);
+                    return StartPostAuthRecaptchaFlow("Login", user.Id, rememberMe);
                 }
 
                 return await FinishPostAuthLoginAsync(user.Id, rememberMe);
@@ -966,26 +1050,47 @@ namespace LearnLink.Controllers
         [HttpGet]
         public IActionResult PostAuthRecaptcha()
         {
+            var flow = TempData.Peek("PostAuthFlow")?.ToString() ?? "Login";
             var userId = TempData.Peek("PostAuthUserId")?.ToString();
-            if (string.IsNullOrWhiteSpace(userId))
+            var email = TempData.Peek("PostAuthEmail")?.ToString();
+
+            if (string.Equals(flow, "ForgotPassword", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    TempData["ErrorMessage"] = "Your reset session expired. Please try again.";
+                    return RedirectToAction("ForgotPassword");
+                }
+            }
+            else if (string.IsNullOrWhiteSpace(userId))
             {
                 TempData["ErrorMessage"] = "Your sign-in session expired. Please sign in again.";
                 return RedirectToAction("Login");
             }
 
             ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
-            ViewBag.PostAuthFlow = TempData.Peek("PostAuthFlow")?.ToString() ?? "Login";
+            ViewBag.PostAuthFlow = flow;
+            ViewBag.PostAuthEmail = email;
             return View();
         }
 
         [HttpPost]
-        public async Task<IActionResult> PostAuthRecaptcha(string? flow)
+        public async Task<IActionResult> PostAuthRecaptcha(string? flow, string? email)
         {
             var userId = TempData["PostAuthUserId"]?.ToString();
             var rememberMe = string.Equals(TempData["PostAuthRememberMe"]?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
             var postAuthFlow = string.IsNullOrWhiteSpace(flow) ? TempData["PostAuthFlow"]?.ToString() : flow;
+            var postAuthEmail = string.IsNullOrWhiteSpace(email) ? TempData["PostAuthEmail"]?.ToString() : email;
 
-            if (string.IsNullOrWhiteSpace(userId))
+            if (string.Equals(postAuthFlow, "ForgotPassword", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(postAuthEmail))
+                {
+                    TempData["ErrorMessage"] = "Your reset session expired. Please try again.";
+                    return RedirectToAction("ForgotPassword");
+                }
+            }
+            else if (string.IsNullOrWhiteSpace(userId))
             {
                 TempData["ErrorMessage"] = "Your sign-in session expired. Please sign in again.";
                 return RedirectToAction("Login");
@@ -1038,7 +1143,24 @@ namespace LearnLink.Controllers
 
             if (string.Equals(postAuthFlow, "Google", StringComparison.OrdinalIgnoreCase))
             {
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    TempData["ErrorMessage"] = "Your sign-in session expired. Please sign in again.";
+                    return RedirectToAction("Login");
+                }
+
                 return await FinishGoogleLoginAsync(userId);
+            }
+
+            if (string.Equals(postAuthFlow, "ForgotPassword", StringComparison.OrdinalIgnoreCase))
+            {
+                return await SendForgotPasswordEmailAsync(postAuthEmail!);
+            }
+
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                TempData["ErrorMessage"] = "Your sign-in session expired. Please sign in again.";
+                return RedirectToAction("Login");
             }
 
             return await FinishPostAuthLoginAsync(userId, rememberMe);
@@ -1047,109 +1169,19 @@ namespace LearnLink.Controllers
         [HttpPost]
         public async Task<IActionResult> ForgotPassword(string email)
         {
-            ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
             ViewBag.Email = email;
-
-            // Verify reCAPTCHA if configured
-            try
-            {
-                var recaptchaSecret = _configuration["ReCaptcha:Secret"];
-                var recaptchaResponse = Request.Form["g-recaptcha-response"].ToString();
-                if (!string.IsNullOrWhiteSpace(recaptchaSecret))
-                {
-                    if (string.IsNullOrWhiteSpace(recaptchaResponse))
-                    {
-                        ViewBag.Error = "reCAPTCHA verification failed. Please complete the reCAPTCHA and try again.";
-                        ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
-                        return View();
-                    }
-
-                    using var http = new HttpClient();
-                    var values = new Dictionary<string, string>
-                    {
-                        { "secret", recaptchaSecret },
-                        { "response", recaptchaResponse },
-                        { "remoteip", HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty }
-                    };
-                    var resp = await http.PostAsync("https://www.google.com/recaptcha/api/siteverify", new FormUrlEncodedContent(values));
-                    var json = await resp.Content.ReadAsStringAsync();
-                    using var doc = JsonDocument.Parse(json);
-                    if (!doc.RootElement.TryGetProperty("success", out var success) || !success.GetBoolean())
-                    {
-                        _logger?.LogWarning("reCAPTCHA verification failed for ForgotPassword request from {IP}", HttpContext.Connection.RemoteIpAddress);
-                        ViewBag.Error = "reCAPTCHA verification failed. Please try again.";
-                        ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
-                        return View();
-                    }
-                }
-            }
-            catch (Exception rex)
-            {
-                _logger?.LogWarning(rex, "Error while verifying reCAPTCHA");
-                // don't block forgot-password for transient recaptcha verification errors, just log and continue
-            }
-
             if (string.IsNullOrWhiteSpace(email))
             {
                 ViewBag.Error = "Please enter your email address.";
                 return View();
             }
 
-            if (!_emailService.IsConfigured)
+            if (ShouldRequireForgotPasswordRecaptcha())
             {
-                ViewBag.Error = "Password reset email is not configured yet. Add SMTP settings first.";
-                return View();
+                return StartPostAuthRecaptchaFlow("ForgotPassword", email: email.Trim());
             }
 
-            try
-            {
-                var user = await _userManager.FindByEmailAsync(email.Trim());
-                if (user != null)
-                {
-                    var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-                    var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-                    var resetUrl = Url.Action(
-                        "ResetPassword",
-                        "Home",
-                        new { email = user.Email, token = encodedToken },
-                        protocol: Request.Scheme);
-
-                    if (!string.IsNullOrWhiteSpace(resetUrl))
-                    {
-                        var safeName = string.IsNullOrWhiteSpace(user.FirstName) ? "there" : user.FirstName;
-                        var body = $@"
-                            <div style=""font-family:Segoe UI,Arial,sans-serif;color:#1e293b;line-height:1.6"">
-                                <h2 style=""margin-bottom:12px;"">Reset your LearnLink password</h2>
-                                <p>Hello {safeName},</p>
-                                <p>We received a request to reset your password. Click the button below to choose a new one.</p>
-                                <p style=""margin:24px 0;"">
-                                    <a href=""{resetUrl}"" style=""background:#3B7DD8;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;display:inline-block;font-weight:600;"">Reset Password</a>
-                                </p>
-                                <p>If you did not request this, you can safely ignore this email.</p>
-                                <p style=""font-size:13px;color:#64748b;"">If the button does not work, copy and paste this link into your browser:<br>{resetUrl}</p>
-                            </div>";
-
-                        await _emailService.SendAsync(user.Email!, "Reset your LearnLink password", body);
-                    }
-                }
-
-                TempData["SuccessMessage"] = "If an account with that email exists, a password reset link has been sent.";
-                return RedirectToAction("ForgotPassword");
-            }
-            catch (Exception ex)
-            {
-                try
-                {
-                    _logger?.LogError(ex, "Failed to send password reset email to {Email}", email);
-                }
-                catch
-                {
-                    // swallow logging errors to avoid secondary failures
-                }
-
-                ViewBag.Error = "We couldn't send the reset link right now. Please check SMTP configuration. If you use Gmail, ensure you're using an App Password (or configure OAuth2) and that Host/Port/SSL are correct. Contact the administrator for assistance.";
-                return View();
-            }
+            return await SendForgotPasswordEmailAsync(email.Trim());
         }
 
         [HttpGet]
@@ -1337,7 +1369,7 @@ namespace LearnLink.Controllers
                     if (ShouldRequirePostAuthRecaptcha(existingUser))
                     {
                         await _signInManager.SignOutAsync();
-                        return StartPostAuthRecaptchaFlow(existingUser.Id, "Google", false);
+                        return StartPostAuthRecaptchaFlow("Google", existingUser.Id, false);
                     }
 
                     return await FinishGoogleLoginAsync(existingUser.Id);
@@ -1448,7 +1480,7 @@ namespace LearnLink.Controllers
                 TempData.Remove("LinkGoogleLoginProvider");
                 if (ShouldRequirePostAuthRecaptcha(user))
                 {
-                    return StartPostAuthRecaptchaFlow(user.Id, "Google", false);
+                    return StartPostAuthRecaptchaFlow("Google", user.Id, false);
                 }
 
                 TempData["SuccessMessage"] = "Your Google account is already linked.";
@@ -1471,7 +1503,7 @@ namespace LearnLink.Controllers
 
             if (ShouldRequirePostAuthRecaptcha())
             {
-                return StartPostAuthRecaptchaFlow(user.Id, "Google", false);
+                return StartPostAuthRecaptchaFlow("Google", user.Id, false);
             }
 
             TempData["SuccessMessage"] = "Google account linked successfully!";
@@ -1595,7 +1627,7 @@ namespace LearnLink.Controllers
 
                 if (!string.IsNullOrEmpty(googleProviderKey) && !string.IsNullOrEmpty(googleLoginProvider) && ShouldRequirePostAuthRecaptcha(user))
                 {
-                    return StartPostAuthRecaptchaFlow(user.Id, "Google", false);
+                    return StartPostAuthRecaptchaFlow("Google", user.Id, false);
                 }
 
                 TempData["SuccessMessage"] = "Account created successfully! Welcome to LearnLink.";

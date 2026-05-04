@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Mail;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 
 namespace LearnLink.Services;
 
@@ -24,10 +25,12 @@ public interface IEmailService
 public class SmtpEmailService : IEmailService
 {
     private readonly SmtpSettings _settings;
+    private readonly ILogger<SmtpEmailService> _logger;
 
-    public SmtpEmailService(IOptions<SmtpSettings> options)
+    public SmtpEmailService(IOptions<SmtpSettings> options, ILogger<SmtpEmailService> logger)
     {
         _settings = options.Value;
+        _logger = logger;
     }
 
     public bool IsConfigured =>
@@ -56,6 +59,20 @@ public class SmtpEmailService : IEmailService
             Credentials = new NetworkCredential(_settings.Username, _settings.Password)
         };
 
-        await client.SendMailAsync(message);
+        try
+        {
+            await client.SendMailAsync(message);
+            _logger.LogInformation("Sent email to {ToEmail} with subject {Subject}", toEmail, subject);
+        }
+        catch (SmtpException ex)
+        {
+            _logger.LogError(ex, "SMTP error sending email to {ToEmail} using host {Host}:{Port}", toEmail, _settings.Host, _settings.Port);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error sending email to {ToEmail} using host {Host}:{Port}", toEmail, _settings.Host, _settings.Port);
+            throw;
+        }
     }
 }

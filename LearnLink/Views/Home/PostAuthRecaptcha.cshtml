@@ -4,9 +4,13 @@
     var flow = (ViewBag.PostAuthFlow as string) ?? "Login";
     var heading = string.Equals(flow, "Google", StringComparison.OrdinalIgnoreCase)
         ? "Verify Google Sign-In"
+        : string.Equals(flow, "ForgotPassword", StringComparison.OrdinalIgnoreCase)
+        ? "Verify password reset"
         : "Verify your sign-in";
     var subtitle = string.Equals(flow, "Google", StringComparison.OrdinalIgnoreCase)
         ? "Complete the reCAPTCHA check to finish signing in with Google."
+        : string.Equals(flow, "ForgotPassword", StringComparison.OrdinalIgnoreCase)
+        ? "Complete the reCAPTCHA check to send your reset email."
         : "Complete the reCAPTCHA check to finish signing in.";
 }
 
@@ -58,6 +62,10 @@
 
             <form id="recaptchaForm" asp-action="PostAuthRecaptcha" asp-controller="Home" method="post">
                 <input type="hidden" name="flow" value="@flow" />
+                @if (string.Equals(flow, "ForgotPassword", StringComparison.OrdinalIgnoreCase))
+                {
+                    <input type="hidden" name="email" value="@ViewBag.PostAuthEmail" />
+                }
                 <div class="mb-3 d-flex justify-content-center">
                     <div class="g-recaptcha" data-sitekey="@ViewBag.ReCaptchaSiteKey" data-callback="onRecaptchaSuccess" data-expired-callback="onRecaptchaExpired"></div>
                 </div>
