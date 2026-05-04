@@ -5,6 +5,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 var builder = WebApplication.CreateBuilder(args);
 
+// Allow local, gitignored dev secrets to override placeholders.
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddJsonFile("appsettings.Development.local.json", optional: true, reloadOnChange: true);
+}
+
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 

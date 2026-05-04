@@ -1336,6 +1336,12 @@ namespace LearnLink.Controllers
         [HttpPost]
         public IActionResult GoogleLogin(string returnUrl = "/Home/Register")
         {
+            if (!_googleAuthEnabled)
+            {
+                TempData["ErrorMessage"] = "Google sign-in is currently unavailable. Please use email and password.";
+                return RedirectToAction("Login");
+            }
+
             var redirectUrl = Url.Action("GoogleCallback", "Home", new { returnUrl });
             var properties = _signInManager.ConfigureExternalAuthenticationProperties("Google", redirectUrl);
             return new ChallengeResult("Google", properties);
