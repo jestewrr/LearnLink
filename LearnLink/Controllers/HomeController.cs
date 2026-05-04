@@ -30,6 +30,7 @@ namespace LearnLink.Controllers
         private readonly bool _googleAuthEnabled;
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<HomeController> _logger;
         private static readonly SemaphoreSlim _googleBooksSemaphore = new SemaphoreSlim(1, 1);
         private static DateTime _lastGoogleBooksRequest = DateTime.MinValue;
 
@@ -44,7 +45,8 @@ namespace LearnLink.Controllers
             IEmailService emailService,
             IStorageService storage,
             IMemoryCache cache,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ILogger<HomeController> logger)
         {
             _context = context;
             _signInManager = signInManager;
@@ -57,6 +59,7 @@ namespace LearnLink.Controllers
             _storage = storage;
             _cache = cache;
             _configuration = configuration;
+            _logger = logger;
         }
 
         // ==================== Helpers ====================
@@ -751,6 +754,11 @@ namespace LearnLink.Controllers
                 return RedirectToAction("Dashboard");
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
             ViewBag.RememberMe = false;
+            ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
+
+            // Show reCAPTCHA on login when the device is unfamiliar (no persistent known-device cookie)
+            var knownDevice = Request.Cookies["LearnLink.KnownDevice"];
+            ViewBag.ShowReCaptchaForLogin = string.IsNullOrWhiteSpace(knownDevice);
             return View();
         }
 
@@ -760,6 +768,55 @@ namespace LearnLink.Controllers
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
             ViewBag.Email = email;
             ViewBag.RememberMe = rememberMe;
+
+            // If device is unfamiliar, require reCAPTCHA verification
+            var knownDevice = Request.Cookies["LearnLink.KnownDevice"];
+            var requireRecaptcha = string.IsNullOrWhiteSpace(knownDevice);
+            if (requireRecaptcha)
+            {
+                try
+                {
+                    var recaptchaSecret = _configuration["ReCaptcha:Secret"];
+                    var recaptchaResponse = Request.Form["g-recaptcha-response"].ToString();
+                    if (!string.IsNullOrWhiteSpace(recaptchaSecret))
+                    {
+                        if (string.IsNullOrWhiteSpace(recaptchaResponse))
+                        {
+                            ViewBag.Error = "Please complete the reCAPTCHA challenge to continue.";
+                            ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
+                            ViewBag.ShowForgotPasswordModal = false;
+                            return View();
+                        }
+
+                        using var http = new HttpClient();
+                        var values = new Dictionary<string, string>
+                        {
+                            { "secret", recaptchaSecret },
+                            { "response", recaptchaResponse },
+                            { "remoteip", HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty }
+                        };
+                        var resp = await http.PostAsync("https://www.google.com/recaptcha/api/siteverify", new FormUrlEncodedContent(values));
+                        var json = await resp.Content.ReadAsStringAsync();
+                        using var doc = JsonDocument.Parse(json);
+                        if (!doc.RootElement.TryGetProperty("success", out var success) || !success.GetBoolean())
+                        {
+                            _logger?.LogWarning("reCAPTCHA verification failed for Login attempt from {IP}", HttpContext.Connection.RemoteIpAddress);
+                            ViewBag.Error = "reCAPTCHA verification failed. Please try again.";
+                            ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
+                            ViewBag.ShowForgotPasswordModal = false;
+                            return View();
+                        }
+                    }
+                }
+                catch (Exception rex)
+                {
+                    _logger?.LogWarning(rex, "Error while verifying reCAPTCHA on login");
+                    ViewBag.Error = "reCAPTCHA verification error. Please try again.";
+                    ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
+                    ViewBag.ShowForgotPasswordModal = false;
+                    return View();
+                }
+            }
 
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
             {
@@ -805,6 +862,22 @@ namespace LearnLink.Controllers
                 await _userManager.UpdateAsync(user);
 
                 await LogActivity(user.Id, "Login", "System Login");
+                try
+                {
+                    // Mark device as known by setting a persistent cookie so future logins won't require reCAPTCHA
+                    var cookieOptions = new CookieOptions
+                    {
+                        Expires = DateTimeOffset.UtcNow.AddDays(365),
+                        HttpOnly = true,
+                        Secure = Request.IsHttps,
+                        SameSite = SameSiteMode.Lax
+                    };
+                    Response.Cookies.Append("LearnLink.KnownDevice", Guid.NewGuid().ToString(), cookieOptions);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to set known-device cookie for user {UserId}", user.Id);
+                }
                 return await _userManager.IsInRoleAsync(user, "Student")
                     ? RedirectToAction("Repository")
                     : RedirectToAction("Dashboard");
@@ -873,6 +946,7 @@ namespace LearnLink.Controllers
         public IActionResult ForgotPassword()
         {
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
+            ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
             return View();
         }
 
@@ -881,6 +955,45 @@ namespace LearnLink.Controllers
         {
             ViewBag.GoogleAuthEnabled = _googleAuthEnabled;
             ViewBag.Email = email;
+
+            // Verify reCAPTCHA if configured
+            try
+            {
+                var recaptchaSecret = _configuration["ReCaptcha:Secret"];
+                var recaptchaResponse = Request.Form["g-recaptcha-response"].ToString();
+                if (!string.IsNullOrWhiteSpace(recaptchaSecret))
+                {
+                    if (string.IsNullOrWhiteSpace(recaptchaResponse))
+                    {
+                        ViewBag.Error = "reCAPTCHA verification failed. Please complete the reCAPTCHA and try again.";
+                        ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
+                        return View();
+                    }
+
+                    using var http = new HttpClient();
+                    var values = new Dictionary<string, string>
+                    {
+                        { "secret", recaptchaSecret },
+                        { "response", recaptchaResponse },
+                        { "remoteip", HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty }
+                    };
+                    var resp = await http.PostAsync("https://www.google.com/recaptcha/api/siteverify", new FormUrlEncodedContent(values));
+                    var json = await resp.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(json);
+                    if (!doc.RootElement.TryGetProperty("success", out var success) || !success.GetBoolean())
+                    {
+                        _logger?.LogWarning("reCAPTCHA verification failed for ForgotPassword request from {IP}", HttpContext.Connection.RemoteIpAddress);
+                        ViewBag.Error = "reCAPTCHA verification failed. Please try again.";
+                        ViewBag.ReCaptchaSiteKey = _configuration["ReCaptcha:SiteKey"] ?? string.Empty;
+                        return View();
+                    }
+                }
+            }
+            catch (Exception rex)
+            {
+                _logger?.LogWarning(rex, "Error while verifying reCAPTCHA");
+                // don't block forgot-password for transient recaptcha verification errors, just log and continue
+            }
 
             if (string.IsNullOrWhiteSpace(email))
             {
@@ -929,9 +1042,18 @@ namespace LearnLink.Controllers
                 TempData["SuccessMessage"] = "If an account with that email exists, a password reset link has been sent.";
                 return RedirectToAction("ForgotPassword");
             }
-            catch
+            catch (Exception ex)
             {
-                ViewBag.Error = "We couldn't send the reset link right now. Please try again later or contact the administrator.";
+                try
+                {
+                    _logger?.LogError(ex, "Failed to send password reset email to {Email}", email);
+                }
+                catch
+                {
+                    // swallow logging errors to avoid secondary failures
+                }
+
+                ViewBag.Error = "We couldn't send the reset link right now. Please check SMTP configuration. If you use Gmail, ensure you're using an App Password (or configure OAuth2) and that Host/Port/SSL are correct. Contact the administrator for assistance.";
                 return View();
             }
         }
