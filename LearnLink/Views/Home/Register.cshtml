@@ -93,26 +93,18 @@
                                     </div>
                                 </div>
 
-                                <div class="row g-3 mb-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label">Password</label>
-                                        <div class="ll-auth-input-group">
-                                            <i class="bi bi-lock ll-auth-input-icon"></i>
-                                            <input type="password" name="password" id="regPassword" class="form-control" placeholder="Create password" required>
-                                            <button type="button" class="ll-auth-password-toggle" onclick="togglePassword('regPassword', this)">
-                                                <i class="bi bi-eye"></i>
-                                            </button>
-                                        </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Password <span class="text-danger">*</span></label>
+                                    <div class="ll-auth-input-group">
+                                        <i class="bi bi-lock ll-auth-input-icon"></i>
+                                        <input type="password" name="password" id="regPassword" class="form-control" placeholder="Create password" required>
+                                        <button type="button" class="ll-auth-password-toggle" onclick="togglePassword('regPassword', this)">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Confirm Password</label>
-                                        <div class="ll-auth-input-group">
-                                            <i class="bi bi-lock-fill ll-auth-input-icon"></i>
-                                            <input type="password" name="confirmPassword" id="confirmPassword" class="form-control" placeholder="Re-enter password" required>
-                                            <button type="button" class="ll-auth-password-toggle" onclick="togglePassword('confirmPassword', this)">
-                                                <i class="bi bi-eye"></i>
-                                            </button>
-                                        </div>
+                                    <div class="form-text small text-muted mt-1">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Must be at least 12 characters and include uppercase, lowercase, numbers, and special characters.
                                     </div>
                                 </div>
 
@@ -161,6 +153,17 @@
                                                 }
                                             }
                                         </select>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                                    <div class="ll-auth-input-group">
+                                        <i class="bi bi-lock-fill ll-auth-input-icon"></i>
+                                        <input type="password" name="confirmPassword" id="confirmPassword" class="form-control" placeholder="Re-enter password" required>
+                                        <button type="button" class="ll-auth-password-toggle" onclick="togglePassword('confirmPassword', this)">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
                                     </div>
                                 </div>
                                 <button type="submit" class="btn ll-auth-btn-accent w-100 py-2 mb-3">
