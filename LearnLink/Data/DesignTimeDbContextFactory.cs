@@ -24,7 +24,11 @@ namespace LearnLink.Data
 
             var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
             var connectionString = config.GetConnectionString("DefaultConnection");
-            optionsBuilder.UseSqlServer(connectionString);
+            optionsBuilder.UseSqlServer(connectionString, 
+                sqlOptions => sqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5, 
+                    maxRetryDelay: TimeSpan.FromSeconds(10), 
+                    errorNumbersToAdd: null));
 
             return new ApplicationDbContext(optionsBuilder.Options);
         }
