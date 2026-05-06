@@ -1336,6 +1336,7 @@ namespace LearnLink.Controllers
             }
 
             ViewBag.Error = string.Join(" ", result.Errors.Select(e => e.Description));
+            ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
             return View();
         }
 

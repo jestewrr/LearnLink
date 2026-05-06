@@ -100,7 +100,30 @@
                                     <label class="form-label">Grade / Position</label>
                                     <div class="ll-auth-input-group">
                                         <i class="bi bi-bookmark ll-auth-input-icon"></i>
-                                        <input type="text" name="gradeOrPosition" class="form-control" placeholder="e.g., Grade 8 - Section A or Math Teacher">
+                                        <select name="gradeOrPosition" class="form-control form-select">
+                                            <option value="" disabled selected>Select Grade or Position</option>
+                                            <optgroup label="Students">
+                                                <option value="Grade 7">Grade 7</option>
+                                                <option value="Grade 8">Grade 8</option>
+                                                <option value="Grade 9">Grade 9</option>
+                                                <option value="Grade 10">Grade 10</option>
+                                            </optgroup>
+                                            <optgroup label="Teachers">
+                                                <option value="Math Teacher">Math Teacher</option>
+                                                <option value="Science Teacher">Science Teacher</option>
+                                                <option value="English Teacher">English Teacher</option>
+                                                <option value="Filipino Teacher">Filipino Teacher</option>
+                                                <option value="Araling Panlipunan Teacher">Araling Panlipunan Teacher</option>
+                                                <option value="MAPEH Teacher">MAPEH Teacher</option>
+                                                <option value="TLE Teacher">TLE Teacher</option>
+                                                <option value="Values Education Teacher">Values Education Teacher</option>
+                                            </optgroup>
+                                            <optgroup label="Other">
+                                                <option value="Principal">Principal</option>
+                                                <option value="Staff">Staff</option>
+                                                <option value="Other">Other</option>
+                                            </optgroup>
+                                        </select>
                                     </div>
                                 </div>
 
@@ -115,7 +138,7 @@
                                                 <i class="bi bi-eye"></i>
                                             </button>
                                         </div>
-                                        <div class="form-text small text-muted">Min 6 characters</div>
+                                        <div class="form-text small text-muted">Min 12 chars (upper, lower, num, special)</div>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label">Confirm Password <span class="text-danger">*</span></label>

@@ -217,7 +217,30 @@
                     </div>
                     <div class="ll-form-group">
                         <label class="ll-form-label">Grade/Position</label>
-                        <input type="text" class="ll-form-control" name="grade" value="@user.GradeOrPosition" required>
+                        <select class="ll-form-control" name="grade" required>
+                            <option value="">Select Grade or Position</option>
+                            <optgroup label="Students">
+                                <option value="Grade 7" selected="@(user.GradeOrPosition == "Grade 7" ? "selected" : null)">Grade 7</option>
+                                <option value="Grade 8" selected="@(user.GradeOrPosition == "Grade 8" ? "selected" : null)">Grade 8</option>
+                                <option value="Grade 9" selected="@(user.GradeOrPosition == "Grade 9" ? "selected" : null)">Grade 9</option>
+                                <option value="Grade 10" selected="@(user.GradeOrPosition == "Grade 10" ? "selected" : null)">Grade 10</option>
+                            </optgroup>
+                            <optgroup label="Teachers">
+                                <option value="Math Teacher" selected="@(user.GradeOrPosition == "Math Teacher" ? "selected" : null)">Math Teacher</option>
+                                <option value="Science Teacher" selected="@(user.GradeOrPosition == "Science Teacher" ? "selected" : null)">Science Teacher</option>
+                                <option value="English Teacher" selected="@(user.GradeOrPosition == "English Teacher" ? "selected" : null)">English Teacher</option>
+                                <option value="Filipino Teacher" selected="@(user.GradeOrPosition == "Filipino Teacher" ? "selected" : null)">Filipino Teacher</option>
+                                <option value="Araling Panlipunan Teacher" selected="@(user.GradeOrPosition == "Araling Panlipunan Teacher" ? "selected" : null)">Araling Panlipunan Teacher</option>
+                                <option value="MAPEH Teacher" selected="@(user.GradeOrPosition == "MAPEH Teacher" ? "selected" : null)">MAPEH Teacher</option>
+                                <option value="TLE Teacher" selected="@(user.GradeOrPosition == "TLE Teacher" ? "selected" : null)">TLE Teacher</option>
+                                <option value="Values Education Teacher" selected="@(user.GradeOrPosition == "Values Education Teacher" ? "selected" : null)">Values Education Teacher</option>
+                            </optgroup>
+                            <optgroup label="Other">
+                                <option value="Principal" selected="@(user.GradeOrPosition == "Principal" ? "selected" : null)">Principal</option>
+                                <option value="Staff" selected="@(user.GradeOrPosition == "Staff" ? "selected" : null)">Staff</option>
+                                <option value="Other" selected="@(user.GradeOrPosition == "Other" ? "selected" : null)">Other</option>
+                            </optgroup>
+                        </select>
                     </div>
                 </div>
                 <div class="modal-footer">
