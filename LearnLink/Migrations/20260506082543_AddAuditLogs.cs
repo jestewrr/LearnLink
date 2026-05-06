@@ -2,10 +2,10 @@
 
 #nullable disable
 
-namespace LearnLink.LearnLink.Migrations
+namespace LearnLink.Migrations
 {
     /// <inheritdoc />
-    public partial class AddResourceCommentTable : Migration
+    public partial class AddAuditLogs : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

@@ -157,6 +157,11 @@
                         <i class="bi bi-heart me-1"></i>Liked Resources <span class="badge bg-secondary bg-opacity-10 text-secondary ms-1">@likedResources.Count</span>
                     </button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-medium" id="security-tab" data-bs-toggle="tab" data-bs-target="#securityPane" type="button" role="tab" style="border: none; border-bottom: 3px solid transparent; color: var(--ll-text-secondary);">
+                        <i class="bi bi-shield-check me-1"></i>Security History
+                    </button>
+                </li>
             </ul>
 
             <!-- Tab Content -->
@@ -302,6 +307,66 @@
                             <a href="@Url.Action("Repository", "Home")" class="ll-btn ll-btn-primary ll-btn-sm">
                                 <i class="bi bi-folder2-open me-1"></i>Browse Repository
                             </a>
+                        </div>
+                    }
+                    }
+                </div>
+
+                <!-- Security History -->
+                <div class="tab-pane fade" id="securityPane" role="tabpanel">
+                    @{
+                        var securityLogs = (List<LearnLink.Models.AuditLog>)ViewBag.SecurityLogs;
+                    }
+                    @if (securityLogs != null && securityLogs.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover text-muted small mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <th>Action</th>
+                                        <th>Status</th>
+                                        <th>Device / IP</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var log in securityLogs)
+                                    {
+                                        <tr>
+                                            <td class="text-nowrap">@log.Timestamp.ToLocalTime().ToString("MMM dd, yyyy HH:mm")</td>
+                                            <td>
+                                                <i class="bi @(log.Action == "Login" ? "bi-box-arrow-in-right" : log.Action == "Logout" ? "bi-box-arrow-right" : log.Action == "Register" ? "bi-person-plus" : log.Action.Contains("Password") ? "bi-key" : log.Action == "Lockout" ? "bi-shield-lock" : "bi-activity") me-1"></i>
+                                                @log.Action
+                                            </td>
+                                            <td>
+                                                @if (log.Status == "Success")
+                                                {
+                                                    <span class="text-success"><i class="bi bi-check-circle me-1"></i>Success</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-danger"><i class="bi bi-exclamation-octagon me-1"></i>Failure</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div title="@log.UserAgent">
+                                                    <i class="bi bi-laptop me-1"></i>
+                                                    @(log.UserAgent?.Length > 20 ? log.UserAgent.Substring(0, 20) + "..." : log.UserAgent)
+                                                    <span class="text-secondary ms-1">(@log.IPAddress)</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-shield-check display-4 d-block mb-2 opacity-25"></i>
+                            <div class="fw-medium mb-1">No security logs found</div>
+                            <p class="small">Your recent security activity will appear here.</p>
                         </div>
                     }
                 </div>

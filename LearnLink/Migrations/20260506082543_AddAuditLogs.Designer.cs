@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace LearnLink.LearnLink.Migrations
+namespace LearnLink.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260310110308_AddResourceThumbnail")]
-    partial class AddResourceThumbnail
+    [Migration("20260506082543_AddAuditLogs")]
+    partial class AddAuditLogs
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,43 @@ namespace LearnLink.LearnLink.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("LearnLink.Models.AccountDeletionFeedback", b =>
+                {
+                    b.Property<int>("FeedbackId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FeedbackId"));
+
+                    b.Property<DateTime>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Feedback")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("UserEmail")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("UserRole")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("FeedbackId");
+
+                    b.ToTable("AccountDeletionFeedbacks");
+                });
 
             modelBuilder.Entity("LearnLink.Models.ApplicationUser", b =>
                 {
@@ -141,6 +178,52 @@ namespace LearnLink.LearnLink.Migrations
                     b.HasIndex("SchoolId");
 
                     b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("LearnLink.Models.AuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IPAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("SchoolId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserAgent")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserEmail")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("LearnLink.Models.BestPractice", b =>
@@ -301,6 +384,38 @@ namespace LearnLink.LearnLink.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("DiscussionPosts");
+                });
+
+            modelBuilder.Entity("LearnLink.Models.LessonComment", b =>
+                {
+                    b.Property<int>("LessonCommentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LessonCommentId"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("DatePosted")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("LessonId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("LessonCommentId");
+
+                    b.HasIndex("LessonId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("LessonComments");
                 });
 
             modelBuilder.Entity("LearnLink.Models.LessonLearned", b =>
@@ -604,6 +719,9 @@ namespace LearnLink.LearnLink.Migrations
                     b.Property<bool>("ModerateComments")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("PendingReviewPreviewedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Quarter")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -639,10 +757,6 @@ namespace LearnLink.LearnLink.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("ThumbnailUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -820,6 +934,10 @@ namespace LearnLink.LearnLink.Migrations
                     b.Property<DateTime>("DateUpdated")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("FileFormat")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -835,8 +953,28 @@ namespace LearnLink.LearnLink.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("GradeLevel")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Quarter")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<int>("ResourceId")
                         .HasColumnType("int");
+
+                    b.Property<string>("ResourceType")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("VersionNotes")
                         .HasMaxLength(1000)
@@ -1178,6 +1316,16 @@ namespace LearnLink.LearnLink.Migrations
                     b.Navigation("School");
                 });
 
+            modelBuilder.Entity("LearnLink.Models.AuditLog", b =>
+                {
+                    b.HasOne("LearnLink.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("LearnLink.Models.BestPractice", b =>
                 {
                     b.HasOne("LearnLink.Models.Resource", "Resource")
@@ -1240,6 +1388,25 @@ namespace LearnLink.LearnLink.Migrations
                         .IsRequired();
 
                     b.Navigation("Discussion");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LearnLink.Models.LessonComment", b =>
+                {
+                    b.HasOne("LearnLink.Models.LessonLearned", "Lesson")
+                        .WithMany("Comments")
+                        .HasForeignKey("LessonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LearnLink.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Lesson");
 
                     b.Navigation("User");
                 });
@@ -1558,6 +1725,11 @@ namespace LearnLink.LearnLink.Migrations
             modelBuilder.Entity("LearnLink.Models.Discussion", b =>
                 {
                     b.Navigation("Posts");
+                });
+
+            modelBuilder.Entity("LearnLink.Models.LessonLearned", b =>
+                {
+                    b.Navigation("Comments");
                 });
 
             modelBuilder.Entity("LearnLink.Models.Resource", b =>

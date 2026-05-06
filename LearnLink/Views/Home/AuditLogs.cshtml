@@ -1,0 +1,184 @@
+@model IEnumerable<LearnLink.Models.AuditLog>
+@{
+    ViewData["Title"] = "Audit Logs";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var isAdmin = User.IsInRole("SuperAdmin");
+}
+
+<div class="ll-page-header">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="ll-page-title">System Audit Logs</h2>
+                <p class="ll-page-subtitle">Monitor security events and user activity</p>
+            </div>
+            <div>
+                <button class="btn btn-outline-secondary" onclick="window.print()">
+                    <i class="bi bi-printer me-2"></i>Export / Print
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid py-4">
+    <div class="ll-card mb-4">
+        <div class="ll-card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-medium text-muted">Search User/Details</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent"><i class="bi bi-search"></i></span>
+                        <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Search..." value="@ViewBag.Search">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-medium text-muted">Action</label>
+                    <select name="actionFilter" class="form-select ll-form-select">
+                        <option value="">All Actions</option>
+                        <option value="Login" selected="@(ViewBag.ActionFilter == "Login")">Login</option>
+                        <option value="Logout" selected="@(ViewBag.ActionFilter == "Logout")">Logout</option>
+                        <option value="Register" selected="@(ViewBag.ActionFilter == "Register")">Register</option>
+                        <option value="Lockout" selected="@(ViewBag.ActionFilter == "Lockout")">Lockout</option>
+                        <option value="Password Reset" selected="@(ViewBag.ActionFilter == "Password Reset")">Password Reset</option>
+                        <option value="Password Change" selected="@(ViewBag.ActionFilter == "Password Change")">Password Change</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-medium text-muted">Status</label>
+                    <select name="statusFilter" class="form-select ll-form-select">
+                        <option value="">All Statuses</option>
+                        <option value="Success" selected="@(ViewBag.StatusFilter == "Success")">Success</option>
+                        <option value="Failure" selected="@(ViewBag.StatusFilter == "Failure")">Failure</option>
+                    </select>
+                </div>
+                @if (isAdmin)
+                {
+                    <div class="col-md-2">
+                        <label class="form-label small fw-medium text-muted">Role</label>
+                        <select name="roleFilter" class="form-select ll-form-select">
+                            <option value="">All Roles</option>
+                            <option value="SuperAdmin" selected="@(ViewBag.RoleFilter == "SuperAdmin")">Super Admin</option>
+                            <option value="Manager" selected="@(ViewBag.RoleFilter == "Manager")">Manager</option>
+                            <option value="Contributor" selected="@(ViewBag.RoleFilter == "Contributor")">Contributor</option>
+                            <option value="Student" selected="@(ViewBag.RoleFilter == "Student")">Student</option>
+                        </select>
+                    </div>
+                }
+                <div class="col-md-auto">
+                    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-filter me-2"></i>Filter</button>
+                    @if (!string.IsNullOrEmpty(ViewBag.Search) || !string.IsNullOrEmpty(ViewBag.ActionFilter) || !string.IsNullOrEmpty(ViewBag.StatusFilter) || !string.IsNullOrEmpty(ViewBag.RoleFilter))
+                    {
+                        <a href="@Url.Action("AuditLogs", "Home")" class="btn btn-light ms-2">Clear</a>
+                    }
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="ll-card">
+        <div class="table-responsive">
+            <table class="table ll-table mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 180px;">Timestamp (UTC)</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Status</th>
+                        <th>Details</th>
+                        <th>IP Address</th>
+                        <th>Device</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <i class="bi bi-shield-x display-4 d-block mb-3"></i>
+                                No audit logs found matching your criteria.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var log in Model)
+                        {
+                            <tr>
+                                <td class="text-nowrap text-muted small">@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>
+                                    @if (log.User != null)
+                                    {
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar avatar-sm me-2" style="@log.User.AvatarColor">@log.User.Initials</div>
+                                            <div>
+                                                <div class="fw-medium text-dark">@log.User.FirstName @log.User.LastName</div>
+                                                <div class="small text-muted">@log.UserEmail</div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar avatar-sm me-2 bg-secondary text-white"><i class="bi bi-person-x"></i></div>
+                                            <span class="text-muted">@log.UserEmail</span>
+                                        </div>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">
+                                        <i class="bi @(log.Action == "Login" ? "bi-box-arrow-in-right" : log.Action == "Logout" ? "bi-box-arrow-right" : log.Action == "Register" ? "bi-person-plus" : log.Action.Contains("Password") ? "bi-key" : log.Action == "Lockout" ? "bi-shield-lock" : "bi-activity") me-1"></i>
+                                        @log.Action
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (log.Status == "Success")
+                                    {
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25"><i class="bi bi-check-circle me-1"></i>Success</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25"><i class="bi bi-exclamation-octagon me-1"></i>Failure</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="small text-muted" style="max-width: 250px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@log.Details">
+                                        @log.Details
+                                    </span>
+                                </td>
+                                <td class="small font-monospace text-muted">@log.IPAddress</td>
+                                <td>
+                                    <span class="small text-muted" style="max-width: 150px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@log.UserAgent">
+                                        @(log.UserAgent?.Length > 30 ? log.UserAgent.Substring(0, 30) + "..." : log.UserAgent)
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+        
+        @if (ViewBag.TotalPages > 1)
+        {
+            <div class="ll-card-footer border-top px-4 py-3">
+                <nav aria-label="Audit logs pagination">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("AuditLogs", new { page = ViewBag.CurrentPage - 1, search = ViewBag.Search, actionFilter = ViewBag.ActionFilter, statusFilter = ViewBag.StatusFilter, roleFilter = ViewBag.RoleFilter })">Previous</a>
+                        </li>
+                        @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                                <a class="page-link" href="@Url.Action("AuditLogs", new { page = i, search = ViewBag.Search, actionFilter = ViewBag.ActionFilter, statusFilter = ViewBag.StatusFilter, roleFilter = ViewBag.RoleFilter })">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("AuditLogs", new { page = ViewBag.CurrentPage + 1, search = ViewBag.Search, actionFilter = ViewBag.ActionFilter, statusFilter = ViewBag.StatusFilter, roleFilter = ViewBag.RoleFilter })">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>

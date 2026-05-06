@@ -682,6 +682,26 @@ namespace LearnLink.Models
         public string TargetTitle { get; set; } = "";
     }
 
+    public class AuditLog
+    {
+        [Key]
+        public int Id { get; set; }
+        
+        public string? UserId { get; set; }
+        [ForeignKey("UserId")]
+        public ApplicationUser? User { get; set; }
+
+        public string? UserEmail { get; set; }
+        
+        public string Action { get; set; } = "";
+        public string Status { get; set; } = "Success";
+        public string? Details { get; set; }
+        public string? IPAddress { get; set; }
+        public string? UserAgent { get; set; }
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public int? SchoolId { get; set; }
+    }
+
     // ==================== Likes (per-user tracking, not in ERD but needed for UI) ====================
 
     public class Like

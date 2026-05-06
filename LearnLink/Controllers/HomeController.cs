@@ -593,6 +593,31 @@ namespace LearnLink.Controllers
             await _context.SaveChangesAsync();
         }
 
+        private async Task LogAuditAsync(string action, string status, string? details = null, string? userId = null, string? userEmail = null, int? schoolId = null)
+        {
+            try
+            {
+                var auditLog = new AuditLog
+                {
+                    UserId = userId,
+                    UserEmail = userEmail,
+                    Action = action,
+                    Status = status,
+                    Details = details,
+                    IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    UserAgent = Request.Headers["User-Agent"].ToString(),
+                    Timestamp = DateTime.UtcNow,
+                    SchoolId = schoolId
+                };
+                _context.AuditLogs.Add(auditLog);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to write audit log");
+            }
+        }
+
         // ===== Approve / Reject (SuperAdmin, Manager) =====
 
         [Authorize(Roles = "SuperAdmin,Manager")]
@@ -783,6 +808,7 @@ namespace LearnLink.Controllers
             user.Status = "Active";
             await _userManager.UpdateAsync(user);
             await LogActivity(user.Id, "Login", "System Login");
+            await LogAuditAsync("Login", "Success", "System Login", user.Id, user.Email, user.SchoolId);
 
             try
             {
@@ -820,6 +846,7 @@ namespace LearnLink.Controllers
             user.Status = "Active";
             await _userManager.UpdateAsync(user);
             await LogActivity(user.Id, "Login", "Google Sign-In");
+            await LogAuditAsync("Login", "Success", "Google Sign-In", user.Id, user.Email, user.SchoolId);
 
             try
             {
@@ -960,6 +987,7 @@ namespace LearnLink.Controllers
             if (user == null)
             {
                 ViewBag.Error = "Invalid email or password.";
+                await LogAuditAsync("Login", "Failure", "User not found", null, email, null);
                 return View();
             }
 
@@ -1004,6 +1032,9 @@ namespace LearnLink.Controllers
                 ViewBag.ShowForgotPasswordModal = true;
                 ViewBag.FailedAttempts = 7;
                 ViewBag.AttemptsRemaining = 0;
+                
+                await LogAuditAsync("Lockout", "Failure", "Account locked due to multiple failed login attempts", user.Id, email, user.SchoolId);
+                
                 // Notify admins (SuperAdmin and Manager) about the locked account
                 try
                 {
@@ -1048,6 +1079,7 @@ namespace LearnLink.Controllers
             }
 
             ViewBag.Error = "Invalid email or password.";
+            await LogAuditAsync("Login", "Failure", "Invalid email or password", user?.Id, email, user?.SchoolId);
             return View();
         }
 
@@ -1249,6 +1281,7 @@ namespace LearnLink.Controllers
             var result = await _userManager.ResetPasswordAsync(user, decodedToken, password);
             if (result.Succeeded)
             {
+                await LogAuditAsync("Password Reset", "Success", "Password reset successfully", user.Id, user.Email, user.SchoolId);
                 TempData["SuccessMessage"] = "Password reset successfully. You can now sign in.";
                 return RedirectToAction("Login");
             }
@@ -1323,6 +1356,7 @@ namespace LearnLink.Controllers
                 // Every user registers as a Student (Registered User) by default
                 await _userManager.AddToRoleAsync(user, "Student");
                 await LogActivity(user.Id, "Register", "New account created");
+                await LogAuditAsync("Register", "Success", "New account created", user.Id, user.Email, user.SchoolId);
                 
                 // Sign out old session (if admin testing), then sign in new student
                 if (_signInManager.IsSignedIn(User))
@@ -1640,6 +1674,7 @@ namespace LearnLink.Controllers
 
                 await _userManager.AddToRoleAsync(user, "Student");
                 await LogActivity(user.Id, "Register", "Google Sign-Up");
+                await LogAuditAsync("Register", "Success", "Google Sign-Up", user.Id, user.Email, user.SchoolId);
 
                 if (_signInManager.IsSignedIn(User))
                     await _signInManager.SignOutAsync();
@@ -1669,6 +1704,7 @@ namespace LearnLink.Controllers
             {
                 currentUser.Status = "Inactive";
                 await _userManager.UpdateAsync(currentUser);
+                await LogAuditAsync("Logout", "Success", "User logged out", currentUser.Id, currentUser.Email, currentUser.SchoolId);
             }
 
             await _signInManager.SignOutAsync();
@@ -1753,6 +1789,14 @@ namespace LearnLink.Controllers
                 .ToListAsync();
             ViewBag.LikedResources = likedResources.Select(MapResource).ToList();
 
+            // Security History (Audit Logs)
+            var securityLogs = await _context.AuditLogs
+                .Where(a => a.UserId == currentUser.Id)
+                .OrderByDescending(a => a.Timestamp)
+                .Take(50) // Limit to recent 50 logs for performance
+                .ToListAsync();
+            ViewBag.SecurityLogs = securityLogs;
+
             return View();
         }
 
@@ -1824,6 +1868,7 @@ namespace LearnLink.Controllers
             }
 
             await _signInManager.RefreshSignInAsync(currentUser);
+            await LogAuditAsync("Password Change", "Success", "User changed password from profile", currentUser.Id, currentUser.Email, currentUser.SchoolId);
             TempData["SuccessMessage"] = "Password changed successfully.";
             return RedirectToAction("Profile");
         }
@@ -6147,6 +6192,65 @@ namespace LearnLink.Controllers
             }
 
             return Json(new { success = true, message = $"{deletedCount} user(s) deleted successfully." });
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        public async Task<IActionResult> AuditLogs(string? search, string? actionFilter, string? statusFilter, string? roleFilter, int page = 1, int pageSize = 15)
+        {
+            var schoolId = GetEffectiveSchoolId();
+            
+            var query = _context.AuditLogs
+                .Include(a => a.User)
+                .AsQueryable();
+
+            if (schoolId.HasValue)
+            {
+                query = query.Where(a => a.SchoolId == schoolId.Value);
+            }
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(a => 
+                    (a.User != null && (a.User.FirstName.Contains(search) || a.User.LastName.Contains(search))) ||
+                    (a.UserEmail != null && a.UserEmail.Contains(search)) ||
+                    (a.Details != null && a.Details.Contains(search)));
+            }
+
+            if (!string.IsNullOrEmpty(actionFilter))
+            {
+                query = query.Where(a => a.Action == actionFilter);
+            }
+
+            if (!string.IsNullOrEmpty(statusFilter))
+            {
+                query = query.Where(a => a.Status == statusFilter);
+            }
+            
+            if (!string.IsNullOrEmpty(roleFilter))
+            {
+                var usersInRole = await _userManager.GetUsersInRoleAsync(roleFilter);
+                var userIdsInRole = usersInRole.Select(u => u.Id).ToList();
+                query = query.Where(a => a.UserId != null && userIdsInRole.Contains(a.UserId));
+            }
+
+            var totalItems = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+            var logs = await query
+                .OrderByDescending(a => a.Timestamp)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            ViewBag.CurrentPage = page;
+            ViewBag.TotalPages = totalPages;
+            ViewBag.Search = search;
+            ViewBag.ActionFilter = actionFilter;
+            ViewBag.StatusFilter = statusFilter;
+            ViewBag.RoleFilter = roleFilter;
+            ViewData["ActivePage"] = "AuditLogs";
+
+            return View(logs);
         }
 
         [Authorize(Roles = "SuperAdmin,Manager")]

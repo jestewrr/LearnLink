@@ -46,6 +46,7 @@ namespace LearnLink.Data
         // ===== User Activity =====
         public DbSet<ReadingHistory> ReadingHistories { get; set; }
         public DbSet<UserActivityLog> UserActivityLogs { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
 
         public DbSet<Like> Likes { get; set; }
         public DbSet<Notification> Notifications { get; set; }
@@ -293,6 +294,15 @@ namespace LearnLink.Data
             builder.Entity<Discussion>().HasIndex(d => d.DateCreated);
             builder.Entity<UserActivityLog>().HasIndex(a => a.ActivityDate);
             builder.Entity<Tag>().HasIndex(t => t.TagName).IsUnique();
+
+            // ===== AuditLog =====
+            builder.Entity<AuditLog>()
+                .HasOne(a => a.User)
+                .WithMany()
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+            builder.Entity<AuditLog>().HasIndex(a => a.Timestamp);
+            builder.Entity<AuditLog>().HasIndex(a => a.UserId);
 
             // ===== Notification → User + Resource =====
             builder.Entity<Notification>()
