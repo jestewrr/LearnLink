@@ -1789,13 +1789,21 @@ namespace LearnLink.Controllers
                 .ToListAsync();
             ViewBag.LikedResources = likedResources.Select(MapResource).ToList();
 
-            // Security History (Audit Logs)
-            var securityLogs = await _context.AuditLogs
-                .Where(a => a.UserId == currentUser.Id)
-                .OrderByDescending(a => a.Timestamp)
-                .Take(50) // Limit to recent 50 logs for performance
-                .ToListAsync();
-            ViewBag.SecurityLogs = securityLogs;
+            // Security History (Audit Logs) - Wrapped in try/catch to prevent crash if table missing
+            try
+            {
+                var securityLogs = await _context.AuditLogs
+                    .Where(a => a.UserId == currentUser.Id)
+                    .OrderByDescending(a => a.Timestamp)
+                    .Take(50) // Limit to recent 50 logs for performance
+                    .ToListAsync();
+                ViewBag.SecurityLogs = securityLogs;
+            }
+            catch (Exception)
+            {
+                // If table doesn't exist yet (e.g. pending migration), just provide empty list
+                ViewBag.SecurityLogs = new List<LearnLink.Models.AuditLog>();
+            }
 
             return View();
         }
@@ -6233,24 +6241,35 @@ namespace LearnLink.Controllers
                 query = query.Where(a => a.UserId != null && userIdsInRole.Contains(a.UserId));
             }
 
-            var totalItems = await query.CountAsync();
-            var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+            try
+            {
+                var totalItems = await query.CountAsync();
+                var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
-            var logs = await query
-                .OrderByDescending(a => a.Timestamp)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+                var logs = await query
+                    .OrderByDescending(a => a.Timestamp)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
 
-            ViewBag.CurrentPage = page;
-            ViewBag.TotalPages = totalPages;
-            ViewBag.Search = search;
-            ViewBag.ActionFilter = actionFilter;
-            ViewBag.StatusFilter = statusFilter;
-            ViewBag.RoleFilter = roleFilter;
-            ViewData["ActivePage"] = "AuditLogs";
+                ViewBag.CurrentPage = page;
+                ViewBag.TotalPages = totalPages;
+                ViewBag.Search = search;
+                ViewBag.ActionFilter = actionFilter;
+                ViewBag.StatusFilter = statusFilter;
+                ViewBag.RoleFilter = roleFilter;
+                ViewData["ActivePage"] = "AuditLogs";
 
-            return View(logs);
+                return View(logs);
+            }
+            catch (Exception)
+            {
+                // Fallback if the AuditLogs table doesn't exist yet
+                ViewBag.CurrentPage = 1;
+                ViewBag.TotalPages = 0;
+                ViewData["ActivePage"] = "AuditLogs";
+                return View(new List<LearnLink.Models.AuditLog>());
+            }
         }
 
         [Authorize(Roles = "SuperAdmin,Manager")]
