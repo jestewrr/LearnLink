@@ -6619,7 +6619,7 @@ a.ll-resource-card-link:hover {
     color: #f1f5f9;
 }
 
-[data-theme="dark"] .ll-nav-link:hover {
+[data-theme="dark"] .ll-nav-link:not(.active):hover {
     background: rgba(255, 255, 255, 0.08);
 }
 
@@ -8140,10 +8140,11 @@ a.ll-resource-card-link:hover {
     border-color: #334155;
     color: #e2e8f0;
 }
-[data-theme="dark"] .form-select {
-    background-color: #0f172a;
-    border-color: #334155;
-    color: #e2e8f0;
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .ll-form-select {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
 }
 [data-theme="dark"] option,
 [data-theme="dark"] select option,

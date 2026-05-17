@@ -1704,6 +1704,7 @@ namespace LearnLink.Controllers
             {
                 currentUser.Status = "Inactive";
                 await _userManager.UpdateAsync(currentUser);
+                await LogActivity(currentUser.Id, "Logout", "System Logout");
                 await LogAuditAsync("Logout", "Success", "User logged out", currentUser.Id, currentUser.Email, currentUser.SchoolId);
             }
 
