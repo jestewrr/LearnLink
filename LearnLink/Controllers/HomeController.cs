@@ -6021,23 +6021,55 @@ namespace LearnLink.Controllers
                 IsLockedOut = isLockedOut,
                 LockoutEnd = lockoutEnd
             };
-
-            ViewBag.UserActivity = await _context.UserActivityLogs
+            var rawActivities = await _context.UserActivityLogs
                 .Include(a => a.User)
                 .Where(a => a.UserId == user.Id)
                 .OrderByDescending(a => a.ActivityDate)
-                .Take(10)
-                .Select(a => new ActivityViewModel
-                {
-                    User = a.User!.FirstName + " " + a.User.LastName,
-                    UserInitials = a.User.Initials,
-                    UserColor = a.User.AvatarColor,
-                    Action = a.ActivityType,
-                    Target = a.TargetTitle,
-                    TimeAgo = "",
-                    IconClass = "bi-activity",
-                    IconColor = "text-muted"
-                }).ToListAsync();
+                .Take(20)
+                .ToListAsync();
+
+            var rawAuditLogs = new List<LearnLink.Models.AuditLog>();
+            try
+            {
+                rawAuditLogs = await _context.AuditLogs
+                    .Include(a => a.User)
+                    .Where(a => a.UserId == user.Id)
+                    .OrderByDescending(a => a.Timestamp)
+                    .Take(20)
+                    .ToListAsync();
+            }
+            catch (Exception) { }
+
+            var combinedActivities = rawActivities.Select(a => new {
+                Date = a.ActivityDate,
+                User = a.User != null ? a.User.FirstName + " " + a.User.LastName : "Unknown",
+                Action = a.ActivityType,
+                Target = a.TargetTitle,
+                IconClass = "bi-activity",
+                IconColor = "text-muted",
+                ExtraInfo = ""
+            }).Concat(rawAuditLogs.Select(a => new {
+                Date = a.Timestamp.ToLocalTime(),
+                User = a.User != null ? a.User.FirstName + " " + a.User.LastName : a.UserEmail ?? "System",
+                Action = a.Action,
+                Target = a.Details ?? "",
+                IconClass = a.Action == "Login" ? "bi-box-arrow-in-right" : a.Action == "Logout" ? "bi-box-arrow-right" : "bi-shield-check",
+                IconColor = a.Status == "Success" ? "text-success" : "text-danger",
+                ExtraInfo = !string.IsNullOrEmpty(a.IPAddress) ? $" (IP: {a.IPAddress})" : ""
+            }))
+            .OrderByDescending(x => x.Date)
+            .Take(20)
+            .Select(x => new ActivityViewModel
+            {
+                User = x.User,
+                Action = x.Action,
+                Target = x.Target + x.ExtraInfo,
+                TimeAgo = x.Date.ToString("MMM dd, yyyy hh:mm tt"),
+                IconClass = x.IconClass,
+                IconColor = x.IconColor
+            }).ToList();
+
+            ViewBag.UserActivity = combinedActivities;
 
             ViewBag.UserResources = await _context.Resources
                 .Include(r => r.User)
