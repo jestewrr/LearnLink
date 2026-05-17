@@ -497,6 +497,28 @@ using (var scope = app.Services.CreateScope())
                 
                 -- Also fix VersionNumber in case it truncates
                 ALTER TABLE [ResourceVersions] ALTER COLUMN [VersionNumber] nvarchar(50) NOT NULL;
+
+                -- Manually ensure AuditLogs table exists because the initial migration might have run while empty
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[AuditLogs]') AND type in (N'U'))
+                BEGIN
+                    CREATE TABLE [AuditLogs] (
+                        [Id] int NOT NULL IDENTITY,
+                        [UserId] nvarchar(450) NULL,
+                        [UserEmail] nvarchar(max) NULL,
+                        [Action] nvarchar(max) NOT NULL,
+                        [Status] nvarchar(max) NOT NULL,
+                        [Details] nvarchar(max) NULL,
+                        [IPAddress] nvarchar(max) NULL,
+                        [UserAgent] nvarchar(max) NULL,
+                        [Timestamp] datetime2 NOT NULL,
+                        [SchoolId] int NULL,
+                        CONSTRAINT [PK_AuditLogs] PRIMARY KEY ([Id]),
+                        CONSTRAINT [FK_AuditLogs_AspNetUsers_UserId] FOREIGN KEY ([UserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE SET NULL
+                    );
+
+                    CREATE INDEX [IX_AuditLogs_Timestamp] ON [AuditLogs] ([Timestamp]);
+                    CREATE INDEX [IX_AuditLogs_UserId] ON [AuditLogs] ([UserId]);
+                END
             ");
         }
         catch (Exception ex)
