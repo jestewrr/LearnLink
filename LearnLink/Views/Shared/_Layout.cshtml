@@ -197,6 +197,15 @@
                         </a>
                     </div>
                     }
+                    @if (canAdmin)
+                    {
+                    <div class="ll-nav-item">
+                        <a href="@Url.Action("BackupDashboard", "Home")" class="ll-nav-link @(ViewData["ActivePage"]?.ToString() == "BackupDashboard" ? "active" : "")">
+                            <i class="bi bi-cloud-arrow-up"></i>
+                            <span class="nav-text">Backup & Recovery</span>
+                        </a>
+                    </div>
+                    }
                     @if (canReport)
                     {
                     <div class="ll-nav-item">

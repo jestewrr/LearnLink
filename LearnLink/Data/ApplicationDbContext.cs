@@ -51,6 +51,10 @@ namespace LearnLink.Data
         public DbSet<Like> Likes { get; set; }
         public DbSet<Notification> Notifications { get; set; }
 
+        // ===== Backup & Recovery =====
+        public DbSet<BackupRecord> BackupRecords { get; set; }
+        public DbSet<BackupPolicy> BackupPolicies { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);

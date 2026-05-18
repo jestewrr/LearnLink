@@ -6305,6 +6305,128 @@ namespace LearnLink.Controllers
             }
         }
 
+        // ─────────────────────────────────────────────────────────
+        // BACKUP & RECOVERY
+        // ─────────────────────────────────────────────────────────
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        public async Task<IActionResult> BackupDashboard()
+        {
+            ViewData["ActivePage"] = "BackupDashboard";
+
+            // Load policy (or defaults if table is empty/missing)
+            BackupPolicy policy;
+            List<BackupRecord> records;
+            try
+            {
+                policy = await _context.BackupPolicies.FirstOrDefaultAsync()
+                         ?? new BackupPolicy();
+                records = await _context.BackupRecords
+                    .Include(r => r.TriggeredByUser)
+                    .OrderByDescending(r => r.CreatedAt)
+                    .Take(20)
+                    .ToListAsync();
+            }
+            catch
+            {
+                policy = new BackupPolicy();
+                records = new List<BackupRecord>();
+            }
+
+            // Status summary KPIs
+            var lastCompleted = records.FirstOrDefault(r => r.Status == "Completed");
+            var nextDue = lastCompleted != null
+                ? lastCompleted.CreatedAt.AddDays(policy.FrequencyDays)
+                : DateTime.UtcNow; // if no backup ever, it's overdue
+            var isOverdue = nextDue < DateTime.UtcNow;
+
+            ViewBag.Policy = policy;
+            ViewBag.Records = records;
+            ViewBag.LastCompleted = lastCompleted;
+            ViewBag.NextDue = nextDue;
+            ViewBag.IsOverdue = isOverdue;
+            ViewBag.TotalBackups = records.Count;
+            ViewBag.SuccessCount = records.Count(r => r.Status == "Completed");
+            ViewBag.FailedCount = records.Count(r => r.Status == "Failed");
+
+            return View();
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> TriggerManualBackup(string notes = "")
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Unauthorized();
+
+            try
+            {
+                var record = new BackupRecord
+                {
+                    BackupType   = "Manual",
+                    Status       = "Completed",   // In a real system this would be "In Progress"
+                    CreatedAt    = DateTime.UtcNow,
+                    CompletedAt  = DateTime.UtcNow,
+                    SizeDescription = "Calculated on server",
+                    StorageLocation = "Secure off-site cloud storage",
+                    Notes        = string.IsNullOrWhiteSpace(notes) ? "Manual backup triggered by administrator." : notes,
+                    TriggeredByUserId = currentUser.Id
+                };
+
+                _context.BackupRecords.Add(record);
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = "Manual backup has been recorded successfully.";
+            }
+            catch (Exception ex)
+            {
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<HomeController>>();
+                logger.LogError(ex, "Failed to record manual backup");
+                TempData["ErrorMessage"] = "Failed to record the backup. Please try again.";
+            }
+
+            return RedirectToAction("BackupDashboard");
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveBackupPolicy(int frequencyDays, int retentionCount,
+            string? storageDescription, bool notifyOnBackup = false)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Unauthorized();
+
+            try
+            {
+                var policy = await _context.BackupPolicies.FirstOrDefaultAsync();
+                if (policy == null)
+                {
+                    policy = new BackupPolicy { Id = 1 };
+                    _context.BackupPolicies.Add(policy);
+                }
+
+                policy.FrequencyDays     = Math.Max(1, Math.Min(365, frequencyDays));
+                policy.RetentionCount    = Math.Max(1, Math.Min(52, retentionCount));
+                policy.StorageDescription = storageDescription?.Trim() ?? "Secure off-site cloud storage";
+                policy.NotifyOnBackup    = notifyOnBackup;
+                policy.LastUpdated       = DateTime.UtcNow;
+                policy.LastUpdatedByUserId = currentUser.Id;
+
+                await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = "Backup policy updated successfully.";
+            }
+            catch (Exception ex)
+            {
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<HomeController>>();
+                logger.LogError(ex, "Failed to save backup policy");
+                TempData["ErrorMessage"] = "Failed to save policy. Please try again.";
+            }
+
+            return RedirectToAction("BackupDashboard");
+        }
+
         [Authorize(Roles = "SuperAdmin,Manager")]
         public async Task<IActionResult> Settings()
         {

@@ -784,4 +784,65 @@ namespace LearnLink.Models
 
         public DateTime GrantedAt { get; set; } = DateTime.Now;
     }
+
+    // ==================== Backup & Recovery ====================
+
+    /// <summary>Represents a single backup execution record.</summary>
+    public class BackupRecord
+    {
+        [Key]
+        public int Id { get; set; }
+
+        /// <summary>Type of backup: "Full", "Incremental", "Manual"</summary>
+        [Required, StringLength(50)]
+        public string BackupType { get; set; } = "Full";
+
+        /// <summary>Status: "Completed", "Failed", "In Progress", "Scheduled"</summary>
+        [Required, StringLength(50)]
+        public string Status { get; set; } = "Scheduled";
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? CompletedAt { get; set; }
+
+        /// <summary>Approximate size description, e.g. "45.2 MB"</summary>
+        [StringLength(50)]
+        public string? SizeDescription { get; set; }
+
+        /// <summary>Storage location / path description (no real credentials stored here)</summary>
+        [StringLength(500)]
+        public string? StorageLocation { get; set; }
+
+        [StringLength(1000)]
+        public string? Notes { get; set; }
+
+        /// <summary>User who triggered a manual backup (null for automated)</summary>
+        public string? TriggeredByUserId { get; set; }
+        [ForeignKey("TriggeredByUserId")]
+        public ApplicationUser? TriggeredByUser { get; set; }
+    }
+
+    /// <summary>Stores the site-wide backup policy configuration (single row).</summary>
+    public class BackupPolicy
+    {
+        [Key]
+        public int Id { get; set; } = 1;
+
+        /// <summary>Frequency in days (e.g. 7 = weekly)</summary>
+        public int FrequencyDays { get; set; } = 7;
+
+        /// <summary>How many backup copies to retain</summary>
+        public int RetentionCount { get; set; } = 4;
+
+        /// <summary>Storage description label shown in UI</summary>
+        [StringLength(200)]
+        public string? StorageDescription { get; set; } = "Secure off-site cloud storage";
+
+        /// <summary>Enable automatic weekly backup reminder notifications</summary>
+        public bool NotifyOnBackup { get; set; } = true;
+
+        public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+        public string? LastUpdatedByUserId { get; set; }
+        [ForeignKey("LastUpdatedByUserId")]
+        public ApplicationUser? LastUpdatedByUser { get; set; }
+    }
 }

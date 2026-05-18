@@ -519,6 +519,44 @@ using (var scope = app.Services.CreateScope())
                     CREATE INDEX [IX_AuditLogs_Timestamp] ON [AuditLogs] ([Timestamp]);
                     CREATE INDEX [IX_AuditLogs_UserId] ON [AuditLogs] ([UserId]);
                 END
+
+                -- Ensure BackupRecords table exists
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[BackupRecords]') AND type in (N'U'))
+                BEGIN
+                    CREATE TABLE [BackupRecords] (
+                        [Id] int NOT NULL IDENTITY,
+                        [BackupType] nvarchar(50) NOT NULL,
+                        [Status] nvarchar(50) NOT NULL,
+                        [CreatedAt] datetime2 NOT NULL,
+                        [CompletedAt] datetime2 NULL,
+                        [SizeDescription] nvarchar(50) NULL,
+                        [StorageLocation] nvarchar(500) NULL,
+                        [Notes] nvarchar(1000) NULL,
+                        [TriggeredByUserId] nvarchar(450) NULL,
+                        CONSTRAINT [PK_BackupRecords] PRIMARY KEY ([Id]),
+                        CONSTRAINT [FK_BackupRecords_AspNetUsers_TriggeredByUserId] FOREIGN KEY ([TriggeredByUserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE SET NULL
+                    );
+                    CREATE INDEX [IX_BackupRecords_CreatedAt] ON [BackupRecords] ([CreatedAt]);
+                END
+
+                -- Ensure BackupPolicies table exists
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[BackupPolicies]') AND type in (N'U'))
+                BEGIN
+                    CREATE TABLE [BackupPolicies] (
+                        [Id] int NOT NULL,
+                        [FrequencyDays] int NOT NULL DEFAULT 7,
+                        [RetentionCount] int NOT NULL DEFAULT 4,
+                        [StorageDescription] nvarchar(200) NULL,
+                        [NotifyOnBackup] bit NOT NULL DEFAULT 1,
+                        [LastUpdated] datetime2 NOT NULL,
+                        [LastUpdatedByUserId] nvarchar(450) NULL,
+                        CONSTRAINT [PK_BackupPolicies] PRIMARY KEY ([Id]),
+                        CONSTRAINT [FK_BackupPolicies_AspNetUsers_LastUpdatedByUserId] FOREIGN KEY ([LastUpdatedByUserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE SET NULL
+                    );
+                    -- Insert default policy row
+                    INSERT INTO [BackupPolicies] ([Id],[FrequencyDays],[RetentionCount],[StorageDescription],[NotifyOnBackup],[LastUpdated])
+                    VALUES (1, 7, 4, N'Secure off-site cloud storage', 1, GETUTCDATE());
+                END
             ");
         }
         catch (Exception ex)

@@ -1,0 +1,331 @@
+@{
+    ViewData["Title"] = "Backup & Recovery";
+    var policy        = ViewBag.Policy as LearnLink.Models.BackupPolicy ?? new LearnLink.Models.BackupPolicy();
+    var records       = ViewBag.Records as List<LearnLink.Models.BackupRecord> ?? new List<LearnLink.Models.BackupRecord>();
+    var lastCompleted = ViewBag.LastCompleted as LearnLink.Models.BackupRecord;
+    var nextDue       = (DateTime)(ViewBag.NextDue ?? DateTime.UtcNow);
+    var isOverdue     = (bool)(ViewBag.IsOverdue ?? true);
+    var totalBackups  = (int)(ViewBag.TotalBackups ?? 0);
+    var successCount  = (int)(ViewBag.SuccessCount ?? 0);
+    var failedCount   = (int)(ViewBag.FailedCount ?? 0);
+
+    string StatusBadge(string status) => status switch
+    {
+        "Completed"  => "success",
+        "Failed"     => "danger",
+        "In Progress"=> "warning",
+        _            => "secondary"
+    };
+    string TypeIcon(string type) => type switch
+    {
+        "Manual"      => "bi-hand-index",
+        "Incremental" => "bi-layers",
+        _             => "bi-hdd-stack"
+    };
+}
+
+<!-- Page Header -->
+<div class="ll-page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h1 class="ll-page-title"><i class="bi bi-cloud-arrow-up me-2 text-primary"></i>Backup &amp; Recovery</h1>
+            <div class="ll-breadcrumb">
+                <a href="@Url.Action("Dashboard", "Home")">Dashboard</a>
+                <i class="bi bi-chevron-right small"></i>
+                <span>Backup &amp; Recovery</span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <!-- Manual Backup Trigger -->
+            <button class="ll-btn ll-btn-primary" data-bs-toggle="modal" data-bs-target="#manualBackupModal">
+                <i class="bi bi-cloud-upload me-2"></i>Run Manual Backup
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Success / Error Toasts -->
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show mx-0 mb-3" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show mx-0 mb-3" role="alert">
+        <i class="bi bi-exclamation-circle me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- KPI Status Cards -->
+<div class="row g-3 mb-4">
+    <!-- Status -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="ll-card h-100">
+            <div class="ll-card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                     style="width:52px;height:52px;background:@(isOverdue ? "rgba(239,68,68,.15)" : "rgba(16,185,129,.15)");">
+                    <i class="bi @(isOverdue ? "bi-exclamation-triangle" : "bi-check-circle") fs-4"
+                       style="color:@(isOverdue ? "#ef4444" : "#10b981");"></i>
+                </div>
+                <div>
+                    <div class="small text-muted fw-medium">System Status</div>
+                    <div class="fw-bold fs-6" style="color:@(isOverdue ? "#ef4444" : "#10b981");">
+                        @(isOverdue ? "Backup Overdue" : "Up to Date")
+                    </div>
+                    <div class="small text-muted">
+                        @if (lastCompleted != null)
+                        { <span>Last: @lastCompleted.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")</span> }
+                        else
+                        { <span>No backups yet</span> }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Next Due -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="ll-card h-100">
+            <div class="ll-card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                     style="width:52px;height:52px;background:rgba(59,125,216,.12);">
+                    <i class="bi bi-calendar-event fs-4 text-primary"></i>
+                </div>
+                <div>
+                    <div class="small text-muted fw-medium">Next Scheduled</div>
+                    <div class="fw-bold fs-6">@nextDue.ToLocalTime().ToString("MMM dd, yyyy")</div>
+                    <div class="small text-muted">Every @policy.FrequencyDays day(s)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Total -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="ll-card h-100">
+            <div class="ll-card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                     style="width:52px;height:52px;background:rgba(232,184,75,.15);">
+                    <i class="bi bi-archive fs-4" style="color:#e8b84b;"></i>
+                </div>
+                <div>
+                    <div class="small text-muted fw-medium">Total Backups</div>
+                    <div class="fw-bold fs-4">@totalBackups</div>
+                    <div class="small text-muted">@successCount success · @failedCount failed</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Retention -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="ll-card h-100">
+            <div class="ll-card-body d-flex align-items-center gap-3">
+                <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                     style="width:52px;height:52px;background:rgba(139,92,246,.15);">
+                    <i class="bi bi-shield-lock fs-4" style="color:#8b5cf6;"></i>
+                </div>
+                <div>
+                    <div class="small text-muted fw-medium">Retention Policy</div>
+                    <div class="fw-bold fs-6">Keep last @policy.RetentionCount copies</div>
+                    <div class="small text-muted">@policy.StorageDescription</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left: History -->
+    <div class="col-lg-8">
+        <div class="ll-card">
+            <div class="ll-card-header d-flex justify-content-between align-items-center">
+                <h5 class="ll-card-title mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>Backup History</h5>
+                <span class="badge bg-primary bg-opacity-10 text-primary">Last 20 records</span>
+            </div>
+            <div class="ll-card-body p-0">
+                @if (records.Any())
+                {
+                <div class="table-responsive">
+                    <table class="ll-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date &amp; Time</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Size</th>
+                                <th>Triggered By</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var rec in records)
+                            {
+                            <tr>
+                                <td class="text-nowrap">
+                                    <div class="fw-medium">@rec.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")</div>
+                                    <div class="small text-muted">@rec.CreatedAt.ToLocalTime().ToString("hh:mm tt")</div>
+                                </td>
+                                <td>
+                                    <span class="d-flex align-items-center gap-1">
+                                        <i class="bi @TypeIcon(rec.BackupType) text-primary"></i>
+                                        @rec.BackupType
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-@StatusBadge(rec.Status) bg-opacity-15 text-@StatusBadge(rec.Status)">
+                                        @rec.Status
+                                    </span>
+                                </td>
+                                <td class="small text-muted">@(rec.SizeDescription ?? "—")</td>
+                                <td class="small">
+                                    @if (rec.TriggeredByUser != null)
+                                    {
+                                        <span>@(rec.TriggeredByUser.FirstName + " " + rec.TriggeredByUser.LastName)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Automated</span>
+                                    }
+                                </td>
+                                <td class="small text-muted" style="max-width:200px; white-space:normal;">
+                                    @(rec.Notes ?? "—")
+                                </td>
+                            </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                }
+                else
+                {
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-archive display-4 d-block mb-3 opacity-25"></i>
+                    <div class="fw-medium mb-1">No backup records yet</div>
+                    <p class="small">Run your first manual backup or wait for the scheduled backup.</p>
+                    <button class="ll-btn ll-btn-primary ll-btn-sm" data-bs-toggle="modal" data-bs-target="#manualBackupModal">
+                        <i class="bi bi-cloud-upload me-1"></i>Run Backup Now
+                    </button>
+                </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Policy Settings -->
+    <div class="col-lg-4">
+        <!-- Policy Overview Card -->
+        <div class="ll-card mb-4">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title mb-0"><i class="bi bi-file-earmark-lock me-2 text-primary"></i>Current Policy</h5>
+            </div>
+            <div class="ll-card-body">
+                <div class="mb-3 pb-3 border-bottom">
+                    <div class="small text-muted fw-medium text-uppercase mb-1" style="letter-spacing:.05em;">Requirement</div>
+                    <p class="mb-0 small">System backups must be performed <strong>at least once per week</strong>. Backup copies must be stored <strong>securely</strong>.</p>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="small text-muted">Frequency</span>
+                    <span class="fw-medium small">Every @policy.FrequencyDays day(s)</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="small text-muted">Retention</span>
+                    <span class="fw-medium small">@policy.RetentionCount copies</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="small text-muted">Storage</span>
+                    <span class="fw-medium small">@policy.StorageDescription</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <span class="small text-muted">Notifications</span>
+                    <span class="badge @(policy.NotifyOnBackup ? "bg-success" : "bg-secondary") bg-opacity-15 @(policy.NotifyOnBackup ? "text-success" : "text-secondary") small">
+                        @(policy.NotifyOnBackup ? "Enabled" : "Disabled")
+                    </span>
+                </div>
+                @if (!string.IsNullOrEmpty(policy.LastUpdatedByUserId))
+                {
+                <div class="mt-3 pt-2 border-top">
+                    <div class="small text-muted">Last updated: @policy.LastUpdated.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")</div>
+                </div>
+                }
+            </div>
+        </div>
+
+        <!-- Edit Policy -->
+        <div class="ll-card">
+            <div class="ll-card-header">
+                <h5 class="ll-card-title mb-0"><i class="bi bi-gear me-2 text-primary"></i>Edit Policy</h5>
+            </div>
+            <div class="ll-card-body">
+                <form method="post" action="@Url.Action("SaveBackupPolicy", "Home")">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label class="form-label small fw-medium">Backup Frequency (days)</label>
+                        <input type="number" name="frequencyDays" class="ll-form-control" min="1" max="365"
+                               value="@policy.FrequencyDays" required />
+                        <div class="form-text">Minimum 7 days required by policy.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-medium">Retention Count</label>
+                        <input type="number" name="retentionCount" class="ll-form-control" min="1" max="52"
+                               value="@policy.RetentionCount" required />
+                        <div class="form-text">Number of backup copies to keep.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-medium">Storage Description</label>
+                        <input type="text" name="storageDescription" class="ll-form-control"
+                               placeholder="e.g. Secure off-site cloud storage"
+                               value="@policy.StorageDescription" />
+                    </div>
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="notifyOnBackup" id="notifySwitch"
+                                   value="true" @(policy.NotifyOnBackup ? "checked" : "")
+                                   style="width:44px;height:22px;" />
+                            <label class="form-check-label small" for="notifySwitch">Enable backup notifications</label>
+                        </div>
+                    </div>
+                    <button type="submit" class="ll-btn ll-btn-primary w-100">
+                        <i class="bi bi-check-lg me-2"></i>Save Policy
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Backup Modal -->
+<div class="modal fade" id="manualBackupModal" tabindex="-1" aria-labelledby="manualBackupLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="manualBackupLabel">
+                    <i class="bi bi-cloud-upload me-2 text-primary"></i>Run Manual Backup
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="@Url.Action("TriggerManualBackup", "Home")">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        This will record a manual backup event. Ensure your hosting provider's backup system
+                        is also configured to run backups as per policy.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-medium">Notes (optional)</label>
+                        <textarea name="notes" class="ll-form-control" rows="3"
+                                  placeholder="e.g. Pre-deployment backup, post-update backup..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="ll-btn ll-btn-primary">
+                        <i class="bi bi-cloud-upload me-2"></i>Confirm Backup
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
