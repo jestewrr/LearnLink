@@ -6357,9 +6357,16 @@ namespace LearnLink.Controllers
             }
             double resourcesGb = Math.Round(resourcesMb / 1024.0, 1);
 
-            var repoCount = await _context.ResourceCategories.CountAsync() + await _context.Tags.CountAsync();
-            var activityCount = await _context.AuditLogs.CountAsync() + await _context.UserActivityLogs.CountAsync();
-            var lessonCount = await _context.LessonsLearned.CountAsync();
+            int repoCount = 0;
+            try { repoCount += await _context.ResourceCategories.CountAsync(); } catch { }
+            try { repoCount += await _context.Tags.CountAsync(); } catch { }
+
+            int activityCount = 0;
+            try { activityCount += await _context.AuditLogs.CountAsync(); } catch { }
+            try { activityCount += await _context.UserActivityLogs.CountAsync(); } catch { }
+
+            int lessonCount = 0;
+            try { lessonCount = await _context.LessonsLearned.CountAsync(); } catch { }
 
             double repoGb = Math.Round(repoCount * 0.01, 1); // Estimate 10MB per category/tag
             double activityGb = Math.Round(activityCount * 0.001, 1); // Estimate 1MB per log
