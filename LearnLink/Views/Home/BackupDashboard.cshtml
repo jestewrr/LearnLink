@@ -14,19 +14,19 @@
         _            => "secondary"
     };
 
-    // Mock data for the Google One style storage breakdown
+    // Data for the Google One style storage breakdown
     double totalStorageGb = 100.0;
-    double usedStorageGb = 18.4;
-    double resourcesGb = 12.1;
-    double knowledgeGb = 4.2;
-    double activityGb = 1.3;
-    double lessonsGb = 0.8;
+    double usedStorageGb = (double)(ViewBag.TotalUsedGb ?? 0.0);
+    double resourcesGb = (double)(ViewBag.ResourcesSizeGb ?? 0.0);
+    double knowledgeGb = (double)(ViewBag.RepoSizeGb ?? 0.0);
+    double activityGb = (double)(ViewBag.ActivitySizeGb ?? 0.0);
+    double lessonsGb = (double)(ViewBag.LessonsSizeGb ?? 0.0);
 
     double usedPercent = (usedStorageGb / totalStorageGb) * 100;
-    double resourcesPercent = (resourcesGb / usedStorageGb) * 100;
-    double knowledgePercent = (knowledgeGb / usedStorageGb) * 100;
-    double activityPercent = (activityGb / usedStorageGb) * 100;
-    double lessonsPercent = (lessonsGb / usedStorageGb) * 100;
+    double resourcesPercent = usedStorageGb > 0 ? (resourcesGb / usedStorageGb) * 100 : 0;
+    double knowledgePercent = usedStorageGb > 0 ? (knowledgeGb / usedStorageGb) * 100 : 0;
+    double activityPercent = usedStorageGb > 0 ? (activityGb / usedStorageGb) * 100 : 0;
+    double lessonsPercent = usedStorageGb > 0 ? (lessonsGb / usedStorageGb) * 100 : 0;
 }
 
 <style>

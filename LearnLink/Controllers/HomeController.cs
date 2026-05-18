@@ -6337,6 +6337,42 @@ namespace LearnLink.Controllers
                 records = new List<BackupRecord>();
             }
 
+            // Calculate actual data sizes or estimates
+            var resources = await _context.Resources.Select(r => r.FileSize).ToListAsync();
+            double resourcesMb = 0;
+            foreach (var sizeStr in resources)
+            {
+                if (string.IsNullOrEmpty(sizeStr)) continue;
+                var parts = sizeStr.Split(' ');
+                if (parts.Length == 2 && double.TryParse(parts[0], out double val))
+                {
+                    if (parts[1].Equals("MB", StringComparison.OrdinalIgnoreCase)) resourcesMb += val;
+                    else if (parts[1].Equals("KB", StringComparison.OrdinalIgnoreCase)) resourcesMb += val / 1024.0;
+                    else if (parts[1].Equals("GB", StringComparison.OrdinalIgnoreCase)) resourcesMb += val * 1024.0;
+                }
+                else if (double.TryParse(sizeStr, out double rawVal))
+                {
+                    resourcesMb += rawVal / (1024.0 * 1024.0);
+                }
+            }
+            double resourcesGb = Math.Round(resourcesMb / 1024.0, 1);
+
+            var repoCount = await _context.ResourceCategories.CountAsync() + await _context.Tags.CountAsync();
+            var activityCount = await _context.AuditLogs.CountAsync() + await _context.UserActivityLogs.CountAsync();
+            var lessonCount = await _context.LessonsLearned.CountAsync();
+
+            double repoGb = Math.Round(repoCount * 0.01, 1); // Estimate 10MB per category/tag
+            double activityGb = Math.Round(activityCount * 0.001, 1); // Estimate 1MB per log
+            double lessonsGb = Math.Round(lessonCount * 0.05, 1); // Estimate 50MB per lesson
+
+            double totalUsedGb = Math.Round(resourcesGb + repoGb + activityGb + lessonsGb, 1);
+
+            ViewBag.ResourcesSizeGb = resourcesGb;
+            ViewBag.RepoSizeGb = repoGb;
+            ViewBag.ActivitySizeGb = activityGb;
+            ViewBag.LessonsSizeGb = lessonsGb;
+            ViewBag.TotalUsedGb = totalUsedGb;
+
             // Status summary KPIs
             var lastCompleted = records.FirstOrDefault(r => r.Status == "Completed");
             var nextDue = lastCompleted != null
