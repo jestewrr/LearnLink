@@ -338,17 +338,21 @@ namespace LearnLink.Controllers
                 resource.Status = "Rejected";
                 resource.RejectionReason = "Automatically rejected because no admin or manager previewed it within 3 days of submission.";
 
-                _context.Notifications.Add(new Notification
+                var exists = await _context.Notifications.AnyAsync(n => n.UserId == resource.UserId && n.ResourceId == resource.ResourceId && n.Title == "Resource Auto-Rejected");
+                if (!exists)
                 {
-                    UserId = resource.UserId,
-                    Title = "Resource Auto-Rejected",
-                    Message = $"Your resource \"{resource.Title}\" was automatically rejected because it was not previewed within 3 days of submission.",
-                    Type = "Rejected",
-                    Icon = "bi-hourglass-split",
-                    IconBg = "#fee2e2",
-                    ResourceId = resource.ResourceId,
-                    Link = $"/Home/ResourceDetail/{resource.ResourceId}"
-                });
+                    _context.Notifications.Add(new Notification
+                    {
+                        UserId = resource.UserId,
+                        Title = "Resource Auto-Rejected",
+                        Message = $"Your resource \"{resource.Title}\" was automatically rejected because it was not previewed within 3 days of submission.",
+                        Type = "Rejected",
+                        Icon = "bi-hourglass-split",
+                        IconBg = "#fee2e2",
+                        ResourceId = resource.ResourceId,
+                        Link = $"/Home/ResourceDetail/{resource.ResourceId}"
+                    });
+                }
             }
 
             await _context.SaveChangesAsync();
@@ -6362,6 +6366,25 @@ namespace LearnLink.Controllers
 
             try
             {
+                // Ensure table exists safely to prevent errors
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[BackupRecords]') AND type in (N'U'))
+                    BEGIN
+                        CREATE TABLE [BackupRecords] (
+                            [Id] int NOT NULL IDENTITY,
+                            [BackupType] nvarchar(50) NOT NULL,
+                            [Status] nvarchar(50) NOT NULL,
+                            [CreatedAt] datetime2 NOT NULL,
+                            [CompletedAt] datetime2 NULL,
+                            [SizeDescription] nvarchar(50) NULL,
+                            [StorageLocation] nvarchar(500) NULL,
+                            [Notes] nvarchar(1000) NULL,
+                            [TriggeredByUserId] nvarchar(450) NULL,
+                            CONSTRAINT [PK_BackupRecords] PRIMARY KEY ([Id])
+                        );
+                    END
+                ");
+
                 var record = new BackupRecord
                 {
                     BackupType   = "Manual",
@@ -6400,6 +6423,25 @@ namespace LearnLink.Controllers
 
             try
             {
+                // Ensure table exists safely
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[BackupPolicies]') AND type in (N'U'))
+                    BEGIN
+                        CREATE TABLE [BackupPolicies] (
+                            [Id] int NOT NULL,
+                            [FrequencyDays] int NOT NULL DEFAULT 7,
+                            [RetentionCount] int NOT NULL DEFAULT 4,
+                            [StorageDescription] nvarchar(200) NULL,
+                            [NotifyOnBackup] bit NOT NULL DEFAULT 1,
+                            [LastUpdated] datetime2 NOT NULL,
+                            [LastUpdatedByUserId] nvarchar(450) NULL,
+                            CONSTRAINT [PK_BackupPolicies] PRIMARY KEY ([Id])
+                        );
+                        INSERT INTO [BackupPolicies] ([Id],[FrequencyDays],[RetentionCount],[StorageDescription],[NotifyOnBackup],[LastUpdated])
+                        VALUES (1, 7, 4, N'Secure off-site cloud storage', 1, GETUTCDATE());
+                    END
+                ");
+
                 var policy = await _context.BackupPolicies.FirstOrDefaultAsync();
                 if (policy == null)
                 {
