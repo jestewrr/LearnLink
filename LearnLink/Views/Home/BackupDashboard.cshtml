@@ -5,9 +5,6 @@
     var lastCompleted = ViewBag.LastCompleted as LearnLink.Models.BackupRecord;
     var nextDue       = (DateTime)(ViewBag.NextDue ?? DateTime.UtcNow);
     var isOverdue     = (bool)(ViewBag.IsOverdue ?? true);
-    var totalBackups  = (int)(ViewBag.TotalBackups ?? 0);
-    var successCount  = (int)(ViewBag.SuccessCount ?? 0);
-    var failedCount   = (int)(ViewBag.FailedCount ?? 0);
 
     string StatusBadge(string status) => status switch
     {
@@ -16,281 +13,392 @@
         "In Progress"=> "warning",
         _            => "secondary"
     };
-    string TypeIcon(string type) => type switch
-    {
-        "Manual"      => "bi-hand-index",
-        "Incremental" => "bi-layers",
-        _             => "bi-hdd-stack"
-    };
+
+    // Mock data for the Google One style storage breakdown
+    double totalStorageGb = 100.0;
+    double usedStorageGb = 18.4;
+    double resourcesGb = 12.1;
+    double knowledgeGb = 4.2;
+    double activityGb = 1.3;
+    double lessonsGb = 0.8;
+
+    double usedPercent = (usedStorageGb / totalStorageGb) * 100;
+    double resourcesPercent = (resourcesGb / usedStorageGb) * 100;
+    double knowledgePercent = (knowledgeGb / usedStorageGb) * 100;
+    double activityPercent = (activityGb / usedStorageGb) * 100;
+    double lessonsPercent = (lessonsGb / usedStorageGb) * 100;
 }
 
+<style>
+    /* Google One Inspired Styles */
+    .g1-header {
+        font-family: 'Google Sans', 'Inter', sans-serif;
+        font-weight: 500;
+        color: #202124;
+    }
+    .g1-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #dadce0;
+        box-shadow: none;
+        overflow: hidden;
+        transition: box-shadow 0.2s;
+    }
+    .g1-card:hover {
+        box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+    }
+    [data-theme="dark"] .g1-header { color: #e8eaed; }
+    [data-theme="dark"] .g1-card { background: #202124; border-color: #3c4043; }
+
+    /* Storage Bar */
+    .g1-storage-track {
+        height: 12px;
+        background-color: #f1f3f4;
+        border-radius: 6px;
+        display: flex;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+    [data-theme="dark"] .g1-storage-track { background-color: #3c4043; }
+    
+    .g1-segment-resources { background-color: #4285f4; }
+    .g1-segment-knowledge { background-color: #ea4335; }
+    .g1-segment-activity { background-color: #fbbc04; }
+    .g1-segment-lessons { background-color: #34a853; }
+
+    .g1-legend-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+    }
+
+    .g1-btn-primary {
+        background-color: #1a73e8;
+        color: #fff;
+        border-radius: 24px;
+        padding: 8px 24px;
+        font-weight: 500;
+        border: none;
+        transition: background-color 0.2s, box-shadow 0.2s;
+    }
+    .g1-btn-primary:hover {
+        background-color: #1b66c9;
+        box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+        color: #fff;
+    }
+
+    .g1-btn-outline {
+        background-color: transparent;
+        color: #1a73e8;
+        border: 1px solid #dadce0;
+        border-radius: 24px;
+        padding: 8px 24px;
+        font-weight: 500;
+        transition: background-color 0.2s;
+    }
+    .g1-btn-outline:hover {
+        background-color: #f8f9fa;
+        color: #1a73e8;
+    }
+    [data-theme="dark"] .g1-btn-outline { color: #8ab4f8; border-color: #5f6368; }
+    [data-theme="dark"] .g1-btn-outline:hover { background-color: rgba(138, 180, 248, 0.04); }
+
+    .g1-icon-container {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+    .g1-icon-blue { background-color: #e8f0fe; color: #1a73e8; }
+    .g1-icon-red { background-color: #fce8e6; color: #d93025; }
+    .g1-icon-yellow { background-color: #fef7e0; color: #f29900; }
+    .g1-icon-green { background-color: #e6f4ea; color: #188038; }
+
+    [data-theme="dark"] .g1-icon-blue { background-color: rgba(26, 115, 232, 0.2); color: #8ab4f8; }
+    [data-theme="dark"] .g1-icon-red { background-color: rgba(217, 48, 37, 0.2); color: #f28b82; }
+    [data-theme="dark"] .g1-icon-yellow { background-color: rgba(242, 153, 0, 0.2); color: #fdd663; }
+    [data-theme="dark"] .g1-icon-green { background-color: rgba(24, 128, 56, 0.2); color: #81c995; }
+
+    .g1-list-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem 0;
+        border-bottom: 1px solid #f1f3f4;
+    }
+    .g1-list-item:last-child {
+        border-bottom: none;
+    }
+    [data-theme="dark"] .g1-list-item { border-bottom-color: #3c4043; }
+    
+    .g1-switch {
+        width: 36px;
+        height: 14px;
+        position: relative;
+    }
+</style>
+
 <!-- Page Header -->
-<div class="ll-page-header">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <div>
-            <h1 class="ll-page-title"><i class="bi bi-cloud-arrow-up me-2 text-primary"></i>Backup &amp; Recovery</h1>
-            <div class="ll-breadcrumb">
-                <a href="@Url.Action("Dashboard", "Home")">Dashboard</a>
-                <i class="bi bi-chevron-right small"></i>
-                <span>Backup &amp; Recovery</span>
-            </div>
-        </div>
-        <div class="d-flex gap-2">
-            <!-- Manual Backup Trigger -->
-            <button class="ll-btn ll-btn-primary" data-bs-toggle="modal" data-bs-target="#manualBackupModal">
-                <i class="bi bi-cloud-upload me-2"></i>Run Manual Backup
-            </button>
-        </div>
+<div class="d-flex justify-content-between align-items-center mb-4 mt-2">
+    <div class="d-flex align-items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4C9.11 4 6.6 5.64 5.35 8.04C2.34 8.36 0 10.91 0 14C0 17.31 2.69 20 6 20H19C21.76 20 24 17.76 24 15C24 12.36 21.95 10.22 19.35 10.04Z" fill="#4285F4"/>
+            <path d="M10 17L15 12L13.59 10.59L11 13.17V7H9V13.17L6.41 10.59L5 12L10 17Z" fill="#fff"/>
+        </svg>
+        <h2 class="g1-header mb-0 fs-3">LearnLink System Backup</h2>
     </div>
 </div>
 
 <!-- Success / Error Toasts -->
 @if (TempData["SuccessMessage"] != null)
 {
-    <div class="alert alert-success alert-dismissible fade show mx-0 mb-3" role="alert">
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
         <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
 @if (TempData["ErrorMessage"] != null)
 {
-    <div class="alert alert-danger alert-dismissible fade show mx-0 mb-3" role="alert">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
         <i class="bi bi-exclamation-circle me-2"></i>@TempData["ErrorMessage"]
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
 
-<!-- KPI Status Cards -->
-<div class="row g-3 mb-4">
-    <!-- Status -->
-    <div class="col-sm-6 col-xl-3">
-        <div class="ll-card h-100">
-            <div class="ll-card-body d-flex align-items-center gap-3">
-                <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                     style="width:52px;height:52px;background:@(isOverdue ? "rgba(239,68,68,.15)" : "rgba(16,185,129,.15)");">
-                    <i class="bi @(isOverdue ? "bi-exclamation-triangle" : "bi-check-circle") fs-4"
-                       style="color:@(isOverdue ? "#ef4444" : "#10b981");"></i>
-                </div>
-                <div>
-                    <div class="small text-muted fw-medium">System Status</div>
-                    <div class="fw-bold fs-6" style="color:@(isOverdue ? "#ef4444" : "#10b981");">
-                        @(isOverdue ? "Backup Overdue" : "Up to Date")
-                    </div>
-                    <div class="small text-muted">
-                        @if (lastCompleted != null)
-                        { <span>Last: @lastCompleted.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")</span> }
-                        else
-                        { <span>No backups yet</span> }
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Next Due -->
-    <div class="col-sm-6 col-xl-3">
-        <div class="ll-card h-100">
-            <div class="ll-card-body d-flex align-items-center gap-3">
-                <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                     style="width:52px;height:52px;background:rgba(59,125,216,.12);">
-                    <i class="bi bi-calendar-event fs-4 text-primary"></i>
-                </div>
-                <div>
-                    <div class="small text-muted fw-medium">Next Scheduled</div>
-                    <div class="fw-bold fs-6">@nextDue.ToLocalTime().ToString("MMM dd, yyyy")</div>
-                    <div class="small text-muted">Every @policy.FrequencyDays day(s)</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Total -->
-    <div class="col-sm-6 col-xl-3">
-        <div class="ll-card h-100">
-            <div class="ll-card-body d-flex align-items-center gap-3">
-                <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                     style="width:52px;height:52px;background:rgba(232,184,75,.15);">
-                    <i class="bi bi-archive fs-4" style="color:#e8b84b;"></i>
-                </div>
-                <div>
-                    <div class="small text-muted fw-medium">Total Backups</div>
-                    <div class="fw-bold fs-4">@totalBackups</div>
-                    <div class="small text-muted">@successCount success · @failedCount failed</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Retention -->
-    <div class="col-sm-6 col-xl-3">
-        <div class="ll-card h-100">
-            <div class="ll-card-body d-flex align-items-center gap-3">
-                <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                     style="width:52px;height:52px;background:rgba(139,92,246,.15);">
-                    <i class="bi bi-shield-lock fs-4" style="color:#8b5cf6;"></i>
-                </div>
-                <div>
-                    <div class="small text-muted fw-medium">Retention Policy</div>
-                    <div class="fw-bold fs-6">Keep last @policy.RetentionCount copies</div>
-                    <div class="small text-muted">@policy.StorageDescription</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="row g-4">
-    <!-- Left: History -->
+    <!-- Left Column: Storage & What's Backed Up -->
     <div class="col-lg-8">
-        <div class="ll-card">
-            <div class="ll-card-header d-flex justify-content-between align-items-center">
-                <h5 class="ll-card-title mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>Backup History</h5>
-                <span class="badge bg-primary bg-opacity-10 text-primary">Last 20 records</span>
+        <!-- Storage Card -->
+        <div class="g1-card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-end mb-3">
+                <div>
+                    <h3 class="g1-header fs-5 mb-1">System Storage</h3>
+                    <div class="text-muted small">@usedStorageGb GB used of @totalStorageGb GB</div>
+                </div>
+                <div class="text-end">
+                    <button class="g1-btn-primary" data-bs-toggle="modal" data-bs-target="#manualBackupModal">
+                        Back up now
+                    </button>
+                </div>
             </div>
-            <div class="ll-card-body p-0">
-                @if (records.Any())
-                {
+
+            <div class="g1-storage-track">
+                <div class="g1-segment-resources" style="width: @(resourcesPercent)%"></div>
+                <div class="g1-segment-knowledge" style="width: @(knowledgePercent)%"></div>
+                <div class="g1-segment-activity" style="width: @(activityPercent)%"></div>
+                <div class="g1-segment-lessons" style="width: @(lessonsPercent)%"></div>
+            </div>
+
+            <div class="row g-3 text-muted small">
+                <div class="col-6 col-md-3">
+                    <div class="g1-legend-dot g1-segment-resources"></div>
+                    <div class="fw-medium text-dark mt-1">Resources</div>
+                    <div>@resourcesGb GB</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="g1-legend-dot g1-segment-knowledge"></div>
+                    <div class="fw-medium text-dark mt-1">Repository</div>
+                    <div>@knowledgeGb GB</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="g1-legend-dot g1-segment-activity"></div>
+                    <div class="fw-medium text-dark mt-1">User Activity</div>
+                    <div>@activityGb GB</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="g1-legend-dot g1-segment-lessons"></div>
+                    <div class="fw-medium text-dark mt-1">Lessons</div>
+                    <div>@lessonsGb GB</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backup Status Card -->
+        <div class="g1-card p-4 mb-4">
+            <div class="d-flex align-items-center mb-4">
+                <div class="g1-icon-container @(isOverdue ? "g1-icon-red" : "g1-icon-blue") me-3">
+                    <i class="bi @(isOverdue ? "bi-exclamation-triangle" : "bi-cloud-check")"></i>
+                </div>
+                <div>
+                    <h3 class="g1-header fs-5 mb-1">Backup status</h3>
+                    <div class="text-muted small">
+                        @if (isOverdue)
+                        {
+                            <span class="text-danger fw-medium">Backup is overdue. </span>
+                        }
+                        @if (lastCompleted != null)
+                        {
+                            <span>Last backed up @lastCompleted.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy").</span>
+                        }
+                        else
+                        {
+                            <span>No previous backups found.</span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <h4 class="g1-header fs-6 mb-3">Included in backup</h4>
+            
+            <div class="g1-list-item">
+                <div class="g1-icon-container g1-icon-blue me-3">
+                    <i class="bi bi-file-earmark-pdf"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-medium">Uploaded Resources</div>
+                    <div class="text-muted small">PDFs, Documents, Videos, and other uploaded files</div>
+                </div>
+                <div class="form-check form-switch ms-3">
+                    <input class="form-check-input fs-5" type="checkbox" checked disabled>
+                </div>
+            </div>
+
+            <div class="g1-list-item">
+                <div class="g1-icon-container g1-icon-red me-3">
+                    <i class="bi bi-folder2-open"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-medium">Knowledge Repository</div>
+                    <div class="text-muted small">All shared repository structures and metadata</div>
+                </div>
+                <div class="form-check form-switch ms-3">
+                    <input class="form-check-input fs-5" type="checkbox" checked disabled>
+                </div>
+            </div>
+
+            <div class="g1-list-item">
+                <div class="g1-icon-container g1-icon-yellow me-3">
+                    <i class="bi bi-activity"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-medium">User Activity & Logs</div>
+                    <div class="text-muted small">Audit logs, login history, and user interactions</div>
+                </div>
+                <div class="form-check form-switch ms-3">
+                    <input class="form-check-input fs-5" type="checkbox" checked disabled>
+                </div>
+            </div>
+
+            <div class="g1-list-item border-bottom-0">
+                <div class="g1-icon-container g1-icon-green me-3">
+                    <i class="bi bi-lightbulb"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-medium">Lessons Learned & Discussions</div>
+                    <div class="text-muted small">All community posts, replies, and lesson submissions</div>
+                </div>
+                <div class="form-check form-switch ms-3">
+                    <input class="form-check-input fs-5" type="checkbox" checked disabled>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Backup History -->
+        <div class="g1-card p-4">
+            <h3 class="g1-header fs-5 mb-4">Backup history</h3>
+            
+            @if (records.Any())
+            {
                 <div class="table-responsive">
-                    <table class="ll-table mb-0">
-                        <thead>
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="text-muted small">
                             <tr>
-                                <th>Date &amp; Time</th>
-                                <th>Type</th>
-                                <th>Status</th>
-                                <th>Size</th>
-                                <th>Triggered By</th>
-                                <th>Notes</th>
+                                <th class="border-0 pb-3">Date</th>
+                                <th class="border-0 pb-3">Type</th>
+                                <th class="border-0 pb-3">Status</th>
+                                <th class="border-0 pb-3">Notes</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var rec in records)
                             {
                             <tr>
-                                <td class="text-nowrap">
-                                    <div class="fw-medium">@rec.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")</div>
-                                    <div class="small text-muted">@rec.CreatedAt.ToLocalTime().ToString("hh:mm tt")</div>
+                                <td class="py-3 border-light">
+                                    <div class="fw-medium text-dark">@rec.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")</div>
+                                    <div class="text-muted small">@rec.CreatedAt.ToLocalTime().ToString("hh:mm tt")</div>
                                 </td>
-                                <td>
-                                    <span class="d-flex align-items-center gap-1">
-                                        <i class="bi @TypeIcon(rec.BackupType) text-primary"></i>
-                                        @rec.BackupType
-                                    </span>
+                                <td class="py-3 border-light">
+                                    <span class="badge bg-light text-dark border fw-normal">@rec.BackupType</span>
                                 </td>
-                                <td>
-                                    <span class="badge bg-@StatusBadge(rec.Status) bg-opacity-15 text-@StatusBadge(rec.Status)">
+                                <td class="py-3 border-light">
+                                    <span class="badge bg-@StatusBadge(rec.Status) bg-opacity-10 text-@StatusBadge(rec.Status) fw-medium px-2 py-1">
                                         @rec.Status
                                     </span>
                                 </td>
-                                <td class="small text-muted">@(rec.SizeDescription ?? "—")</td>
-                                <td class="small">
-                                    @if (rec.TriggeredByUser != null)
-                                    {
-                                        <span>@(rec.TriggeredByUser.FirstName + " " + rec.TriggeredByUser.LastName)</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">Automated</span>
-                                    }
-                                </td>
-                                <td class="small text-muted" style="max-width:200px; white-space:normal;">
-                                    @(rec.Notes ?? "—")
+                                <td class="py-3 border-light text-muted small" style="max-width: 250px;">
+                                    @(rec.Notes ?? "Automated system backup")
                                 </td>
                             </tr>
                             }
                         </tbody>
                     </table>
                 </div>
-                }
-                else
-                {
+            }
+            else
+            {
                 <div class="text-center py-5 text-muted">
-                    <i class="bi bi-archive display-4 d-block mb-3 opacity-25"></i>
-                    <div class="fw-medium mb-1">No backup records yet</div>
-                    <p class="small">Run your first manual backup or wait for the scheduled backup.</p>
-                    <button class="ll-btn ll-btn-primary ll-btn-sm" data-bs-toggle="modal" data-bs-target="#manualBackupModal">
-                        <i class="bi bi-cloud-upload me-1"></i>Run Backup Now
-                    </button>
+                    <i class="bi bi-cloud-slash display-4 d-block mb-3 opacity-25"></i>
+                    <div>No backup records found</div>
                 </div>
-                }
-            </div>
+            }
         </div>
     </div>
 
-    <!-- Right: Policy Settings -->
+    <!-- Right Column: Settings -->
     <div class="col-lg-4">
-        <!-- Policy Overview Card -->
-        <div class="ll-card mb-4">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title mb-0"><i class="bi bi-file-earmark-lock me-2 text-primary"></i>Current Policy</h5>
-            </div>
-            <div class="ll-card-body">
-                <div class="mb-3 pb-3 border-bottom">
-                    <div class="small text-muted fw-medium text-uppercase mb-1" style="letter-spacing:.05em;">Requirement</div>
-                    <p class="mb-0 small">System backups must be performed <strong>at least once per week</strong>. Backup copies must be stored <strong>securely</strong>.</p>
+        <div class="g1-card p-4 mb-4">
+            <h3 class="g1-header fs-5 mb-4">Backup settings</h3>
+            
+            <form method="post" action="@Url.Action("SaveBackupPolicy", "Home")">
+                @Html.AntiForgeryToken()
+                
+                <div class="mb-4">
+                    <label class="fw-medium mb-1 d-block text-dark">Automatic backup</label>
+                    <div class="text-muted small mb-2">Back up system data automatically to secure off-site storage.</div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input fs-4" type="checkbox" id="autoBackupSwitch" checked disabled>
+                    </div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <span class="small text-muted">Frequency</span>
-                    <span class="fw-medium small">Every @policy.FrequencyDays day(s)</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <span class="small text-muted">Retention</span>
-                    <span class="fw-medium small">@policy.RetentionCount copies</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <span class="small text-muted">Storage</span>
-                    <span class="fw-medium small">@policy.StorageDescription</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center py-2">
-                    <span class="small text-muted">Notifications</span>
-                    <span class="badge @(policy.NotifyOnBackup ? "bg-success" : "bg-secondary") bg-opacity-15 @(policy.NotifyOnBackup ? "text-success" : "text-secondary") small">
-                        @(policy.NotifyOnBackup ? "Enabled" : "Disabled")
-                    </span>
-                </div>
-                @if (!string.IsNullOrEmpty(policy.LastUpdatedByUserId))
-                {
-                <div class="mt-3 pt-2 border-top">
-                    <div class="small text-muted">Last updated: @policy.LastUpdated.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")</div>
-                </div>
-                }
-            </div>
-        </div>
 
-        <!-- Edit Policy -->
-        <div class="ll-card">
-            <div class="ll-card-header">
-                <h5 class="ll-card-title mb-0"><i class="bi bi-gear me-2 text-primary"></i>Edit Policy</h5>
-            </div>
-            <div class="ll-card-body">
-                <form method="post" action="@Url.Action("SaveBackupPolicy", "Home")">
-                    @Html.AntiForgeryToken()
-                    <div class="mb-3">
-                        <label class="form-label small fw-medium">Backup Frequency (days)</label>
-                        <input type="number" name="frequencyDays" class="ll-form-control" min="1" max="365"
-                               value="@policy.FrequencyDays" required />
-                        <div class="form-text">Minimum 7 days required by policy.</div>
+                <div class="mb-4">
+                    <label class="fw-medium mb-1 d-block text-dark">Frequency</label>
+                    <div class="text-muted small mb-2">How often should automated backups run?</div>
+                    <select name="frequencyDays" class="form-select">
+                        <option value="1" selected="@(policy.FrequencyDays == 1)">Daily</option>
+                        <option value="7" selected="@(policy.FrequencyDays == 7)">Weekly (Recommended)</option>
+                        <option value="30" selected="@(policy.FrequencyDays == 30)">Monthly</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="fw-medium mb-1 d-block text-dark">Retention</label>
+                    <div class="text-muted small mb-2">Number of backup copies to keep before deleting older ones.</div>
+                    <input type="number" name="retentionCount" class="form-control" min="1" max="52" value="@policy.RetentionCount" />
+                </div>
+
+                <div class="mb-4">
+                    <label class="fw-medium mb-1 d-block text-dark">Storage Location</label>
+                    <div class="text-muted small mb-2">Where your backup files are stored.</div>
+                    <input type="text" name="storageDescription" class="form-control" value="@policy.StorageDescription" placeholder="e.g. Secure off-site cloud storage" />
+                </div>
+
+                <div class="mb-4 pt-3 border-top">
+                    <label class="fw-medium mb-1 d-block text-dark">Notifications</label>
+                    <div class="text-muted small mb-3">Receive alerts about backup status.</div>
+                    <div class="form-check form-switch d-flex align-items-center gap-2 px-0">
+                        <input class="form-check-input ms-0 me-2" type="checkbox" name="notifyOnBackup" id="notifySwitch" value="true" @(policy.NotifyOnBackup ? "checked" : "") style="margin-top:0;" />
+                        <label class="form-check-label small text-muted" for="notifySwitch" style="padding-top:2px;">Email me when backups complete or fail</label>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-medium">Retention Count</label>
-                        <input type="number" name="retentionCount" class="ll-form-control" min="1" max="52"
-                               value="@policy.RetentionCount" required />
-                        <div class="form-text">Number of backup copies to keep.</div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-medium">Storage Description</label>
-                        <input type="text" name="storageDescription" class="ll-form-control"
-                               placeholder="e.g. Secure off-site cloud storage"
-                               value="@policy.StorageDescription" />
-                    </div>
-                    <div class="mb-4">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" name="notifyOnBackup" id="notifySwitch"
-                                   value="true" @(policy.NotifyOnBackup ? "checked" : "")
-                                   style="width:44px;height:22px;" />
-                            <label class="form-check-label small" for="notifySwitch">Enable backup notifications</label>
-                        </div>
-                    </div>
-                    <button type="submit" class="ll-btn ll-btn-primary w-100">
-                        <i class="bi bi-check-lg me-2"></i>Save Policy
-                    </button>
-                </form>
-            </div>
+                </div>
+
+                <button type="submit" class="g1-btn-outline w-100">
+                    Save settings
+                </button>
+            </form>
         </div>
     </div>
 </div>
@@ -298,34 +406,33 @@
 <!-- Manual Backup Modal -->
 <div class="modal fade" id="manualBackupModal" tabindex="-1" aria-labelledby="manualBackupLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="manualBackupLabel">
-                    <i class="bi bi-cloud-upload me-2 text-primary"></i>Run Manual Backup
+        <div class="modal-content" style="border-radius: 12px; border: none;">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title g1-header fs-5" id="manualBackupLabel">
+                    Back up system data
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post" action="@Url.Action("TriggerManualBackup", "Home")">
                 @Html.AntiForgeryToken()
-                <div class="modal-body">
-                    <div class="alert alert-info mb-3">
-                        <i class="bi bi-info-circle me-2"></i>
-                        This will record a manual backup event. Ensure your hosting provider's backup system
-                        is also configured to run backups as per policy.
-                    </div>
+                <div class="modal-body pt-3">
+                    <p class="text-muted small mb-4">
+                        A manual backup will capture the current state of all system data, including resources, user activity, and repository structures. This process runs in the background.
+                    </p>
                     <div class="mb-3">
-                        <label class="form-label small fw-medium">Notes (optional)</label>
-                        <textarea name="notes" class="ll-form-control" rows="3"
-                                  placeholder="e.g. Pre-deployment backup, post-update backup..."></textarea>
+                        <label class="form-label small fw-medium text-dark">Backup description (optional)</label>
+                        <textarea name="notes" class="form-control" rows="2"
+                                  placeholder="e.g. Pre-deployment backup, system snapshot..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="ll-btn ll-btn-outline" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="ll-btn ll-btn-primary">
-                        <i class="bi bi-cloud-upload me-2"></i>Confirm Backup
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="g1-btn-outline" data-bs-dismiss="modal" style="border:none;">Cancel</button>
+                    <button type="submit" class="g1-btn-primary">
+                        Confirm backup
                     </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
