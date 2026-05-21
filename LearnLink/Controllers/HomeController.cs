@@ -627,6 +627,11 @@ namespace LearnLink.Controllers
         [Authorize(Roles = "SuperAdmin,Manager")]
         public async Task<IActionResult> ApproveResource(int id)
         {
+            if (!ModelState.IsValid)
+            {
+                return RedirectToAction("Dashboard");
+            }
+
             await AutoRejectExpiredPendingResourcesAsync();
 
             var resource = await _context.Resources.FindAsync(id);
@@ -664,6 +669,11 @@ namespace LearnLink.Controllers
         [HttpPost]
         public async Task<IActionResult> RejectResource(int id, string? reason)
         {
+            if (!ModelState.IsValid)
+            {
+                return RedirectToAction("Dashboard");
+            }
+
             await AutoRejectExpiredPendingResourcesAsync();
 
             var resource = await _context.Resources.FindAsync(id);
@@ -739,6 +749,11 @@ namespace LearnLink.Controllers
         [HttpPost]
         public async Task<IActionResult> MarkNotificationRead(int id)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return Unauthorized();
 
@@ -981,6 +996,12 @@ namespace LearnLink.Controllers
             ViewBag.Email = email;
             ViewBag.RememberMe = rememberMe;
 
+            if (!ModelState.IsValid)
+            {
+                ViewBag.Error = "Please correct the highlighted fields and try again.";
+                return View();
+            }
+
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
             {
                 ViewBag.Error = "Please enter email and password.";
@@ -1218,6 +1239,13 @@ namespace LearnLink.Controllers
         public async Task<IActionResult> ForgotPassword(string email)
         {
             ViewBag.Email = email;
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.Error = "Please correct the highlighted fields and try again.";
+                return View();
+            }
+
             if (string.IsNullOrWhiteSpace(email))
             {
                 ViewBag.Error = "Please enter your email address.";
@@ -1251,6 +1279,12 @@ namespace LearnLink.Controllers
         {
             ViewBag.Email = email;
             ViewBag.Token = token;
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.Error = "Please correct the highlighted fields and try again.";
+                return View();
+            }
 
             if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(password))
             {
@@ -1306,6 +1340,13 @@ namespace LearnLink.Controllers
         [HttpPost]
         public async Task<IActionResult> Register(string firstName, string middleName, string lastName, string email, string password, string confirmPassword, int schoolId, string gradeOrPosition)
         {
+            if (!ModelState.IsValid)
+            {
+                ViewBag.Error = "Please correct the highlighted fields and try again.";
+                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
+                return View();
+            }
+
             if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName) ||
                 string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
             {
@@ -1493,6 +1534,13 @@ namespace LearnLink.Controllers
             var providerKey = TempData.Peek("LinkGoogleProviderKey")?.ToString();
             var loginProvider = TempData.Peek("LinkGoogleLoginProvider")?.ToString();
 
+            if (!ModelState.IsValid)
+            {
+                ViewBag.Error = "Please enter your password.";
+                ViewBag.LinkEmail = email;
+                return View();
+            }
+
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(providerKey) || string.IsNullOrEmpty(loginProvider))
             {
                 TempData["ErrorMessage"] = "Session expired. Please try signing in with Google again.";
@@ -1595,6 +1643,18 @@ namespace LearnLink.Controllers
         {
             var googleProviderKey = TempData["GoogleProviderKey"]?.ToString();
             var googleLoginProvider = TempData["GoogleLoginProvider"]?.ToString();
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.Error = "Please correct the highlighted fields and try again.";
+                ViewBag.GoogleEmail = email;
+                ViewBag.GoogleFirstName = firstName;
+                ViewBag.GoogleLastName = lastName;
+                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
+                TempData["GoogleProviderKey"] = googleProviderKey;
+                TempData["GoogleLoginProvider"] = googleLoginProvider;
+                return View();
+            }
 
             if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName) ||
                 string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
@@ -1835,6 +1895,12 @@ namespace LearnLink.Controllers
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return RedirectToAction("Login");
 
+            if (!ModelState.IsValid)
+            {
+                TempData["ErrorMessage"] = "Please correct the highlighted fields and try again.";
+                return RedirectToAction("Profile");
+            }
+
             if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
             {
                 TempData["ErrorMessage"] = "First name and last name are required.";
@@ -1860,6 +1926,12 @@ namespace LearnLink.Controllers
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return RedirectToAction("Login");
+
+            if (!ModelState.IsValid)
+            {
+                TempData["ErrorMessage"] = "Please correct the highlighted fields and try again.";
+                return RedirectToAction("Profile");
+            }
 
             if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
             {
@@ -4130,6 +4202,12 @@ namespace LearnLink.Controllers
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return RedirectToAction("Login");
 
+            if (!ModelState.IsValid)
+            {
+                TempData["ErrorMessage"] = "Please correct the highlighted fields and try again.";
+                return RedirectToAction("LessonsLearned");
+            }
+
             var resource = await _context.Resources.Include(r => r.User).FirstOrDefaultAsync(r => r.ResourceId == model.ResourceId);
             if (resource == null)
             {
@@ -4773,6 +4851,12 @@ namespace LearnLink.Controllers
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return RedirectToAction("Login");
 
+            if (!ModelState.IsValid)
+            {
+                TempData["ErrorMessage"] = "Please correct the highlighted fields and try again.";
+                return RedirectToAction("KnowledgePortal");
+            }
+
             var discussion = new Discussion
             {
                 Title = model.Title ?? "",
@@ -5106,6 +5190,12 @@ namespace LearnLink.Controllers
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return RedirectToAction("Login");
+
+            if (!ModelState.IsValid)
+            {
+                TempData["ErrorMessage"] = "Please correct the highlighted fields and try again.";
+                return RedirectToUploadForm(resourceId);
+            }
 
             Resource? resource;
             bool isNew = false;
@@ -5691,6 +5781,11 @@ namespace LearnLink.Controllers
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return Unauthorized();
 
+            if (!ModelState.IsValid)
+            {
+                return Json(new { success = false, message = "Please correct the highlighted fields and try again." });
+            }
+
             var resource = await _context.Resources.FirstOrDefaultAsync(r => r.ResourceId == resourceId);
             if (resource == null) return NotFound();
 
@@ -5870,6 +5965,12 @@ namespace LearnLink.Controllers
         [HttpPost]
         public async Task<IActionResult> PostAddUser(UserViewModel model)
         {
+            if (!ModelState.IsValid)
+            {
+                TempData["ErrorMessage"] = "Please correct the highlighted fields and try again.";
+                return RedirectToAction("Users");
+            }
+
             if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.Name))
             {
                 TempData["ErrorMessage"] = "Name and email are required.";
