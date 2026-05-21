@@ -54,20 +54,25 @@
                                 <p class="ll-auth-form-subtitle mb-0">Join LearnLink and start your learning journey today.</p>
                             </div>
 
-                            <form asp-action="Register" method="post">
+                            <form asp-action="Register" method="post" id="registerForm" novalidate>
                                 @if (ViewBag.Error != null)
                                 {
                                     <div class="alert alert-danger small py-2 mb-3">
-                                        <i class="bi bi-exclamation-circle me-1"></i>Passwords must be at least 12 characters long and include at least one non-alphanumeric character, one digit (0–9), and one uppercase letter (A–Z).
+                                        <i class="bi bi-exclamation-circle me-1"></i>@ViewBag.Error
                                     </div>
                                 }
+                                <div id="validationAlert" class="alert alert-danger small py-2 mb-3" style="display: none;">
+                                    <i class="bi bi-exclamation-circle me-1"></i><span id="validationMessage"></span>
+                                </div>
+
                                 <div class="row g-3 mb-3">
                                     <div class="col-md-4">
                                         <label class="form-label">First Name <span class="text-danger">*</span></label>
                                         <div class="ll-auth-input-group">
                                             <i class="bi bi-person ll-auth-input-icon"></i>
-                                            <input type="text" name="firstName" class="form-control" placeholder="First name" required>
+                                            <input type="text" name="firstName" id="firstName" class="form-control" placeholder="First name" required>
                                         </div>
+                                        <small class="text-danger" id="firstNameError" style="display: none;"></small>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Middle Name</label>
@@ -80,8 +85,9 @@
                                         <label class="form-label">Last Name <span class="text-danger">*</span></label>
                                         <div class="ll-auth-input-group">
                                             <i class="bi bi-person ll-auth-input-icon"></i>
-                                            <input type="text" name="lastName" class="form-control" placeholder="Last name" required>
+                                            <input type="text" name="lastName" id="lastName" class="form-control" placeholder="Last name" required>
                                         </div>
+                                        <small class="text-danger" id="lastNameError" style="display: none;"></small>
                                     </div>
                                 </div>
 
@@ -89,8 +95,9 @@
                                     <label class="form-label">Email Address <span class="text-danger">*</span></label>
                                     <div class="ll-auth-input-group">
                                         <i class="bi bi-envelope ll-auth-input-icon"></i>
-                                        <input type="email" name="email" class="form-control" placeholder="name@example.com" required>
+                                        <input type="email" name="email" id="email" class="form-control" placeholder="name@example.com" required>
                                     </div>
+                                    <small class="text-danger" id="emailError" style="display: none;"></small>
                                 </div>
 
                                 <div class="mb-3">
@@ -106,6 +113,23 @@
                                         <i class="bi bi-info-circle me-1"></i>
                                         Must be at least 12 characters and include uppercase, lowercase, numbers, and special characters.
                                     </div>
+                                    <!-- Password Strength Indicator -->
+                                    <div style="margin-top: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                            <div style="height: 6px; width: 100%; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+                                                <div id="strengthBar" style="height: 100%; width: 0%; background: #d1d5db; transition: all 0.3s ease; border-radius: 3px;"></div>
+                                            </div>
+                                            <small id="strengthText" style="min-width: 60px; text-align: right;">Weak</small>
+                                        </div>
+                                        <div style="display: flex; gap: 4px; font-size: 11px;">
+                                            <span id="check1" style="color: #d1d5db;">✓ 12 chars</span>
+                                            <span id="check2" style="color: #d1d5db;">✓ Uppercase</span>
+                                            <span id="check3" style="color: #d1d5db;">✓ Lowercase</span>
+                                            <span id="check4" style="color: #d1d5db;">✓ Number</span>
+                                            <span id="check5" style="color: #d1d5db;">✓ Symbol</span>
+                                        </div>
+                                    </div>
+                                    <small class="text-danger" id="passwordError" style="display: none;"></small>
                                 </div>
 
                                 <div class="mb-3">
@@ -117,6 +141,7 @@
                                             <i class="bi bi-eye"></i>
                                         </button>
                                     </div>
+                                    <small class="text-danger" id="confirmPasswordError" style="display: none;"></small>
                                 </div>
 
                                 <div class="mb-3">
@@ -154,7 +179,7 @@
                                     <label class="form-label">School <span class="text-danger">*</span></label>
                                     <div class="ll-auth-input-group">
                                         <i class="bi bi-building ll-auth-input-icon"></i>
-                                        <select name="schoolId" class="form-control form-select" required>
+                                        <select name="schoolId" id="schoolId" class="form-control form-select" required>
                                             <option value="" disabled selected>Select your school</option>
                                             @if (ViewBag.Schools is List<LearnLink.Models.School> schools)
                                             {
@@ -165,8 +190,9 @@
                                             }
                                         </select>
                                     </div>
+                                    <small class="text-danger" id="schoolError" style="display: none;"></small>
                                 </div>
-                                <button type="submit" class="btn ll-auth-btn-accent w-100 py-2 mb-3">
+                                <button type="submit" class="btn ll-auth-btn-accent w-100 py-2 mb-3" id="submitBtn">
                                     <i class="bi bi-person-plus me-2"></i>Create Account
                                 </button>
                             </form>
@@ -204,6 +230,10 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Define regex pattern to avoid Razor interpretation
+        const symbolRegex = new RegExp('[!@@#$%^&*()_+\\-=\\[\\]{};:\'"\\|,.<>/?]');
+
+        // Password toggle function
         function togglePassword(inputId, btn) {
             const input = document.getElementById(inputId);
             const icon = btn.querySelector('i');
@@ -217,6 +247,203 @@
                 icon.classList.add('bi-eye');
             }
         }
+
+        // Real-time password strength indicator
+        function updatePasswordStrength() {
+            const password = document.getElementById('regPassword').value;
+            const strengthBar = document.getElementById('strengthBar');
+            const strengthText = document.getElementById('strengthText');
+            
+            // Check requirements
+            const hasLength = password.length >= 12;
+            const hasUpper = /[A-Z]/.test(password);
+            const hasLower = /[a-z]/.test(password);
+            const hasNumber = /[0-9]/.test(password);
+            const hasSymbol = symbolRegex.test(password);
+
+            // Update check indicators
+            document.getElementById('check1').style.color = hasLength ? '#10b981' : '#d1d5db';
+            document.getElementById('check2').style.color = hasUpper ? '#10b981' : '#d1d5db';
+            document.getElementById('check3').style.color = hasLower ? '#10b981' : '#d1d5db';
+            document.getElementById('check4').style.color = hasNumber ? '#10b981' : '#d1d5db';
+            document.getElementById('check5').style.color = hasSymbol ? '#10b981' : '#d1d5db';
+
+            // Calculate strength
+            const strength = [hasLength, hasUpper, hasLower, hasNumber, hasSymbol].filter(Boolean).length;
+            
+            if (password.length === 0) {
+                strengthBar.style.width = '0%';
+                strengthBar.style.background = '#d1d5db';
+                strengthText.textContent = 'Weak';
+                strengthText.style.color = '#6b7280';
+            } else if (strength <= 2) {
+                strengthBar.style.width = '33%';
+                strengthBar.style.background = '#ef4444';
+                strengthText.textContent = 'Weak';
+                strengthText.style.color = '#ef4444';
+            } else if (strength === 3) {
+                strengthBar.style.width = '66%';
+                strengthBar.style.background = '#f59e0b';
+                strengthText.textContent = 'Medium';
+                strengthText.style.color = '#f59e0b';
+            } else {
+                strengthBar.style.width = '100%';
+                strengthBar.style.background = '#10b981';
+                strengthText.textContent = 'Strong';
+                strengthText.style.color = '#10b981';
+            }
+        }
+
+        // Real-time validation functions
+        function validateFirstName() {
+            const firstName = document.getElementById('firstName').value.trim();
+            const error = document.getElementById('firstNameError');
+            if (firstName.length === 0) {
+                error.textContent = 'First Name is required.';
+                error.style.display = 'block';
+                return false;
+            } else {
+                error.style.display = 'none';
+                return true;
+            }
+        }
+
+        function validateLastName() {
+            const lastName = document.getElementById('lastName').value.trim();
+            const error = document.getElementById('lastNameError');
+            if (lastName.length === 0) {
+                error.textContent = 'Last Name is required.';
+                error.style.display = 'block';
+                return false;
+            } else {
+                error.style.display = 'none';
+                return true;
+            }
+        }
+
+        function validateEmail() {
+            const email = document.getElementById('email').value.trim();
+            const error = document.getElementById('emailError');
+            const emailRegex = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
+            if (email.length === 0) {
+                error.textContent = 'Email is required.';
+                error.style.display = 'block';
+                return false;
+            } else if (!emailRegex.test(email)) {
+                error.textContent = 'Please enter a valid email address.';
+                error.style.display = 'block';
+                return false;
+            } else {
+                error.style.display = 'none';
+                return true;
+            }
+        }
+
+        function validatePassword() {
+            const password = document.getElementById('regPassword').value;
+            const error = document.getElementById('passwordError');
+            const hasLength = password.length >= 12;
+            const hasUpper = /[A-Z]/.test(password);
+            const hasLower = /[a-z]/.test(password);
+            const hasNumber = /[0-9]/.test(password);
+            const hasSymbol = symbolRegex.test(password);
+
+            if (password.length === 0) {
+                error.textContent = 'Password is required.';
+                error.style.display = 'block';
+                return false;
+            } else if (!hasLength || !hasUpper || !hasLower || !hasNumber || !hasSymbol) {
+                error.textContent = 'Password must be at least 12 characters and include uppercase, lowercase, numbers, and special characters.';
+                error.style.display = 'block';
+                return false;
+            } else {
+                error.style.display = 'none';
+                return true;
+            }
+        }
+
+        function validateConfirmPassword() {
+            const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const error = document.getElementById('confirmPasswordError');
+            
+            if (confirmPassword.length === 0) {
+                error.textContent = 'Please confirm your password.';
+                error.style.display = 'block';
+                return false;
+            } else if (password !== confirmPassword) {
+                error.textContent = 'Passwords do not match.';
+                error.style.display = 'block';
+                return false;
+            } else {
+                error.style.display = 'none';
+                return true;
+            }
+        }
+
+        function validateSchool() {
+            const schoolId = document.getElementById('schoolId').value;
+            const error = document.getElementById('schoolError');
+            if (schoolId === '' || schoolId === null || schoolId === '0') {
+                error.textContent = 'Please select your school.';
+                error.style.display = 'block';
+                return false;
+            } else {
+                error.style.display = 'none';
+                return true;
+            }
+        }
+
+        // Add event listeners
+        document.getElementById('firstName').addEventListener('blur', validateFirstName);
+        document.getElementById('firstName').addEventListener('input', validateFirstName);
+
+        document.getElementById('lastName').addEventListener('blur', validateLastName);
+        document.getElementById('lastName').addEventListener('input', validateLastName);
+
+        document.getElementById('email').addEventListener('blur', validateEmail);
+        document.getElementById('email').addEventListener('input', validateEmail);
+
+        document.getElementById('regPassword').addEventListener('input', () => {
+            updatePasswordStrength();
+            validatePassword();
+        });
+
+        document.getElementById('confirmPassword').addEventListener('input', validateConfirmPassword);
+        document.getElementById('confirmPassword').addEventListener('blur', validateConfirmPassword);
+
+        document.getElementById('schoolId').addEventListener('change', validateSchool);
+
+        // Form submission validation
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Validate all fields
+            const validations = [
+                validateFirstName(),
+                validateLastName(),
+                validateEmail(),
+                validatePassword(),
+                validateConfirmPassword(),
+                validateSchool()
+            ];
+
+            if (validations.every(v => v === true)) {
+                // All validations passed, submit the form
+                this.submit();
+            } else {
+                // Show general validation alert
+                document.getElementById('validationAlert').style.display = 'block';
+                document.getElementById('validationMessage').textContent = 'Please fix the errors above before submitting.';
+                // Scroll to top
+                window.scrollTo(0, 0);
+            }
+        });
+
+        // Initialize password strength on page load
+        window.addEventListener('load', () => {
+            updatePasswordStrength();
+        });
     </script>
 </body>
 </html>
