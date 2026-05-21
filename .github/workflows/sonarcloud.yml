@@ -6,11 +6,13 @@ on:
       - main
       - develop
       - master
+      - master1
   pull_request:
     branches:
       - main
       - develop
       - master
+      - master1
   schedule:
     - cron: '0 3 * * 0'  # Weekly scan on Monday at 3 AM UTC
 
