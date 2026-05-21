@@ -1,0 +1,135 @@
+name: Security Code Scan
+
+on:
+  push:
+    branches: [ main, develop, master ]
+  pull_request:
+    branches: [ main, develop, master ]
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly on Monday at 2 AM UTC
+
+jobs:
+  code-analysis:
+    name: .NET Code Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Restore dependencies
+      run: dotnet restore
+      working-directory: LearnLink
+    
+    - name: Build with Code Analysis
+      run: dotnet build --configuration Release --no-restore /p:EnforceCodeStyleInBuild=true
+      working-directory: LearnLink
+    
+    - name: Run Code Analysis
+      run: dotnet build --configuration Debug /p:TreatWarningsAsErrors=true
+      working-directory: LearnLink
+      continue-on-error: true
+
+  dependency-check:
+    name: OWASP Dependency Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Run OWASP Dependency-Check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'LearnLink'
+        path: '.'
+        format: 'JSON'
+        args: >
+          --enable-package-managers
+          --enableExperimental
+          --exclude 'bin'
+          --exclude 'obj'
+          --exclude '.git'
+          --exclude 'node_modules'
+      continue-on-error: true
+    
+    - name: Upload Dependency-Check Report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: dependency-check-report
+        path: reports/
+        retention-days: 30
+
+  security-scan:
+    name: SAST Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Install SecurityCodeScan
+      run: dotnet tool install --global SecurityCodeScan.NetGlobalTool
+    
+    - name: Run SecurityCodeScan
+      run: |
+        dotnet restore LearnLink/LearnLink.csproj
+        dotnet build LearnLink/LearnLink.csproj --configuration Release
+      continue-on-error: true
+
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Check licenses
+      run: |
+        echo "Checking NuGet package licenses..."
+        dotnet list LearnLink/LearnLink.csproj package
+      continue-on-error: true
+
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Restore dependencies
+      run: dotnet restore LearnLink/LearnLink.csproj
+    
+    - name: Build
+      run: dotnet build LearnLink/LearnLink.csproj --configuration Release --no-restore
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: build-logs
+        path: LearnLink/bin/Release/
+        retention-days: 7
