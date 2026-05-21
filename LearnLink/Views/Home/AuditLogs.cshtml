@@ -3,7 +3,95 @@
     ViewData["Title"] = "Audit Logs";
     Layout = "~/Views/Shared/_Layout.cshtml";
     var isAdmin = User.IsInRole("SuperAdmin");
+    var users = ViewBag.Users as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
 }
+
+<style>
+    /* User search dropdown styles */
+    .user-search-wrapper { position: relative; }
+    .user-search-results {
+        position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+        max-height: 280px; overflow-y: auto;
+        background: #fff; border: 1px solid #dee2e6; border-top: 0;
+        border-radius: 0 0 0.5rem 0.5rem;
+        box-shadow: 0 8px 24px rgba(0,0,0,.12);
+        display: none;
+    }
+    .user-search-results.show { display: block; }
+    .user-search-item {
+        display: flex; align-items: center; gap: 0.75rem;
+        padding: 0.625rem 1rem; cursor: pointer;
+        transition: background 0.15s;
+    }
+    .user-search-item:hover, .user-search-item.active { background: #f0f4ff; }
+    .user-search-avatar {
+        width: 36px; height: 36px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 0.8rem; color: #fff; flex-shrink: 0;
+    }
+    .user-search-info { min-width: 0; }
+    .user-search-name { font-weight: 600; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-search-email { font-size: 0.75rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Selected user header */
+    .selected-user-header {
+        display: flex; align-items: center; gap: 1rem;
+        padding: 1rem 1.25rem;
+        background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+        border-radius: 0.5rem; margin-bottom: 1rem;
+    }
+    .selected-user-avatar {
+        width: 48px; height: 48px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 1.1rem; color: #fff; flex-shrink: 0;
+    }
+
+    /* Activity timeline styles for audit page */
+    .audit-activity-list { padding: 0; }
+    .audit-activity-item {
+        display: flex; align-items: flex-start; gap: 0.875rem;
+        padding: 0.875rem 0; border-bottom: 1px solid #f1f3f5;
+    }
+    .audit-activity-item:last-child { border-bottom: 0; }
+    .audit-activity-icon {
+        width: 36px; height: 36px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.9rem; flex-shrink: 0;
+    }
+    .audit-activity-icon.success { background: #d1fae5; color: #059669; }
+    .audit-activity-icon.danger { background: #fee2e2; color: #dc2626; }
+    .audit-activity-icon.muted { background: #f1f3f5; color: #6b7280; }
+    .audit-activity-text strong { color: #1e293b; }
+    .audit-activity-time { font-size: 0.75rem; color: #9ca3af; margin-top: 2px; }
+
+    /* Print styles */
+    @@media print {
+        .ll-sidebar, .ll-topbar, nav, .no-print,
+        .user-search-wrapper, .pagination, .btn,
+        .dropdown, form, .selected-user-header .btn { display: none !important; }
+
+        .print-only { display: block !important; }
+        .ll-card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
+        .container-fluid { padding: 0 !important; }
+        body { font-size: 11pt; }
+        .ll-table th, .ll-table td { padding: 0.375rem 0.5rem !important; font-size: 10pt; }
+        @@page { margin: 1cm; }
+
+        .print-header {
+            display: block !important;
+            text-align: center; margin-bottom: 1rem;
+            border-bottom: 2px solid #333; padding-bottom: 0.5rem;
+        }
+        .print-header h2 { margin: 0; font-size: 16pt; }
+        .print-header p { margin: 0.25rem 0 0; font-size: 9pt; color: #666; }
+    }
+    @@media screen { .print-only, .print-header { display: none !important; } }
+</style>
+
+<div class="print-header print-only">
+    <h2>System Audit Logs</h2>
+    <p>Generated on <span id="printDate"></span></p>
+</div>
 
 <div class="ll-page-header">
     <div class="container-fluid">
@@ -12,19 +100,25 @@
                 <h2 class="ll-page-title">System Audit Logs</h2>
                 <p class="ll-page-subtitle">Monitor security events and user activity</p>
             </div>
-            <div>
-                <button class="btn btn-outline-secondary" onclick="window.print()">
+            <div class="dropdown no-print">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-printer me-2"></i>Export / Print
                 </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#" onclick="doPrint(); return false;"><i class="bi bi-printer me-2"></i>Print Page</a></li>
+                    <li><a class="dropdown-item" href="@Url.Action("ExportAuditLogsCsv", "Home", new { search = ViewBag.Search, actionFilter = ViewBag.ActionFilter, statusFilter = ViewBag.StatusFilter, roleFilter = ViewBag.RoleFilter })"><i class="bi bi-filetype-csv me-2"></i>Export Audit Logs CSV</a></li>
+                    <li><a class="dropdown-item" href="#" id="exportUserActivitiesCsvBtn" onclick="exportUserActivitiesCsv(); return false;" style="display:none;"><i class="bi bi-file-earmark-arrow-down me-2"></i>Export User Activities CSV</a></li>
+                </ul>
             </div>
         </div>
     </div>
 </div>
 
 <div class="container-fluid py-4">
+    <!-- Existing Audit Logs Filter & Table -->
     <div class="ll-card mb-4">
         <div class="ll-card-body">
-            <form method="get" class="row g-3 align-items-end">
+            <form method="get" class="row g-3 align-items-end no-print">
                 <div class="col-md-3">
                     <label class="form-label small fw-medium text-muted">Search User/Details</label>
                     <div class="input-group">
@@ -78,7 +172,7 @@
 
     <div class="ll-card">
         <div class="table-responsive">
-            <table class="table ll-table mb-0">
+            <table class="table ll-table mb-0" id="auditLogsTable">
                 <thead>
                     <tr>
                         <th style="width: 180px;">Timestamp (UTC)</th>
@@ -161,7 +255,7 @@
         
         @if (ViewBag.TotalPages > 1)
         {
-            <div class="ll-card-footer border-top px-4 py-3">
+            <div class="ll-card-footer border-top px-4 py-3 no-print">
                 <nav aria-label="Audit logs pagination">
                     <ul class="pagination pagination-sm justify-content-center mb-0">
                         <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
@@ -181,4 +275,279 @@
             </div>
         }
     </div>
+
+    <!-- User Activity Logs Section -->
+    <div class="ll-card mt-4">
+        <div class="ll-card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="ll-card-title mb-1"><i class="bi bi-person-lines-fill me-2"></i>User Activity Logs</h5>
+                    <p class="text-muted small mb-0">Search for a user to view their complete activity history</p>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm no-print" id="exportActivitiesBtn" style="display:none;" onclick="exportUserActivitiesCsv()">
+                    <i class="bi bi-download me-1"></i>Export Activities
+                </button>
+            </div>
+        </div>
+        <div class="ll-card-body">
+            <!-- User Search -->
+            <div class="user-search-wrapper no-print" style="max-width: 450px;">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent"><i class="bi bi-person-search"></i></span>
+                    <input type="text" class="form-control" id="userSearchInput" placeholder="Type to search users..." autocomplete="off">
+                    <button class="btn btn-outline-secondary" type="button" id="clearUserSearch" style="display:none;" onclick="clearUserSelection()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="user-search-results" id="userSearchResults"></div>
+            </div>
+
+            <!-- Selected User Header -->
+            <div id="selectedUserHeader" style="display:none;" class="mt-3">
+                <div class="selected-user-header">
+                    <div class="selected-user-avatar" id="selectedUserAvatar"></div>
+                    <div>
+                        <div class="fw-bold" id="selectedUserName"></div>
+                        <div class="text-muted small" id="selectedUserEmail"></div>
+                    </div>
+                    <div class="ms-auto">
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" id="selectedUserCount"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="activityLoading" style="display:none;" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading activities...</p>
+            </div>
+
+            <!-- Activity List -->
+            <div id="activityListContainer" style="display:none;">
+                <div class="audit-activity-list" id="activityList"></div>
+            </div>
+
+            <!-- Empty State (no user selected) -->
+            <div id="activityEmptyDefault" class="text-center py-5">
+                <i class="bi bi-person-badge text-muted" style="font-size: 3rem;"></i>
+                <p class="text-muted mt-2 mb-0">Select a user above to view their activity history</p>
+            </div>
+
+            <!-- Empty State (no activities found) -->
+            <div id="activityEmptyResult" style="display:none;" class="text-center py-5">
+                <i class="bi bi-clock-history text-muted" style="font-size: 3rem;"></i>
+                <p class="text-muted mt-2 mb-0">No activities found for this user</p>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script>
+(function () {
+    // User data from server
+    const allUsers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(users.Select(u => new { name = (string)u.name, email = (string)u.email, initials = (string)u.initials, avatarColor = (string)u.avatarColor })));
+    const getActivitiesUrl = '@Url.Action("GetUserActivitiesJson", "Home")';
+
+    let currentActivities = [];
+    let selectedUserEmail = '';
+    const searchInput = document.getElementById('userSearchInput');
+    const searchResults = document.getElementById('userSearchResults');
+    const clearBtn = document.getElementById('clearUserSearch');
+    let activeIndex = -1;
+
+    // Search input handler
+    searchInput.addEventListener('input', function () {
+        const query = this.value.trim().toLowerCase();
+        if (query.length === 0) {
+            searchResults.classList.remove('show');
+            searchResults.innerHTML = '';
+            return;
+        }
+        const filtered = allUsers.filter(u =>
+            u.name.toLowerCase().includes(query) ||
+            u.email.toLowerCase().includes(query)
+        ).slice(0, 10);
+
+        if (filtered.length === 0) {
+            searchResults.innerHTML = '<div class="p-3 text-muted small text-center">No users found</div>';
+            searchResults.classList.add('show');
+            return;
+        }
+
+        activeIndex = -1;
+        searchResults.innerHTML = filtered.map((u, i) => `
+            <div class="user-search-item" data-email="${u.email}" data-index="${i}">
+                <div class="user-search-avatar" style="${u.avatarColor}">${u.initials}</div>
+                <div class="user-search-info">
+                    <div class="user-search-name">${escapeHtml(u.name)}</div>
+                    <div class="user-search-email">${escapeHtml(u.email)}</div>
+                </div>
+            </div>
+        `).join('');
+        searchResults.classList.add('show');
+
+        // Click handlers
+        searchResults.querySelectorAll('.user-search-item').forEach(item => {
+            item.addEventListener('click', () => selectUser(item.dataset.email));
+        });
+    });
+
+    // Keyboard navigation
+    searchInput.addEventListener('keydown', function (e) {
+        const items = searchResults.querySelectorAll('.user-search-item');
+        if (!items.length) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, items.length - 1);
+            updateActive(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+            updateActive(items);
+        } else if (e.key === 'Enter' && activeIndex >= 0) {
+            e.preventDefault();
+            items[activeIndex].click();
+        } else if (e.key === 'Escape') {
+            searchResults.classList.remove('show');
+        }
+    });
+
+    function updateActive(items) {
+        items.forEach((item, i) => item.classList.toggle('active', i === activeIndex));
+        if (activeIndex >= 0) items[activeIndex].scrollIntoView({ block: 'nearest' });
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.user-search-wrapper')) {
+            searchResults.classList.remove('show');
+        }
+    });
+
+    // Select user
+    window.selectUser = function (email) {
+        selectedUserEmail = email;
+        searchResults.classList.remove('show');
+        const user = allUsers.find(u => u.email === email);
+        if (user) {
+            searchInput.value = user.name;
+            clearBtn.style.display = '';
+        }
+        loadUserActivities(email);
+    };
+
+    // Clear selection
+    window.clearUserSelection = function () {
+        selectedUserEmail = '';
+        currentActivities = [];
+        searchInput.value = '';
+        clearBtn.style.display = 'none';
+        document.getElementById('selectedUserHeader').style.display = 'none';
+        document.getElementById('activityListContainer').style.display = 'none';
+        document.getElementById('activityEmptyResult').style.display = 'none';
+        document.getElementById('activityEmptyDefault').style.display = '';
+        document.getElementById('exportActivitiesBtn').style.display = 'none';
+        document.getElementById('exportUserActivitiesCsvBtn').style.display = 'none';
+    };
+
+    // Load activities via AJAX
+    function loadUserActivities(email) {
+        document.getElementById('activityEmptyDefault').style.display = 'none';
+        document.getElementById('activityEmptyResult').style.display = 'none';
+        document.getElementById('activityListContainer').style.display = 'none';
+        document.getElementById('activityLoading').style.display = '';
+
+        fetch(`${getActivitiesUrl}?email=${encodeURIComponent(email)}`)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('activityLoading').style.display = 'none';
+                currentActivities = data.activities || [];
+
+                // Show user header
+                const headerEl = document.getElementById('selectedUserHeader');
+                document.getElementById('selectedUserAvatar').style = data.userAvatarColor;
+                document.getElementById('selectedUserAvatar').textContent = data.userInitials || '';
+                document.getElementById('selectedUserName').textContent = data.userName || '';
+                document.getElementById('selectedUserEmail').textContent = data.userEmail || '';
+                document.getElementById('selectedUserCount').textContent = `${data.totalCount || 0} activities`;
+                headerEl.style.display = '';
+
+                if (currentActivities.length === 0) {
+                    document.getElementById('activityEmptyResult').style.display = '';
+                    document.getElementById('exportActivitiesBtn').style.display = 'none';
+                    document.getElementById('exportUserActivitiesCsvBtn').style.display = 'none';
+                    return;
+                }
+
+                document.getElementById('exportActivitiesBtn').style.display = '';
+                document.getElementById('exportUserActivitiesCsvBtn').style.display = '';
+                renderActivities(currentActivities);
+            })
+            .catch(err => {
+                console.error('Failed to load activities:', err);
+                document.getElementById('activityLoading').style.display = 'none';
+                document.getElementById('activityEmptyResult').style.display = '';
+            });
+    }
+
+    // Render activities
+    function renderActivities(activities) {
+        const container = document.getElementById('activityList');
+        container.innerHTML = activities.map(a => {
+            const iconColorClass = getIconColorClass(a.iconColor);
+            return `
+                <div class="audit-activity-item">
+                    <div class="audit-activity-icon ${iconColorClass}">
+                        <i class="bi ${a.iconClass}"></i>
+                    </div>
+                    <div class="audit-activity-content flex-grow-1">
+                        <div class="audit-activity-text">
+                            <strong>${escapeHtml(a.user)}</strong> ${escapeHtml(a.action)} <strong>${escapeHtml(a.target)}</strong>
+                        </div>
+                        <div class="audit-activity-time">${escapeHtml(a.dateFormatted)}</div>
+                    </div>
+                    ${a.source === 'audit' && a.status ? `<span class="badge ${a.status === 'Success' ? 'bg-success' : 'bg-danger'} bg-opacity-10 ${a.status === 'Success' ? 'text-success' : 'text-danger'} border ${a.status === 'Success' ? 'border-success' : 'border-danger'} border-opacity-25 align-self-center" style="font-size:0.7rem;">${escapeHtml(a.status)}</span>` : ''}
+                </div>`;
+        }).join('');
+        document.getElementById('activityListContainer').style.display = '';
+    }
+
+    function getIconColorClass(iconColor) {
+        if (iconColor === 'text-success') return 'success';
+        if (iconColor === 'text-danger') return 'danger';
+        return 'muted';
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    // Export user activities as CSV
+    window.exportUserActivitiesCsv = function () {
+        if (!currentActivities.length) return;
+        let csv = 'Date,User,Action,Target,Source,Status,IP Address\n';
+        currentActivities.forEach(a => {
+            const esc = v => '"' + (v || '').replace(/"/g, '""') + '"';
+            csv += `${esc(a.dateFormatted)},${esc(a.user)},${esc(a.action)},${esc(a.target)},${esc(a.source)},${esc(a.status)},${esc(a.ipAddress)}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `user_activities_${selectedUserEmail}_${new Date().toISOString().slice(0,10)}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
+    // Print with date
+    window.doPrint = function () {
+        document.getElementById('printDate').textContent = new Date().toLocaleString();
+        window.print();
+    };
+})();
+</script>

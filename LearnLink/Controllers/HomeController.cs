@@ -6398,6 +6398,13 @@ namespace LearnLink.Controllers
                 ViewBag.RoleFilter = roleFilter;
                 ViewData["ActivePage"] = "AuditLogs";
 
+                // Load user list for the user activity dropdown
+                var allUsersForDropdown = await _userManager.Users.ToListAsync();
+                var effectiveSchool = GetEffectiveSchoolId();
+                if (effectiveSchool.HasValue)
+                    allUsersForDropdown = allUsersForDropdown.Where(u => u.SchoolId == effectiveSchool.Value).ToList();
+                ViewBag.Users = allUsersForDropdown.OrderBy(u => u.FullName).Select(u => new { name = u.FullName, email = u.Email ?? "", initials = u.Initials, avatarColor = u.AvatarColor }).ToList();
+
                 return View(logs);
             }
             catch (Exception)
@@ -6405,9 +6412,121 @@ namespace LearnLink.Controllers
                 // Fallback if the AuditLogs table doesn't exist yet
                 ViewBag.CurrentPage = 1;
                 ViewBag.TotalPages = 0;
+                ViewBag.Users = new List<object>();
                 ViewData["ActivePage"] = "AuditLogs";
                 return View(new List<LearnLink.Models.AuditLog>());
             }
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [HttpGet]
+        public async Task<IActionResult> GetUserActivitiesJson(string email)
+        {
+            if (string.IsNullOrEmpty(email))
+                return Json(new { activities = Array.Empty<object>() });
+
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null)
+                return Json(new { activities = Array.Empty<object>() });
+
+            if (!IsSameSchool(user))
+                return Json(new { activities = Array.Empty<object>() });
+
+            var rawActivities = await _context.UserActivityLogs
+                .Include(a => a.User)
+                .Where(a => a.UserId == user.Id)
+                .OrderByDescending(a => a.ActivityDate)
+                .Take(50)
+                .ToListAsync();
+
+            var rawAuditLogs = new List<LearnLink.Models.AuditLog>();
+            try
+            {
+                rawAuditLogs = await _context.AuditLogs
+                    .Include(a => a.User)
+                    .Where(a => a.UserId == user.Id)
+                    .OrderByDescending(a => a.Timestamp)
+                    .Take(50)
+                    .ToListAsync();
+            }
+            catch (Exception) { }
+
+            var combinedActivities = rawActivities.Select(a => new {
+                date = a.ActivityDate.ToString("yyyy-MM-dd HH:mm:ss"),
+                dateFormatted = a.ActivityDate.ToString("MMM dd, yyyy hh:mm tt"),
+                user = a.User != null ? a.User.FirstName + " " + a.User.LastName : "Unknown",
+                action = a.ActivityType,
+                target = a.TargetTitle,
+                iconClass = "bi-activity",
+                iconColor = "text-muted",
+                source = "activity",
+                status = "",
+                ipAddress = "",
+                details = a.TargetTitle
+            }).Concat(rawAuditLogs.Select(a => new {
+                date = a.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
+                dateFormatted = a.Timestamp.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt"),
+                user = a.User != null ? a.User.FirstName + " " + a.User.LastName : a.UserEmail ?? "System",
+                action = a.Action,
+                target = a.Details ?? "",
+                iconClass = a.Action == "Login" ? "bi-box-arrow-in-right" : a.Action == "Logout" ? "bi-box-arrow-right" : a.Action.Contains("Password") ? "bi-key" : "bi-shield-check",
+                iconColor = a.Status == "Success" ? "text-success" : "text-danger",
+                source = "audit",
+                status = a.Status,
+                ipAddress = a.IPAddress ?? "",
+                details = a.Details ?? ""
+            }))
+            .OrderByDescending(x => x.date)
+            .Take(50)
+            .ToList();
+
+            return Json(new {
+                activities = combinedActivities,
+                userName = user.FullName,
+                userEmail = user.Email,
+                userInitials = user.Initials,
+                userAvatarColor = user.AvatarColor,
+                totalCount = combinedActivities.Count
+            });
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [HttpGet]
+        public async Task<IActionResult> ExportAuditLogsCsv(string? search, string? actionFilter, string? statusFilter, string? roleFilter)
+        {
+            var schoolId = GetEffectiveSchoolId();
+            var query = _context.AuditLogs.Include(a => a.User).AsQueryable();
+
+            if (schoolId.HasValue)
+                query = query.Where(a => a.SchoolId == schoolId.Value);
+            if (!string.IsNullOrEmpty(search))
+                query = query.Where(a =>
+                    (a.User != null && (a.User.FirstName.Contains(search) || a.User.LastName.Contains(search))) ||
+                    (a.UserEmail != null && a.UserEmail.Contains(search)) ||
+                    (a.Details != null && a.Details.Contains(search)));
+            if (!string.IsNullOrEmpty(actionFilter))
+                query = query.Where(a => a.Action == actionFilter);
+            if (!string.IsNullOrEmpty(statusFilter))
+                query = query.Where(a => a.Status == statusFilter);
+            if (!string.IsNullOrEmpty(roleFilter))
+            {
+                var usersInRole = await _userManager.GetUsersInRoleAsync(roleFilter);
+                var userIdsInRole = usersInRole.Select(u => u.Id).ToList();
+                query = query.Where(a => a.UserId != null && userIdsInRole.Contains(a.UserId));
+            }
+
+            var logs = await query.OrderByDescending(a => a.Timestamp).Take(1000).ToListAsync();
+
+            var sb = new StringBuilder();
+            sb.AppendLine("Timestamp (UTC),User,Email,Action,Status,Details,IP Address,Device");
+            foreach (var log in logs)
+            {
+                var userName = log.User != null ? $"{log.User.FirstName} {log.User.LastName}" : "";
+                var escapeCsv = (string? val) => "\"" + (val ?? "").Replace("\"", "\"\"") + "\"";
+                sb.AppendLine($"{log.Timestamp:yyyy-MM-dd HH:mm:ss},{escapeCsv(userName)},{escapeCsv(log.UserEmail)},{escapeCsv(log.Action)},{escapeCsv(log.Status)},{escapeCsv(log.Details)},{escapeCsv(log.IPAddress)},{escapeCsv(log.UserAgent)}");
+            }
+
+            return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", $"audit_logs_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
         }
 
         // ─────────────────────────────────────────────────────────

@@ -3,7 +3,6 @@
     ViewData["Title"] = "User Details";
     var user = ViewBag.UserDetails as UserViewModel;
     if (user == null) return;
-    var activities = ViewBag.UserActivity as List<ActivityViewModel> ?? new List<ActivityViewModel>();
     var resources = ViewBag.UserResources as List<ResourceViewModel> ?? new List<ResourceViewModel>();
 }
 
@@ -81,8 +80,8 @@
                         <div class="small text-muted text-uppercase fw-medium" style="font-size: 0.7rem;">Resources</div>
                     </div>
                     <div class="col-6 p-3">
-                        <div class="fw-bold fs-5">@activities.Count</div>
-                        <div class="small text-muted text-uppercase fw-medium" style="font-size: 0.7rem;">Activities</div>
+                        <div class="fw-bold fs-5">@resources.Count</div>
+                        <div class="small text-muted text-uppercase fw-medium" style="font-size: 0.7rem;">Contributions</div>
                     </div>
                 </div>
             </div>
@@ -111,90 +110,50 @@
 
     <!-- Main Content -->
     <div class="col-lg-8">
-        <!-- Tabs -->
         <div class="ll-card mb-4">
-            <div class="ll-card-body p-0">
-                <ul class="nav nav-tabs ll-nav-tabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#activity-tab" type="button" role="tab">Recent Activity</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#resources-tab" type="button" role="tab">Contributions</button>
-                    </li>
-                </ul>
+            <div class="ll-card-header d-flex justify-content-between align-items-center">
+                <h5 class="ll-card-title mb-0">Contributions</h5>
+                <a href="@Url.Action("AuditLogs", "Home")" class="ll-btn ll-btn-outline btn-sm">
+                    <i class="bi bi-clock-history me-1"></i> View Activity Logs
+                </a>
             </div>
             <div class="ll-card-body">
-                <div class="tab-content mt-2">
-                    <!-- Activity Tab -->
-                    <div class="tab-pane fade show active" id="activity-tab" role="tabpanel">
-                        @if (activities.Any())
-                        {
-                            <div class="ll-activity-list mt-2">
-                                @foreach (var activity in activities)
+                @if (resources.Any())
+                {
+                    <div class="table-responsive-xl">
+                        <table class="ll-table">
+                            <thead>
+                                <tr>
+                                    <th>Resource</th>
+                                    <th>Subject</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var res in resources)
                                 {
-                                    <div class="ll-activity-item">
-                                        <div class="ll-activity-icon @activity.IconColor.Replace("text-", "")">
-                                            <i class="bi @activity.IconClass"></i>
-                                        </div>
-                                        <div class="ll-activity-content">
-                                            <div class="ll-activity-text">
-                                                <strong>@activity.User</strong> @activity.Action <strong>@activity.Target</strong>
-                                            </div>
-                                            <div class="ll-activity-time text-muted small">@activity.TimeAgo</div>
-                                        </div>
-                                    </div>
+                                    <tr>
+                                        <td>
+                                            <div class="fw-medium">@res.Title</div>
+                                            <small class="text-muted">@res.FileFormat • @res.FileSize</small>
+                                        </td>
+                                        <td>@res.Subject</td>
+                                        <td><span class="ll-badge @(res.Status == "Published" ? "ll-badge-success" : "ll-badge-warning")">@res.Status</span></td>
+                                        <td>@res.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                    </tr>
                                 }
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="text-center py-5">
-                                <i class="bi bi-activity text-muted fs-1 mb-3 d-block"></i>
-                                <p class="text-muted">No recent activity found for this user.</p>
-                            </div>
-                        }
+                            </tbody>
+                        </table>
                     </div>
-
-                    <!-- Resources Tab -->
-                    <div class="tab-pane fade" id="resources-tab" role="tabpanel">
-                        @if (resources.Any())
-                        {
-                            <div class="table-responsive-xl">
-                                <table class="ll-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Resource</th>
-                                            <th>Subject</th>
-                                            <th>Status</th>
-                                            <th>Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var res in resources)
-                                        {
-                                            <tr>
-                                                <td>
-                                                    <div class="fw-medium">@res.Title</div>
-                                                    <small class="text-muted">@res.FileFormat • @res.FileSize</small>
-                                                </td>
-                                                <td>@res.Subject</td>
-                                                <td><span class="ll-badge @(res.Status == "Published" ? "ll-badge-success" : "ll-badge-warning")">@res.Status</span></td>
-                                                <td>@res.CreatedAt.ToString("MMM dd, yyyy")</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="text-center py-5">
-                                <i class="bi bi-archive text-muted fs-1 mb-3 d-block"></i>
-                                <p class="text-muted">This user hasn't uploaded any resources yet.</p>
-                            </div>
-                        }
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-archive text-muted fs-1 mb-3 d-block"></i>
+                        <p class="text-muted">This user hasn't uploaded any resources yet.</p>
                     </div>
-                </div>
+                }
             </div>
         </div>
     </div>
