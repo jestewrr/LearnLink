@@ -1,4 +1,4 @@
-@model IEnumerable<LearnLink.Models.AuditLog>
+@model IEnumerable<LearnLink.Models.AuditEntryViewModel>
 @{
     ViewData["Title"] = "Audit Logs";
     Layout = "~/Views/Shared/_Layout.cshtml";
@@ -205,12 +205,12 @@
                             <tr>
                                 <td class="text-nowrap text-muted small">@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
                                 <td>
-                                    @if (log.User != null)
+                                    @if (!string.IsNullOrWhiteSpace(log.UserName))
                                     {
                                         <div class="d-flex align-items-center">
-                                            <div class="avatar avatar-sm me-2" style="@log.User.AvatarColor">@log.User.Initials</div>
+                                            <div class="avatar avatar-sm me-2" style="@log.UserAvatarColor">@log.UserInitials</div>
                                             <div>
-                                                <div class="fw-medium text-dark">@log.User.FirstName @log.User.LastName</div>
+                                                <div class="fw-medium text-dark">@log.UserName</div>
                                                 <div class="small text-muted">@log.UserEmail</div>
                                             </div>
                                         </div>
@@ -230,7 +230,11 @@
                                     </span>
                                 </td>
                                 <td>
-                                    @if (log.Status == "Success")
+                                    @if (log.SourceType == "activity")
+                                    {
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25"><i class="bi bi-info-circle me-1"></i>Info</span>
+                                    }
+                                    else if (log.Status == "Success")
                                     {
                                         <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25"><i class="bi bi-check-circle me-1"></i>Success</span>
                                     }
@@ -259,10 +263,13 @@
                                     }
                                 </td>
                                 <td class="no-print">
-                                    <div class="d-flex gap-2">
-                                        <button class="btn btn-sm btn-outline-secondary view-log-btn" data-id="@log.Id" data-email="@log.UserEmail"><i class="bi bi-eye"></i> View</button>
-                                        <button class="btn btn-sm btn-outline-danger flag-log-btn" data-id="@log.Id"><i class="bi bi-flag"></i> Flag</button>
-                                    </div>
+                                    @if (log.SourceType == "audit")
+                                    {
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-sm btn-outline-secondary view-log-btn" data-id="@log.Id" data-email="@log.UserEmail"><i class="bi bi-eye"></i> View</button>
+                                            <button class="btn btn-sm btn-outline-danger flag-log-btn" data-id="@log.Id"><i class="bi bi-flag"></i> Flag</button>
+                                        </div>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -408,7 +415,12 @@
         })();
 
     // User data from server (may be empty if view couldn't populate users)
-    let allUsers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(users.Select(u => new { name = (string)u.name, email = (string)u.email, initials = (string)u.initials, avatarColor = (string)u.avatarColor })));
+    let allUsers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(users.Select(u => new {
+        name = string.IsNullOrWhiteSpace((string?)u.name) ? (string?)u.email ?? "Unknown" : (string?)u.name,
+        email = (string?)u.email ?? "",
+        initials = (string?)u.initials ?? "?",
+        avatarColor = (string?)u.avatarColor ?? ""
+    })));
     const getActivitiesUrl = '@Url.Action("GetUserActivitiesJson", "Home")';
     const getAllUsersUrl = '@Url.Action("GetAllUsersJson", "Home")';
     const antiForgeryInput = document.querySelector('#antiforgeryTokens input[name="__RequestVerificationToken"]');
@@ -445,10 +457,11 @@
             searchResults.innerHTML = '';
             return;
         }
-        const filtered = allUsers.filter(u =>
-            u.name.toLowerCase().includes(query) ||
-            u.email.toLowerCase().includes(query)
-        ).slice(0, 10);
+        const filtered = allUsers.filter(u => {
+            const name = (u.name || u.email || '').toLowerCase();
+            const email = (u.email || '').toLowerCase();
+            return name.includes(query) || email.includes(query);
+        }).slice(0, 10);
 
         if (filtered.length === 0) {
             searchResults.innerHTML = '<div class="p-3 text-muted small text-center">No users found</div>';

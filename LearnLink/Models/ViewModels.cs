@@ -155,6 +155,23 @@ namespace LearnLink.Models
         public string IconColor { get; set; } = "text-primary";
     }
 
+    public class AuditEntryViewModel
+    {
+        public int Id { get; set; }
+        public string SourceType { get; set; } = "audit";
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public string UserName { get; set; } = "";
+        public string UserEmail { get; set; } = "";
+        public string UserInitials { get; set; } = "";
+        public string UserAvatarColor { get; set; } = "";
+        public string Action { get; set; } = "";
+        public string Status { get; set; } = "";
+        public string Details { get; set; } = "";
+        public string IPAddress { get; set; } = "";
+        public string UserAgent { get; set; } = "";
+        public string SourceLabel => SourceType == "activity" ? "Profile Activity" : "Audit Log";
+    }
+
     public class ReadingHistoryViewModel
     {
         public int ResourceId { get; set; }

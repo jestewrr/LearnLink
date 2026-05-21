@@ -6344,51 +6344,86 @@ namespace LearnLink.Controllers
         public async Task<IActionResult> AuditLogs(string? search, string? actionFilter, string? statusFilter, string? roleFilter, int page = 1, int pageSize = 15)
         {
             var schoolId = GetEffectiveSchoolId();
-            
-            var query = _context.AuditLogs
-                .Include(a => a.User)
-                .AsQueryable();
-
-            if (schoolId.HasValue)
-            {
-                query = query.Where(a => a.SchoolId == schoolId.Value);
-            }
-
-            if (!string.IsNullOrEmpty(search))
-            {
-                query = query.Where(a => 
-                    (a.User != null && (a.User.FirstName.Contains(search) || a.User.LastName.Contains(search))) ||
-                    (a.UserEmail != null && a.UserEmail.Contains(search)) ||
-                    (a.Details != null && a.Details.Contains(search)));
-            }
-
-            if (!string.IsNullOrEmpty(actionFilter))
-            {
-                query = query.Where(a => a.Action == actionFilter);
-            }
-
-            if (!string.IsNullOrEmpty(statusFilter))
-            {
-                query = query.Where(a => a.Status == statusFilter);
-            }
-            
-            if (!string.IsNullOrEmpty(roleFilter))
-            {
-                var usersInRole = await _userManager.GetUsersInRoleAsync(roleFilter);
-                var userIdsInRole = usersInRole.Select(u => u.Id).ToList();
-                query = query.Where(a => a.UserId != null && userIdsInRole.Contains(a.UserId));
-            }
-
             try
             {
-                var totalItems = await query.CountAsync();
-                var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+                var activityQuery = _context.UserActivityLogs
+                    .Include(a => a.User)
+                    .AsQueryable();
 
-                var logs = await query
+                var auditQuery = _context.AuditLogs
+                    .Include(a => a.User)
+                    .AsQueryable();
+
+                if (schoolId.HasValue)
+                {
+                    activityQuery = activityQuery.Where(a => a.User != null && a.User.SchoolId == schoolId.Value);
+                    auditQuery = auditQuery.Where(a => a.SchoolId == schoolId.Value);
+                }
+
+                var rawActivities = await activityQuery.ToListAsync();
+                var rawAuditLogs = await auditQuery.ToListAsync();
+
+                var combinedEntries = rawActivities.Select(a => new LearnLink.Models.AuditEntryViewModel
+                {
+                    Id = a.ActivityId,
+                    SourceType = "activity",
+                    Timestamp = a.ActivityDate,
+                    UserName = a.User != null ? a.User.FullName : "Unknown",
+                    UserEmail = a.User?.Email ?? "",
+                    UserInitials = a.User?.Initials ?? "?",
+                    UserAvatarColor = a.User?.AvatarColor ?? "",
+                    Action = a.ActivityType,
+                    Status = "Info",
+                    Details = a.TargetTitle,
+                    IPAddress = "",
+                    UserAgent = ""
+                }).Concat(rawAuditLogs.Select(a => new LearnLink.Models.AuditEntryViewModel
+                {
+                    Id = a.Id,
+                    SourceType = "audit",
+                    Timestamp = a.Timestamp,
+                    UserName = a.User != null ? a.User.FullName : a.UserEmail ?? "System",
+                    UserEmail = a.UserEmail ?? "",
+                    UserInitials = a.User?.Initials ?? "?",
+                    UserAvatarColor = a.User?.AvatarColor ?? "",
+                    Action = a.Action,
+                    Status = a.Status,
+                    Details = a.Details ?? "",
+                    IPAddress = a.IPAddress ?? "",
+                    UserAgent = a.UserAgent ?? ""
+                })).AsQueryable();
+
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    combinedEntries = combinedEntries.Where(a =>
+                        a.UserName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                        a.UserEmail.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                        a.Action.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                        a.Details.Contains(search, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (!string.IsNullOrWhiteSpace(actionFilter))
+                    combinedEntries = combinedEntries.Where(a => a.Action == actionFilter);
+
+                if (!string.IsNullOrWhiteSpace(statusFilter))
+                    combinedEntries = combinedEntries.Where(a => a.SourceType == "activity" ? statusFilter == "Success" : a.Status == statusFilter);
+
+                if (!string.IsNullOrWhiteSpace(roleFilter))
+                {
+                    var usersInRole = await _userManager.GetUsersInRoleAsync(roleFilter);
+                    var userIdsInRole = usersInRole.Select(u => u.Id).ToHashSet();
+                    combinedEntries = combinedEntries.Where(a =>
+                        rawActivities.Any(x => x.ActivityId == a.Id && x.UserId != null && userIdsInRole.Contains(x.UserId)) ||
+                        rawAuditLogs.Any(x => x.Id == a.Id && x.UserId != null && userIdsInRole.Contains(x.UserId)));
+                }
+
+                var ordered = combinedEntries
                     .OrderByDescending(a => a.Timestamp)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
+                    .ToList();
+
+                var totalItems = ordered.Count;
+                var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+                var logs = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
                 ViewBag.CurrentPage = page;
                 ViewBag.TotalPages = totalPages;
@@ -6403,7 +6438,16 @@ namespace LearnLink.Controllers
                 var effectiveSchool = GetEffectiveSchoolId();
                 if (effectiveSchool.HasValue)
                     allUsersForDropdown = allUsersForDropdown.Where(u => u.SchoolId == effectiveSchool.Value).ToList();
-                ViewBag.Users = allUsersForDropdown.OrderBy(u => u.FullName).Select(u => new { name = u.FullName, email = u.Email ?? "", initials = u.Initials, avatarColor = u.AvatarColor }).ToList();
+                ViewBag.Users = allUsersForDropdown
+                    .OrderBy(u => u.FullName)
+                    .Select(u => new
+                    {
+                        name = string.IsNullOrWhiteSpace(u.FullName) ? (u.Email ?? "Unknown") : u.FullName,
+                        email = u.Email ?? "",
+                        initials = u.Initials,
+                        avatarColor = u.AvatarColor
+                    })
+                    .ToList();
 
                 return View(logs);
             }
@@ -6414,7 +6458,7 @@ namespace LearnLink.Controllers
                 ViewBag.TotalPages = 0;
                 ViewBag.Users = new List<object>();
                 ViewData["ActivePage"] = "AuditLogs";
-                return View(new List<LearnLink.Models.AuditLog>());
+                return View(new List<LearnLink.Models.AuditEntryViewModel>());
             }
         }
 
@@ -6501,7 +6545,13 @@ namespace LearnLink.Controllers
 
             var list = await usersQuery
                 .OrderBy(u => u.FullName)
-                .Select(u => new { name = u.FullName, email = u.Email ?? "", initials = u.Initials, avatarColor = u.AvatarColor })
+                .Select(u => new
+                {
+                    name = string.IsNullOrWhiteSpace(u.FullName) ? (u.Email ?? "Unknown") : u.FullName,
+                    email = u.Email ?? "",
+                    initials = u.Initials,
+                    avatarColor = u.AvatarColor
+                })
                 .ToListAsync();
 
             return Json(new { users = list });
