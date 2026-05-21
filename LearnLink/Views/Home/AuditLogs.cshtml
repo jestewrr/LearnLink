@@ -93,6 +93,8 @@
     <p>Generated on <span id="printDate"></span></p>
 </div>
 
+<div id="antiforgeryTokens" style="display:none;">@Html.AntiForgeryToken()</div>
+
 <div class="ll-page-header">
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center">
@@ -409,6 +411,8 @@
     let allUsers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(users.Select(u => new { name = (string)u.name, email = (string)u.email, initials = (string)u.initials, avatarColor = (string)u.avatarColor })));
     const getActivitiesUrl = '@Url.Action("GetUserActivitiesJson", "Home")';
     const getAllUsersUrl = '@Url.Action("GetAllUsersJson", "Home")';
+    const antiForgeryInput = document.querySelector('#antiforgeryTokens input[name="__RequestVerificationToken"]');
+    const antiForgeryToken = antiForgeryInput ? antiForgeryInput.value : null;
 
     // If server-side user list is empty (e.g., large user set or filter), fetch via AJAX
     (function fetchUsersIfEmpty() {
@@ -632,7 +636,7 @@
                             if (!confirm('Send an empty notification?')) return;
                         }
                         const payload = { userIdOrEmail: data.userEmail || data.userId, message };
-                        const r = await fetch(adminPushUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        const r = await fetch(adminPushUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': antiForgeryToken }, body: JSON.stringify(payload) });
                         if (r.ok) {
                             alert('Notification sent');
                             bsModal.hide();
@@ -653,7 +657,7 @@
                 if (!confirm('Flag this log for review?')) return;
                 const id = this.dataset.id;
                 try {
-                    const r = await fetch(flagAuditLogUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Number(id)) });
+                    const r = await fetch(flagAuditLogUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': antiForgeryToken }, body: JSON.stringify(Number(id)) });
                     if (r.ok) { alert('Log flagged'); } else { alert('Failed to flag log'); }
                 } catch (e) { console.error(e); alert('Failed to flag log'); }
             });

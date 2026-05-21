@@ -6536,6 +6536,7 @@ namespace LearnLink.Controllers
 
         [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> AdminPushToUser([FromBody] PushDto dto)
         {
             if (dto == null || string.IsNullOrWhiteSpace(dto.userIdOrEmail) || string.IsNullOrWhiteSpace(dto.message))
@@ -6581,6 +6582,7 @@ namespace LearnLink.Controllers
 
         [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> FlagAuditLog([FromBody] int id)
         {
             var original = await _context.AuditLogs.FindAsync(id);
