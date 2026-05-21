@@ -6492,6 +6492,118 @@ namespace LearnLink.Controllers
 
         [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpGet]
+        public async Task<IActionResult> GetAllUsersJson()
+        {
+            var effectiveSchool = GetEffectiveSchoolId();
+            var usersQuery = _userManager.Users.AsQueryable();
+            if (effectiveSchool.HasValue)
+                usersQuery = usersQuery.Where(u => u.SchoolId == effectiveSchool.Value);
+
+            var list = await usersQuery
+                .OrderBy(u => u.FullName)
+                .Select(u => new { name = u.FullName, email = u.Email ?? "", initials = u.Initials, avatarColor = u.AvatarColor })
+                .ToListAsync();
+
+            return Json(new { users = list });
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [HttpGet]
+        public async Task<IActionResult> GetAuditLogDetails(int id)
+        {
+            var log = await _context.AuditLogs
+                .Include(a => a.User)
+                .FirstOrDefaultAsync(a => a.Id == id);
+            if (log == null) return NotFound();
+
+            return Json(new
+            {
+                id = log.Id,
+                userId = log.UserId,
+                userName = log.User != null ? (log.User.FullName ?? "") : "",
+                userEmail = log.UserEmail ?? "",
+                action = log.Action,
+                status = log.Status,
+                details = log.Details ?? "",
+                ipAddress = log.IPAddress ?? "",
+                userAgent = log.UserAgent ?? "",
+                timestamp = log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                timestampUtc = log.Timestamp.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ssZ")
+            });
+        }
+
+        public class PushDto { public string? userIdOrEmail { get; set; } public string? message { get; set; } }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [HttpPost]
+        public async Task<IActionResult> AdminPushToUser([FromBody] PushDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.userIdOrEmail) || string.IsNullOrWhiteSpace(dto.message))
+                return BadRequest(new { error = "Missing user or message" });
+
+            ApplicationUser? target = await _userManager.FindByEmailAsync(dto.userIdOrEmail);
+            if (target == null)
+                target = await _userManager.FindByIdAsync(dto.userIdOrEmail);
+            if (target == null)
+                return NotFound(new { error = "User not found" });
+
+            var note = new Notification
+            {
+                UserId = target.Id,
+                Title = "Message from Admin",
+                Message = dto.message,
+                Type = "System",
+                Icon = "bi-bell",
+                IconBg = "#dbeafe",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Notifications.Add(note);
+            await _context.SaveChangesAsync();
+
+            // Log the admin action
+            var adminUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            _context.AuditLogs.Add(new AuditLog
+            {
+                UserId = adminUserId,
+                UserEmail = User.Identity?.Name,
+                Action = "AdminPush",
+                Status = "Success",
+                Details = $"Pushed message to {target.Email}",
+                IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = Request.Headers["User-Agent"].ToString(),
+                Timestamp = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync();
+
+            return Json(new { ok = true });
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [HttpPost]
+        public async Task<IActionResult> FlagAuditLog([FromBody] int id)
+        {
+            var original = await _context.AuditLogs.FindAsync(id);
+            if (original == null) return NotFound(new { error = "Log not found" });
+
+            var adminUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            _context.AuditLogs.Add(new AuditLog
+            {
+                UserId = adminUserId,
+                UserEmail = User.Identity?.Name,
+                Action = "Flag",
+                Status = "Flagged",
+                Details = $"Flagged audit log #{id} (original action: {original.Action})",
+                IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = Request.Headers["User-Agent"].ToString(),
+                Timestamp = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync();
+            return Json(new { ok = true });
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [HttpGet]
         public async Task<IActionResult> ExportAuditLogsCsv(string? search, string? actionFilter, string? statusFilter, string? roleFilter)
         {
             var schoolId = GetEffectiveSchoolId();

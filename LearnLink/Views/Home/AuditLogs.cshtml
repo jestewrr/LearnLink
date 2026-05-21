@@ -182,14 +182,16 @@
                         <th>Details</th>
                         <th>IP Address</th>
                         <th>Device</th>
+                        <th style="width:120px;">Local Time</th>
+                        <th style="width:100px;">Time Ago</th>
+                        <th style="width:140px;" class="no-print">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (!Model.Any())
                     {
                         <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">
-                                <i class="bi bi-shield-x display-4 d-block mb-3"></i>
+                            <td colspan="10" class="text-center py-4 text-muted small">
                                 No audit logs found matching your criteria.
                             </td>
                         </tr>
@@ -242,9 +244,23 @@
                                 </td>
                                 <td class="small font-monospace text-muted">@log.IPAddress</td>
                                 <td>
-                                    <span class="small text-muted" style="max-width: 150px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@log.UserAgent">
-                                        @(log.UserAgent?.Length > 30 ? log.UserAgent.Substring(0, 30) + "..." : log.UserAgent)
+                                    <span class="small text-muted" style="max-width: 200px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@log.UserAgent">
+                                        @(log.UserAgent?.Length > 60 ? log.UserAgent.Substring(0, 60) + "..." : log.UserAgent)
                                     </span>
+                                </td>
+                                <td class="text-nowrap small text-muted">@log.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td class="small text-muted">
+                                    @{
+                                        var span = DateTime.UtcNow - log.Timestamp.ToUniversalTime();
+                                        if (span.TotalMinutes < 60) { <text>@(((int)span.TotalMinutes) + "m ago")</text>; }
+                                        else { <text>@(((int)span.TotalHours) + "h ago")</text>; }
+                                    }
+                                </td>
+                                <td class="no-print">
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-sm btn-outline-secondary view-log-btn" data-id="@log.Id" data-email="@log.UserEmail"><i class="bi bi-eye"></i> View</button>
+                                        <button class="btn btn-sm btn-outline-danger flag-log-btn" data-id="@log.Id"><i class="bi bi-flag"></i> Flag</button>
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -346,9 +362,69 @@
 
 <script>
 (function () {
-    // User data from server
-    const allUsers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(users.Select(u => new { name = (string)u.name, email = (string)u.email, initials = (string)u.initials, avatarColor = (string)u.avatarColor })));
+        const getAuditLogDetailsUrl = '@Url.Action("GetAuditLogDetails", "Home")';
+        const adminPushUrl = '@Url.Action("AdminPushToUser", "Home")';
+        const flagAuditLogUrl = '@Url.Action("FlagAuditLog", "Home")';
+
+        // Modal markup helper: insert modal into DOM
+        (function addAuditModal() {
+                const modalHtml = `
+                <div class="modal fade" id="auditLogModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Audit Log Details</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div id="auditModalBody">
+                                    <dl class="row">
+                                        <dt class="col-sm-3">User</dt><dd class="col-sm-9" id="modalUser"></dd>
+                                        <dt class="col-sm-3">Email</dt><dd class="col-sm-9" id="modalEmail"></dd>
+                                        <dt class="col-sm-3">Action</dt><dd class="col-sm-9" id="modalAction"></dd>
+                                        <dt class="col-sm-3">Status</dt><dd class="col-sm-9" id="modalStatus"></dd>
+                                        <dt class="col-sm-3">Time (UTC)</dt><dd class="col-sm-9" id="modalTime"></dd>
+                                        <dt class="col-sm-3">IP</dt><dd class="col-sm-9" id="modalIP"></dd>
+                                        <dt class="col-sm-3">Device / UA</dt><dd class="col-sm-9" id="modalUA"></dd>
+                                        <dt class="col-sm-3">Details</dt><dd class="col-sm-9" id="modalDetails"></dd>
+                                    </dl>
+                                    <hr />
+                                    <div class="mb-3">
+                                        <label for="adminPushMessage" class="form-label">Message to user (optional)</label>
+                                        <textarea id="adminPushMessage" class="form-control" rows="3" placeholder="Write a short message to the user (this will create a notification)"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="button" id="sendPushBtn" class="btn btn-primary">Send Notification</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+        })();
+
+    // User data from server (may be empty if view couldn't populate users)
+    let allUsers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(users.Select(u => new { name = (string)u.name, email = (string)u.email, initials = (string)u.initials, avatarColor = (string)u.avatarColor })));
     const getActivitiesUrl = '@Url.Action("GetUserActivitiesJson", "Home")';
+    const getAllUsersUrl = '@Url.Action("GetAllUsersJson", "Home")';
+
+    // If server-side user list is empty (e.g., large user set or filter), fetch via AJAX
+    (function fetchUsersIfEmpty() {
+        try {
+            if (!allUsers || allUsers.length === 0) {
+                fetch(getAllUsersUrl)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data && data.users) {
+                            allUsers = data.users;
+                        }
+                    })
+                    .catch(() => { /* ignore fetch error - search will show no users */ });
+            }
+        } catch (e) { /* ignore */ }
+    })();
 
     let currentActivities = [];
     let selectedUserEmail = '';
@@ -526,6 +602,66 @@
         d.textContent = str;
         return d.innerHTML;
     }
+
+    // Attach handlers for the new View / Flag buttons on each audit row
+    function attachAuditRowHandlers() {
+        document.querySelectorAll('.view-log-btn').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                const id = this.dataset.id;
+                try {
+                    const res = await fetch(`${getAuditLogDetailsUrl}?id=${encodeURIComponent(id)}`);
+                    if (!res.ok) { alert('Failed to load log details'); return; }
+                    const data = await res.json();
+                    document.getElementById('modalUser').textContent = data.userName || '(unknown)';
+                    document.getElementById('modalEmail').textContent = data.userEmail || '';
+                    document.getElementById('modalAction').textContent = data.action || '';
+                    document.getElementById('modalStatus').textContent = data.status || '';
+                    document.getElementById('modalTime').textContent = data.timestamp || '';
+                    document.getElementById('modalIP').textContent = data.ipAddress || '';
+                    document.getElementById('modalUA').textContent = data.userAgent || '';
+                    document.getElementById('modalDetails').textContent = data.details || '';
+                    document.getElementById('adminPushMessage').value = '';
+
+                    const modalEl = document.getElementById('auditLogModal');
+                    const bsModal = new bootstrap.Modal(modalEl);
+                    bsModal.show();
+
+                    document.getElementById('sendPushBtn').onclick = async function () {
+                        const message = document.getElementById('adminPushMessage').value.trim();
+                        if (!message) {
+                            if (!confirm('Send an empty notification?')) return;
+                        }
+                        const payload = { userIdOrEmail: data.userEmail || data.userId, message };
+                        const r = await fetch(adminPushUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        if (r.ok) {
+                            alert('Notification sent');
+                            bsModal.hide();
+                        } else {
+                            alert('Failed to send notification');
+                        }
+                    };
+
+                } catch (e) {
+                    console.error(e);
+                    alert('Unable to load log details');
+                }
+            });
+        });
+
+        document.querySelectorAll('.flag-log-btn').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                if (!confirm('Flag this log for review?')) return;
+                const id = this.dataset.id;
+                try {
+                    const r = await fetch(flagAuditLogUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Number(id)) });
+                    if (r.ok) { alert('Log flagged'); } else { alert('Failed to flag log'); }
+                } catch (e) { console.error(e); alert('Failed to flag log'); }
+            });
+        });
+    }
+
+    // Run once to attach handlers for rows present on initial render
+    attachAuditRowHandlers();
 
     // Export user activities as CSV
     window.exportUserActivitiesCsv = function () {
