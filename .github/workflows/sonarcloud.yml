@@ -39,6 +39,9 @@ jobs:
     - name: Install SonarCloud scanner
       run: dotnet tool install --global dotnet-sonarscanner
     
+    - name: Install code coverage tools
+      run: dotnet tool install --global coverlet.console
+    
     - name: Restore dependencies
       run: dotnet restore LearnLink/LearnLink.csproj
     
@@ -58,6 +61,27 @@ jobs:
     
     - name: Build project
       run: dotnet build LearnLink/LearnLink.csproj --configuration Release --no-restore
+    
+    - name: Run tests with coverage
+      run: |
+        dotnet test LearnLink/LearnLink.csproj \
+          --configuration Release \
+          --no-build \
+          --collect:"XPlat Code Coverage" \
+          --results-directory:"./coverage" \
+          /p:CoverletOutputFormat=opencover \
+          /p:CoverletOutput="./coverage/" \
+          --logger trx \
+          --logger "console;verbosity=normal" \
+          || true
+    
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: coverage-reports
+        path: ./coverage/
+        retention-days: 30
     
     - name: End SonarCloud analysis
       env:

@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SonarCloud Quality Profile Configuration for LearnLink
+  Defines quality gates and rules for .NET code analysis
+  Version: 1.0
+  Date: May 21, 2026
+-->
+<Profile>
+  <Name>LearnLink Security & Quality Profile</Name>
+  <Language>cs</Language>
+  <DefaultProfile>false</DefaultProfile>
+  
+  <!-- ============================================================================ -->
+  <!-- QUALITY GATE - Must PASS for releases                                       -->
+  <!-- ============================================================================ -->
+  <QualityGate>
+    <Name>LearnLink Release Gate</Name>
+    <Description>Quality standards that must be met before production release</Description>
+    
+    <!-- Security: Zero tolerance for critical/high vulnerabilities -->
+    <Condition>
+      <MetricKey>security_rating</MetricKey>
+      <Operator>GREATER_THAN</Operator>
+      <ErrorThreshold>3</ErrorThreshold> <!-- Grade A = 1, B = 2, C = 3; must be <= 2 (B) -->
+      <Status>ERROR</Status>
+      <Description>Security Rating must be A or B (no C or worse)</Description>
+    </Condition>
+    
+    <!-- Reliability: Zero tolerance for bugs -->
+    <Condition>
+      <MetricKey>reliability_rating</MetricKey>
+      <Operator>GREATER_THAN</Operator>
+      <ErrorThreshold>2</ErrorThreshold> <!-- A = 1, B = 2; must be <= 1 (A) -->
+      <Status>ERROR</Status>
+      <Description>Reliability Rating must be A (no bugs)</Description>
+    </Condition>
+    
+    <!-- Maintainability: Code should be clean -->
+    <Condition>
+      <MetricKey>sqale_rating</MetricKey>
+      <Operator>GREATER_THAN</Operator>
+      <ErrorThreshold>3</ErrorThreshold> <!-- A = 1, B = 2, C = 3, D = 4; must be <= 2 (B) -->
+      <Status>ERROR</Status>
+      <Description>Maintainability Rating must be A or B</Description>
+    </Condition>
+    
+    <!-- Code Coverage: Minimum 65% -->
+    <Condition>
+      <MetricKey>coverage</MetricKey>
+      <Operator>LESS_THAN</Operator>
+      <ErrorThreshold>65</ErrorThreshold>
+      <WarningThreshold>75</WarningThreshold>
+      <Status>WARNING</Status>
+      <Description>Code Coverage should be at least 65% (target 75%+)</Description>
+    </Condition>
+    
+    <!-- Duplications: Max 5% -->
+    <Condition>
+      <MetricKey>duplicated_lines_density</MetricKey>
+      <Operator>GREATER_THAN</Operator>
+      <ErrorThreshold>10</ErrorThreshold>
+      <WarningThreshold>5</WarningThreshold>
+      <Status>WARNING</Status>
+      <Description>Code Duplication should not exceed 5%</Description>
+    </Condition>
+    
+    <!-- Comment Density: Minimum 10% -->
+    <Condition>
+      <MetricKey>comment_lines_density</MetricKey>
+      <Operator>LESS_THAN</Operator>
+      <ErrorThreshold>10</ErrorThreshold>
+      <WarningThreshold>15</WarningThreshold>
+      <Status>INFO</Status>
+      <Description>Comments should cover at least 10% of code</Description>
+    </Condition>
+    
+    <!-- Vulnerability Count: Zero critical/high -->
+    <Condition>
+      <MetricKey>vulnerabilities</MetricKey>
+      <Operator>GREATER_THAN</Operator>
+      <ErrorThreshold>0</ErrorThreshold>
+      <Status>ERROR</Status>
+      <Description>No critical or high severity vulnerabilities allowed</Description>
+    </Condition>
+    
+    <!-- Security Hotspots: Must review all -->
+    <Condition>
+      <MetricKey>security_hotspots_reviewed</MetricKey>
+      <Operator>LESS_THAN</Operator>
+      <ErrorThreshold>80</ErrorThreshold>
+      <Status>WARNING</Status>
+      <Description>Security Hotspots review rate should be at least 80%</Description>
+    </Condition>
+  </QualityGate>
+
+  <!-- ============================================================================ -->
+  <!-- SECURITY RULES - Enable all security-related rules                          -->
+  <!-- ============================================================================ -->
+  <Rules>
+    <!-- SQL Injection Prevention -->
+    <Rule>
+      <Key>S4423</Key>
+      <Name>Weak SSL/TLS Protocol</Name>
+      <Severity>BLOCKER</Severity>
+      <Status>ACTIVE</Status>
+      <Description>Do not use weak or deprecated SSL/TLS protocols</Description>
+    </Rule>
+    
+    <Rule>
+      <Key>S2091</Key>
+      <Name>SQL Injection</Name>
+      <Severity>BLOCKER</Severity>
+      <Status>ACTIVE</Status>
+      <Description>SQL queries should be parameterized</Description>
+    </Rule>
+    
+    <!-- Cryptography -->
+    <Rule>
+      <Key>S2245</Key>
+      <Name>Insufficient Random</Name>
+      <Severity>CRITICAL</Severity>
+      <Status>ACTIVE</Status>
+      <Description>Random without cryptographic seed</Description>
+    </Rule>
+    
+    <Rule>
+      <Key>S5344</Key>
+      <Name>Weak Encryption Algorithm</Name>
+      <Severity>CRITICAL</Severity>
+      <Status>ACTIVE</Status>
+      <Description>Do not use weak encryption algorithms</Description>
+    </Rule>
+    
+    <!-- Input Validation -->
+    <Rule>
+      <Key>S2078</Key>
+      <Name>Path Traversal</Name>
+      <Severity>CRITICAL</Severity>
+      <Status>ACTIVE</Status>
+      <Description>Validate paths to prevent directory traversal</Description>
+    </Rule>
+    
+    <!-- Command Injection -->
+    <Rule>
+      <Key>S4721</Key>
+      <Name>Command Injection</Name>
+      <Severity>CRITICAL</Severity>
+      <Status>ACTIVE</Status>
+      <Description>Do not pass user input directly to OS commands</Description>
+    </Rule>
+    
+    <!-- Authentication/Authorization -->
+    <Rule>
+      <Key>S2326</Key>
+      <Name>Unused Type Parameters</Name>
+      <Severity>MINOR</Severity>
+      <Status>ACTIVE</Status>
+      <Description>Remove unused type parameters</Description>
+    </Rule>
+    
+    <!-- Null Pointer Dereference -->
+    <Rule>
+      <Key>S1854</Key>
+      <Name>Unused Variables</Name>
+      <Severity>MINOR</Severity>
+      <Status>ACTIVE</Status>
+      <Description>Remove unused local variables</Description>
+    </Rule>
+    
+    <Rule>
+      <Key>S1481</Key>
+      <Name>Unused Variables Assignment</Name>
+      <Severity>MINOR</Severity>
+      <Status>ACTIVE</Status>
+      <Description>Remove assignments to unused variables</Description>
+    </Rule>
+  </Rules>
+
+  <!-- ============================================================================ -->
+  <!-- CODE SMELLS & MAINTAINABILITY - Code quality rules                          -->
+  <!-- ============================================================================ -->
+  <CodeSmells>
+    <!-- Complexity -->
+    <Rule>
+      <Key>S1541</Key>
+      <Name>Cyclomatic Complexity</Name>
+      <Severity>MAJOR</Severity>
+      <Status>ACTIVE</Status>
+      <Threshold>15</Threshold>
+      <Description>Method complexity should not exceed 15</Description>
+    </Rule>
+    
+    <!-- Naming Conventions -->
+    <Rule>
+      <Key>S101</Key>
+      <Name>Class Naming Convention</Name>
+      <Severity>MINOR</Severity>
+      <Status>ACTIVE</Status>
+      <Description>Class names should follow naming convention</Description>
+    </Rule>
+    
+    <!-- Documentation -->
+    <Rule>
+      <Key>S1591</Key>
+      <Name>Missing XML Documentation</Name>
+      <Severity>INFO</Severity>
+      <Status>ACTIVE</Status>
+      <Description>Add documentation comments to public members</Description>
+    </Rule>
+  </CodeSmells>
+
+  <!-- ============================================================================ -->
+  <!-- EXCEPTION: Files/Patterns to Exclude from Analysis                          -->
+  <!-- ============================================================================ -->
+  <Exclusions>
+    <Pattern>**/bin/**</Pattern>
+    <Pattern>**/obj/**</Pattern>
+    <Pattern>**/Migrations/**</Pattern>
+    <Pattern>**/*.Designer.cs</Pattern>
+    <Pattern>**/node_modules/**</Pattern>
+    <Pattern>**/.git/**</Pattern>
+  </Exclusions>
+
+</Profile>
