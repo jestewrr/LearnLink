@@ -1045,7 +1045,11 @@ namespace LearnLink.Controllers
                 return await FinishPostAuthLoginAsync(user.Id, rememberMe);
             }
 
-            if (result.IsLockedOut)
+            var isLockedOutNow = result.IsLockedOut || await _userManager.IsLockedOutAsync(user);
+            var failedAttempts = (await _userManager.FindByIdAsync(user.Id))?.AccessFailedCount ?? 0;
+            var maxFailedAttempts = _userManager.Options.Lockout.MaxFailedAccessAttempts;
+
+            if (isLockedOutNow || failedAttempts >= maxFailedAttempts)
             {
                 var lockedOutUser = await _userManager.FindByIdAsync(user.Id);
                 var lockoutEnd = lockedOutUser?.LockoutEnd;
@@ -1055,10 +1059,11 @@ namespace LearnLink.Controllers
 
                 ViewBag.Error = $"Too many failed login attempts. Please wait {remainingMinutes} minute(s) before trying again.";
                 ViewBag.ShowForgotPasswordModal = true;
-                ViewBag.FailedAttempts = 7;
+                ViewBag.FailedAttempts = maxFailedAttempts;
                 ViewBag.AttemptsRemaining = 0;
                 
                 await LogAuditAsync("Lockout", "Failure", "Account locked due to multiple failed login attempts", user.Id, email, user.SchoolId);
+                await LogActivity(user.Id, "Lockout", "Account locked due to failed login attempts");
                 
                 // Notify admins (SuperAdmin and Manager) about the locked account
                 try
@@ -1094,8 +1099,6 @@ namespace LearnLink.Controllers
                 return View();
             }
 
-            var failedUser = await _userManager.FindByIdAsync(user.Id);
-            var failedAttempts = failedUser?.AccessFailedCount ?? 0;
             if (failedAttempts >= 3)
             {
                 ViewBag.ShowForgotPasswordModal = true;
@@ -1105,6 +1108,7 @@ namespace LearnLink.Controllers
 
             ViewBag.Error = "Invalid email or password.";
             await LogAuditAsync("Login", "Failure", "Invalid email or password", user?.Id, email, user?.SchoolId);
+            await LogActivity(user.Id, "Login Failure", "Invalid email or password");
             return View();
         }
 
@@ -2030,6 +2034,8 @@ namespace LearnLink.Controllers
                     "approve" => "approved",
                     "discussion" => "started discussion",
                     "login" => "logged in",
+                    "login failure" => "had a failed login attempt",
+                    "lockout" => "was locked out",
                     "register" => "registered",
                     _ => a.ActivityType
                 },
@@ -2043,6 +2049,8 @@ namespace LearnLink.Controllers
                     "approve" => "bi-check-circle",
                     "discussion" => "bi-chat-square-text",
                     "login" => "bi-box-arrow-in-right",
+                    "login failure" => "bi-x-circle",
+                    "lockout" => "bi-shield-lock",
                     _ => "bi-activity"
                 },
                 IconColor = a.ActivityType.ToLower() switch
@@ -2052,6 +2060,8 @@ namespace LearnLink.Controllers
                     "download" => "text-info",
                     "approve" => "text-warning",
                     "discussion" => "text-danger",
+                    "login failure" => "text-danger",
+                    "lockout" => "text-danger",
                     _ => "text-muted"
                 }
             }).ToList();
@@ -2607,6 +2617,8 @@ namespace LearnLink.Controllers
                     "upload" => "uploaded",
                     "comment" => "commented on",
                     "download" => "downloaded",
+                    "login failure" => "failed login",
+                    "lockout" => "locked out",
                     "view" => "viewed",
                     "discussion" => "started discussion",
                     _ => a.ActivityType
@@ -2618,6 +2630,8 @@ namespace LearnLink.Controllers
                     "upload" => "bi-cloud-arrow-up",
                     "comment" => "bi-chat-dots",
                     "download" => "bi-download",
+                    "login failure" => "bi-x-circle",
+                    "lockout" => "bi-shield-lock",
                     "view" => "bi-eye",
                     "discussion" => "bi-chat-square-text",
                     _ => "bi-activity"
@@ -2627,6 +2641,8 @@ namespace LearnLink.Controllers
                     "upload" => "text-primary",
                     "comment" => "text-success",
                     "download" => "text-info",
+                    "login failure" => "text-danger",
+                    "lockout" => "text-danger",
                     "view" => "text-secondary",
                     "discussion" => "text-danger",
                     _ => "text-muted"
@@ -4475,6 +4491,21 @@ namespace LearnLink.Controllers
 
             await _context.SaveChangesAsync();
 
+            var archivedActivities = await _context.UserActivityLogs
+                .Where(a => a.UserId == currentUser.Id)
+                .OrderByDescending(a => a.ActivityDate)
+                .ToListAsync();
+
+            foreach (var activity in archivedActivities)
+            {
+                await LogAuditAsync(
+                    "ArchiveActivity",
+                    "Success",
+                    $"Archived profile activity '{activity.ActivityType}' for '{activity.TargetTitle}' before account deletion.",
+                    null,
+                    currentUser.Email);
+            }
+
             // Sign out before deleting
             await _signInManager.SignOutAsync();
 
@@ -5657,6 +5688,31 @@ namespace LearnLink.Controllers
                 _context.ReadingHistories.RemoveRange(relatedHistory);
 
                 var relatedLogs = await _context.UserActivityLogs.Where(l => l.ResourceId.HasValue && resourceIds.Contains(l.ResourceId.Value)).ToListAsync();
+
+                if (relatedLogs.Count > 0)
+                {
+                    var relatedUserIds = relatedLogs
+                        .Select(l => l.UserId)
+                        .Distinct()
+                        .ToList();
+
+                    var relatedUsers = await _userManager.Users
+                        .Where(u => relatedUserIds.Contains(u.Id))
+                        .Select(u => new { u.Id, u.Email })
+                        .ToDictionaryAsync(u => u.Id, u => u.Email);
+
+                    foreach (var log in relatedLogs)
+                    {
+                        relatedUsers.TryGetValue(log.UserId, out var originalEmail);
+                        await LogAuditAsync(
+                            "ArchiveActivity",
+                            "Success",
+                            $"Archived activity '{log.ActivityType}' for resource '{log.TargetTitle}' before deleting resource '{resourceIds.Count}' record(s).",
+                            null,
+                            originalEmail);
+                    }
+                }
+
                 _context.UserActivityLogs.RemoveRange(relatedLogs);
 
                 var relatedNotifications = await _context.Notifications.Where(n => n.ResourceId.HasValue && resourceIds.Contains(n.ResourceId.Value)).ToListAsync();

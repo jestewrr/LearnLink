@@ -232,10 +232,6 @@
                                     {
                                     <li><form asp-action="UnlockAccount" method="post" class="d-inline"><input type="hidden" name="email" value="@user.Email"><button type="submit" class="dropdown-item text-success"><i class="bi bi-unlock me-2"></i>Unlock Account</button></form></li>
                                     }
-                                    @if (user.IsLockedOut)
-                                    {
-                                    <li><form asp-action="UnlockAccount" method="post" class="d-inline"><input type="hidden" name="email" value="@user.Email"><button type="submit" class="dropdown-item text-success"><i class="bi bi-unlock me-2"></i>Unlock Account</button></form></li>
-                                    }
                                     <li><a class="dropdown-item edit-user-action" href="#" data-bs-toggle="modal" data-bs-target="#editUserModal" data-email="@user.Email" data-name="@user.Name" data-grade="@user.GradeOrPosition"><i class="bi bi-pencil me-2"></i>Edit User</a></li>
                                     <li><a class="dropdown-item change-role-action" href="#" data-bs-toggle="modal" data-bs-target="#changeRoleModal" data-email="@user.Email" data-name="@user.Name" data-role="@user.Role"><i class="bi bi-shield me-2"></i>Change Role</a></li>
                                     <li><hr class="dropdown-divider"></li>
