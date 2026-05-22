@@ -586,15 +586,23 @@ namespace LearnLink.Controllers
 
         private async Task LogActivity(string userId, string activityType, string targetTitle, int? resourceId = null)
         {
-            _context.UserActivityLogs.Add(new UserActivityLog
+            try
             {
-                UserId = userId,
-                ActivityType = activityType,
-                TargetTitle = targetTitle,
-                ResourceId = resourceId,
-                ActivityDate = DateTime.Now
-            });
-            await _context.SaveChangesAsync();
+                _context.UserActivityLogs.Add(new UserActivityLog
+                {
+                    UserId = userId,
+                    ActivityType = activityType,
+                    TargetTitle = targetTitle,
+                    ResourceId = resourceId,
+                    ActivityDate = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _context.ChangeTracker.Clear();
+                _logger.LogError(ex, "Failed to log user activity");
+            }
         }
 
         private async Task LogAuditAsync(string action, string status, string? details = null, string? userId = null, string? userEmail = null, int? schoolId = null)
@@ -618,6 +626,7 @@ namespace LearnLink.Controllers
             }
             catch (Exception ex)
             {
+                _context.ChangeTracker.Clear();
                 _logger.LogError(ex, "Failed to write audit log");
             }
         }
@@ -826,8 +835,24 @@ namespace LearnLink.Controllers
             await _context.Entry(user).ReloadAsync();
             user.Status = "Active";
             await _userManager.UpdateAsync(user);
-            await LogActivity(user.Id, "Login", "System Login");
-            await LogAuditAsync("Login", "Success", "System Login", user.Id, user.Email, user.SchoolId);
+            
+            try
+            {
+                await LogActivity(user.Id, "Login", "System Login");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to log login activity for user {UserId}", user.Id);
+            }
+
+            try
+            {
+                await LogAuditAsync("Login", "Success", "System Login", user.Id, user.Email, user.SchoolId);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to log login audit for user {UserId}", user.Id);
+            }
 
             try
             {
@@ -864,8 +889,24 @@ namespace LearnLink.Controllers
             await _context.Entry(user).ReloadAsync();
             user.Status = "Active";
             await _userManager.UpdateAsync(user);
-            await LogActivity(user.Id, "Login", "Google Sign-In");
-            await LogAuditAsync("Login", "Success", "Google Sign-In", user.Id, user.Email, user.SchoolId);
+            
+            try
+            {
+                await LogActivity(user.Id, "Login", "Google Sign-In");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to log Google login activity for user {UserId}", user.Id);
+            }
+
+            try
+            {
+                await LogAuditAsync("Login", "Success", "Google Sign-In", user.Id, user.Email, user.SchoolId);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to log Google login audit for user {UserId}", user.Id);
+            }
 
             try
             {
@@ -1012,7 +1053,14 @@ namespace LearnLink.Controllers
             if (user == null)
             {
                 ViewBag.Error = "Invalid email or password.";
-                await LogAuditAsync("Login", "Failure", "User not found", null, email, null);
+                try
+                {
+                    await LogAuditAsync("Login", "Failure", "User not found", null, email, null);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to log user-not-found audit entry");
+                }
                 return View();
             }
 
@@ -1062,8 +1110,23 @@ namespace LearnLink.Controllers
                 ViewBag.FailedAttempts = maxFailedAttempts;
                 ViewBag.AttemptsRemaining = 0;
                 
-                await LogAuditAsync("Lockout", "Failure", "Account locked due to multiple failed login attempts", user.Id, email, user.SchoolId);
-                await LogActivity(user.Id, "Lockout", "Account locked due to failed login attempts");
+                try
+                {
+                    await LogAuditAsync("Lockout", "Failure", "Account locked due to multiple failed login attempts", user.Id, email, user.SchoolId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to log lockout audit entry");
+                }
+
+                try
+                {
+                    await LogActivity(user.Id, "Lockout", "Account locked due to failed login attempts");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to log lockout activity");
+                }
                 
                 // Notify admins (SuperAdmin and Manager) about the locked account
                 try
@@ -1091,9 +1154,9 @@ namespace LearnLink.Controllers
                     }
                     await _context.SaveChangesAsync();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // swallow — notification failure should not block login flow
+                    _logger.LogError(ex, "Failed to notify admins of account lockout");
                 }
 
                 return View();
@@ -1107,8 +1170,24 @@ namespace LearnLink.Controllers
             }
 
             ViewBag.Error = "Invalid email or password.";
-            await LogAuditAsync("Login", "Failure", "Invalid email or password", user?.Id, email, user?.SchoolId);
-            await LogActivity(user.Id, "Login Failure", "Invalid email or password");
+            try
+            {
+                await LogAuditAsync("Login", "Failure", "Invalid email or password", user?.Id, email, user?.SchoolId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to log login failure audit entry");
+            }
+
+            try
+            {
+                await LogActivity(user.Id, "Login Failure", "Invalid email or password");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to log login failure activity");
+            }
+
             return View();
         }
 
@@ -1772,8 +1851,24 @@ namespace LearnLink.Controllers
             {
                 currentUser.Status = "Inactive";
                 await _userManager.UpdateAsync(currentUser);
-                await LogActivity(currentUser.Id, "Logout", "System Logout");
-                await LogAuditAsync("Logout", "Success", "User logged out", currentUser.Id, currentUser.Email, currentUser.SchoolId);
+                
+                try
+                {
+                    await LogActivity(currentUser.Id, "Logout", "System Logout");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to log logout activity for user {UserId}", currentUser.Id);
+                }
+
+                try
+                {
+                    await LogAuditAsync("Logout", "Success", "User logged out", currentUser.Id, currentUser.Email, currentUser.SchoolId);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to log logout audit for user {UserId}", currentUser.Id);
+                }
             }
 
             await _signInManager.SignOutAsync();
@@ -4496,14 +4591,28 @@ namespace LearnLink.Controllers
                 .OrderByDescending(a => a.ActivityDate)
                 .ToListAsync();
 
-            foreach (var activity in archivedActivities)
+            try
             {
-                await LogAuditAsync(
-                    "ArchiveActivity",
-                    "Success",
-                    $"Archived profile activity '{activity.ActivityType}' for '{activity.TargetTitle}' before account deletion.",
-                    null,
-                    currentUser.Email);
+                foreach (var activity in archivedActivities)
+                {
+                    try
+                    {
+                        await LogAuditAsync(
+                            "ArchiveActivity",
+                            "Success",
+                            $"Archived profile activity '{activity.ActivityType}' for '{activity.TargetTitle}' before account deletion.",
+                            null,
+                            currentUser.Email);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Failed to archive activity record for user {UserId}", currentUser.Id);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to retrieve activity logs for archival for user {UserId}", currentUser.Id);
             }
 
             // Sign out before deleting

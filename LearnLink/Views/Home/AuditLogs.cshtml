@@ -692,7 +692,8 @@
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `user_activities_${selectedUserEmail}_${new Date().toISOString().slice(0,10)}.csv`;
+        const userEmail = document.getElementById('selectedUserEmail').textContent || 'unknown';
+        link.download = `user_activities_${userEmail}_${new Date().toISOString().slice(0,10)}.csv`;
         link.click();
         URL.revokeObjectURL(url);
     };
