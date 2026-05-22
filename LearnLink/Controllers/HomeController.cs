@@ -6308,7 +6308,7 @@ namespace LearnLink.Controllers
                 .Include(a => a.User)
                 .Where(a => a.UserId == user.Id)
                 .OrderByDescending(a => a.ActivityDate)
-                .Take(20)
+                .Take(100)
                 .ToListAsync();
 
             var rawAuditLogs = new List<LearnLink.Models.AuditLog>();
@@ -6318,7 +6318,7 @@ namespace LearnLink.Controllers
                     .Include(a => a.User)
                     .Where(a => a.UserId == user.Id)
                     .OrderByDescending(a => a.Timestamp)
-                    .Take(20)
+                    .Take(100)
                     .ToListAsync();
             }
             catch (Exception) { }
@@ -6326,33 +6326,109 @@ namespace LearnLink.Controllers
             var combinedActivities = rawActivities.Select(a => new {
                 Date = a.ActivityDate,
                 User = a.User != null ? a.User.FirstName + " " + a.User.LastName : "Unknown",
-                Action = a.ActivityType,
+                Action = a.ActivityType.ToLower() switch
+                {
+                    "upload" => "uploaded",
+                    "comment" => "commented on",
+                    "download" => "downloaded",
+                    "approve" => "approved",
+                    "discussion" => "started discussion",
+                    "login" => "logged in",
+                    "login failure" => "failed to login",
+                    "lockout" => "was locked out",
+                    "register" => "registered",
+                    _ => a.ActivityType
+                },
                 Target = a.TargetTitle,
-                IconClass = "bi-activity",
-                IconColor = "text-muted",
-                ExtraInfo = ""
+                IconClass = a.ActivityType.ToLower() switch
+                {
+                    "upload" => "bi-cloud-arrow-up",
+                    "comment" => "bi-chat-dots",
+                    "download" => "bi-download",
+                    "approve" => "bi-check-circle",
+                    "discussion" => "bi-chat-square-text",
+                    "login" => "bi-box-arrow-in-right",
+                    "login failure" => "bi-x-circle",
+                    "lockout" => "bi-shield-lock",
+                    _ => "bi-activity"
+                },
+                IconColor = a.ActivityType.ToLower() switch
+                {
+                    "upload" => "text-primary",
+                    "comment" => "text-success",
+                    "download" => "text-info",
+                    "approve" => "text-warning",
+                    "discussion" => "text-danger",
+                    "login failure" => "text-danger",
+                    "lockout" => "text-danger",
+                    _ => "text-muted"
+                },
+                IPAddress = "",
+                UserAgent = "",
+                Status = "Success"
             }).Concat(rawAuditLogs.Select(a => new {
                 Date = a.Timestamp.ToLocalTime(),
                 User = a.User != null ? a.User.FirstName + " " + a.User.LastName : a.UserEmail ?? "System",
-                Action = a.Action,
+                Action = a.Action.ToLower() switch
+                {
+                    "login" => "logged in",
+                    "logout" => "logged out",
+                    "login failure" => "failed to login",
+                    "lockout" => "was locked out",
+                    "flag" => "flagged audit log",
+                    "adminpush" => "sent admin push message",
+                    _ => a.Action
+                },
                 Target = a.Details ?? "",
-                IconClass = a.Action == "Login" ? "bi-box-arrow-in-right" : a.Action == "Logout" ? "bi-box-arrow-right" : "bi-shield-check",
+                IconClass = a.Action.ToLower() switch
+                {
+                    "login" => "bi-box-arrow-in-right",
+                    "logout" => "bi-box-arrow-right",
+                    "login failure" => "bi-x-circle",
+                    "lockout" => "bi-shield-lock",
+                    "flag" => "bi-flag",
+                    "adminpush" => "bi-send",
+                    _ => "bi-shield-check"
+                },
                 IconColor = a.Status == "Success" ? "text-success" : "text-danger",
-                ExtraInfo = !string.IsNullOrEmpty(a.IPAddress) ? $" (IP: {a.IPAddress})" : ""
+                IPAddress = a.IPAddress ?? "",
+                UserAgent = a.UserAgent ?? "",
+                Status = a.Status ?? "Info"
             }))
             .OrderByDescending(x => x.Date)
-            .Take(20)
-            .Select(x => new ActivityViewModel
-            {
-                User = x.User,
-                Action = x.Action,
-                Target = x.Target + x.ExtraInfo,
-                TimeAgo = x.Date.ToString("MMM dd, yyyy hh:mm tt"),
-                IconClass = x.IconClass,
-                IconColor = x.IconColor
-            }).ToList();
+            .ToList();
 
-            ViewBag.UserActivity = combinedActivities;
+            var groupedActivities = new List<ActivityViewModel>();
+            foreach (var item in combinedActivities)
+            {
+                if (groupedActivities.Count > 0)
+                {
+                    var last = groupedActivities[groupedActivities.Count - 1];
+                    if (last.Action == item.Action && last.Target == item.Target && last.Status == item.Status && last.IPAddress == item.IPAddress)
+                    {
+                        last.Count++;
+                        continue;
+                    }
+                }
+
+                groupedActivities.Add(new ActivityViewModel
+                {
+                    User = item.User,
+                    UserInitials = user.Initials,
+                    UserColor = user.AvatarColor,
+                    Action = item.Action,
+                    Target = item.Target,
+                    TimeAgo = GetTimeAgo(item.Date),
+                    IconClass = item.IconClass,
+                    IconColor = item.IconColor,
+                    Status = item.Status,
+                    IPAddress = item.IPAddress,
+                    UserAgent = item.UserAgent,
+                    Count = 1
+                });
+            }
+
+            ViewBag.UserActivity = groupedActivities.Take(25).ToList();
 
             ViewBag.UserResources = await _context.Resources
                 .Include(r => r.User)

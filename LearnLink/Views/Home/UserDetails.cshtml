@@ -131,15 +131,51 @@
                             <div class="ll-activity-list mt-2">
                                 @foreach (var activity in activities)
                                 {
-                                    <div class="ll-activity-item">
-                                        <div class="ll-activity-icon @activity.IconColor.Replace("text-", "")">
-                                            <i class="bi @activity.IconClass"></i>
+                                    <div class="ll-activity-item d-flex align-items-start gap-3 p-3 border-bottom">
+                                        <div class="ll-activity-icon @activity.IconColor.Replace("text-", "") bg-light rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; min-width: 40px;">
+                                            <i class="bi @activity.IconClass fs-5"></i>
                                         </div>
-                                        <div class="ll-activity-content">
-                                            <div class="ll-activity-text">
-                                                <strong>@activity.User</strong> @activity.Action <strong>@activity.Target</strong>
+                                        <div class="ll-activity-content flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                                                <div class="ll-activity-text mb-1 mb-sm-0">
+                                                    <strong>@activity.User</strong> 
+                                                    <span class="text-muted">@activity.Action</span> 
+                                                    @if (!string.IsNullOrEmpty(activity.Target))
+                                                    {
+                                                        <strong>@activity.Target</strong>
+                                                    }
+                                                    @if (activity.Count > 1)
+                                                    {
+                                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-2">@activity.Count times</span>
+                                                    }
+                                                </div>
+                                                <div class="ll-activity-time text-muted small">@activity.TimeAgo</div>
                                             </div>
-                                            <div class="ll-activity-time text-muted small">@activity.TimeAgo</div>
+                                            
+                                            <!-- Detailed Audit Log Information -->
+                                            @if (!string.IsNullOrEmpty(activity.IPAddress) || !string.IsNullOrEmpty(activity.UserAgent) || (!string.IsNullOrEmpty(activity.Status) && activity.Status != "Success"))
+                                            {
+                                                <div class="mt-2 d-flex flex-wrap gap-3 text-muted small align-items-center">
+                                                    @if (!string.IsNullOrEmpty(activity.Status))
+                                                    {
+                                                        var badgeClass = activity.Status.ToLower() switch {
+                                                            "success" => "bg-success-subtle text-success border border-success-subtle",
+                                                            "failure" => "bg-danger-subtle text-danger border border-danger-subtle",
+                                                            "flagged" => "bg-warning-subtle text-warning border border-warning-subtle",
+                                                            _ => "bg-secondary-subtle text-secondary border border-secondary-subtle"
+                                                        };
+                                                        <span class="badge @badgeClass px-2 py-1">@activity.Status</span>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(activity.IPAddress))
+                                                    {
+                                                        <span><i class="bi bi-laptop me-1"></i><strong>IP:</strong> @activity.IPAddress</span>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(activity.UserAgent))
+                                                    {
+                                                        <span class="text-truncate" style="max-width: 350px;" title="@activity.UserAgent"><i class="bi bi-browser-chrome me-1"></i><strong>Device:</strong> @activity.UserAgent</span>
+                                                    }
+                                                </div>
+                                            }
                                         </div>
                                     </div>
                                 }

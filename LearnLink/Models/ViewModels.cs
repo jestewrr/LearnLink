@@ -153,6 +153,10 @@ namespace LearnLink.Models
         public string TimeAgo { get; set; } = "";
         public string IconClass { get; set; } = "bi-activity";
         public string IconColor { get; set; } = "text-primary";
+        public string Status { get; set; } = "";
+        public string IPAddress { get; set; } = "";
+        public string UserAgent { get; set; } = "";
+        public int Count { get; set; } = 1;
     }
 
     public class AuditEntryViewModel
