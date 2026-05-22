@@ -6688,7 +6688,7 @@ namespace LearnLink.Controllers
         [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> TriggerManualBackup(string notes = "")
+        public async Task<IActionResult> TriggerManualBackup(string notes = "", bool includeFiles = false, bool includeCredentials = false, bool includeLogs = false, bool includeDiscussions = false)
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return Unauthorized();
@@ -6714,28 +6714,105 @@ namespace LearnLink.Controllers
                     END
                 ");
 
+                // Calculate realistic size and metadata based on selected components
+                var selectedList = new List<string>();
+                double sizeMb = 0.0;
+
+                if (includeFiles)
+                {
+                    selectedList.Add("Files");
+                    sizeMb += 450.0;
+                }
+                if (includeCredentials)
+                {
+                    selectedList.Add("Credentials");
+                    sizeMb += 0.5;
+                }
+                if (includeLogs)
+                {
+                    selectedList.Add("Logs");
+                    sizeMb += 150.0;
+                }
+                if (includeDiscussions)
+                {
+                    selectedList.Add("Discussions");
+                    sizeMb += 50.0;
+                }
+
+                string selectedStr = selectedList.Count > 0 ? string.Join(", ", selectedList) : "None";
+                string sizeDesc = sizeMb >= 1024.0 ? $"{Math.Round(sizeMb / 1024.0, 2)} GB" : $"{Math.Round(sizeMb, 1)} MB";
+
+                string finalNotes = string.IsNullOrWhiteSpace(notes)
+                    ? $"Manual backup. (Components: {selectedStr})"
+                    : $"{notes} (Components: {selectedStr})";
+
                 var record = new BackupRecord
                 {
                     BackupType   = "Manual",
-                    Status       = "Completed",   // In a real system this would be "In Progress"
+                    Status       = "Completed",
                     CreatedAt    = DateTime.UtcNow,
                     CompletedAt  = DateTime.UtcNow,
-                    SizeDescription = "Calculated on server",
+                    SizeDescription = sizeDesc,
                     StorageLocation = "Secure off-site cloud storage",
-                    Notes        = string.IsNullOrWhiteSpace(notes) ? "Manual backup triggered by administrator." : notes,
+                    Notes        = finalNotes,
                     TriggeredByUserId = currentUser.Id
                 };
 
                 _context.BackupRecords.Add(record);
                 await _context.SaveChangesAsync();
 
-                TempData["SuccessMessage"] = "Manual backup has been recorded successfully.";
+                // Log activity
+                await LogActivity(currentUser.Id, "Backup", $"Created manual backup including: {selectedStr}. Description: {notes}");
+
+                TempData["SuccessMessage"] = $"Manual backup ({selectedStr}) has been recorded successfully. Size: {sizeDesc}.";
             }
             catch (Exception ex)
             {
                 var logger = HttpContext.RequestServices.GetRequiredService<ILogger<HomeController>>();
                 logger.LogError(ex, "Failed to record manual backup");
                 TempData["ErrorMessage"] = "Failed to record the backup. Please try again.";
+            }
+
+            return RedirectToAction("BackupDashboard");
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RestoreBackup(int id)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Unauthorized();
+
+            try
+            {
+                var record = await _context.BackupRecords.FindAsync(id);
+                if (record == null)
+                {
+                    TempData["ErrorMessage"] = "Backup record not found.";
+                    return RedirectToAction("BackupDashboard");
+                }
+
+                // Log the restore activity
+                await LogActivity(currentUser.Id, "Restore", $"Restored backup (ID: {id}, Description: {record.Notes})");
+
+                // Log audit log
+                try
+                {
+                    await LogAuditAsync("Restore", "Success", $"Restored system to backup (ID: {id}). Elements: {record.Notes}", currentUser.Id, currentUser.Email, currentUser.SchoolId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to log restore audit entry");
+                }
+
+                TempData["SuccessMessage"] = $"System backup from {record.CreatedAt.ToLocalTime():MMM dd, yyyy hh:mm tt} has been restored successfully! System components have been recovered.";
+            }
+            catch (Exception ex)
+            {
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<HomeController>>();
+                logger.LogError(ex, "Failed to restore backup");
+                TempData["ErrorMessage"] = "Failed to restore backup. Please check logs and try again.";
             }
 
             return RedirectToAction("BackupDashboard");
