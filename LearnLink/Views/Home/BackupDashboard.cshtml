@@ -1,430 +1,390 @@
+@using LearnLink.Models
+@using LearnLink.Services
 @{
-    ViewData["Title"] = "Backup & Recovery";
-    var policy        = ViewBag.Policy as LearnLink.Models.BackupPolicy ?? new LearnLink.Models.BackupPolicy();
-    var records       = ViewBag.Records as List<LearnLink.Models.BackupRecord> ?? new List<LearnLink.Models.BackupRecord>();
-    var lastCompleted = ViewBag.LastCompleted as LearnLink.Models.BackupRecord;
-    var nextDue       = (DateTime)(ViewBag.NextDue ?? DateTime.UtcNow);
-    var isOverdue     = (bool)(ViewBag.IsOverdue ?? true);
-
-    string StatusBadge(string status) => status switch
-    {
-        "Completed"  => "success",
-        "Failed"     => "danger",
-        "In Progress"=> "warning",
-        _            => "secondary"
-    };
-
-    // Data for the Google One style storage breakdown
-    double totalStorageGb = 100.0;
-    double usedStorageGb = (double)(ViewBag.TotalUsedGb ?? 0.0);
-    double resourcesGb = (double)(ViewBag.ResourcesSizeGb ?? 0.0);
-    double knowledgeGb = (double)(ViewBag.RepoSizeGb ?? 0.0);
-    double activityGb = (double)(ViewBag.ActivitySizeGb ?? 0.0);
-    double lessonsGb = (double)(ViewBag.LessonsSizeGb ?? 0.0);
-
-    double usedPercent = (usedStorageGb / totalStorageGb) * 100;
-    double resourcesPercent = usedStorageGb > 0 ? (resourcesGb / usedStorageGb) * 100 : 0;
-    double knowledgePercent = usedStorageGb > 0 ? (knowledgeGb / usedStorageGb) * 100 : 0;
-    double activityPercent = usedStorageGb > 0 ? (activityGb / usedStorageGb) * 100 : 0;
-    double lessonsPercent = usedStorageGb > 0 ? (lessonsGb / usedStorageGb) * 100 : 0;
-}
-
-<style>
-    /* Google One Inspired Styles */
-    .g1-header {
-        font-family: 'Google Sans', 'Inter', sans-serif;
-        font-weight: 500;
-        color: #202124;
-    }
-    .g1-card {
-        background: #ffffff;
-        border-radius: 12px;
-        border: 1px solid #dadce0;
-        box-shadow: none;
-        overflow: hidden;
-        transition: box-shadow 0.2s;
-    }
-    .g1-card:hover {
-        box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
-    }
-    [data-theme="dark"] .g1-header { color: #e8eaed; }
-    [data-theme="dark"] .g1-card { background: #202124; border-color: #3c4043; }
-
-    /* Storage Bar */
-    .g1-storage-track {
-        height: 12px;
-        background-color: #f1f3f4;
-        border-radius: 6px;
-        display: flex;
-        overflow: hidden;
-        margin-bottom: 1.5rem;
-    }
-    [data-theme="dark"] .g1-storage-track { background-color: #3c4043; }
+    ViewData["Title"] = "System Backup & Recovery";
+    var records = ViewBag.Records as List<BackupRecord> ?? new List<BackupRecord>();
+    var archivedResources = ViewBag.ArchivedResources as List<ArchivedResource> ?? new List<ArchivedResource>();
+    var restoreHistory = ViewBag.RestoreHistory as List<RestoreOperation> ?? new List<RestoreOperation>();
+    var metrics = ViewBag.Metrics as BackupMetricsDto ?? new BackupMetricsDto();
     
-    .g1-segment-resources { background-color: #4285f4; }
-    .g1-segment-knowledge { background-color: #ea4335; }
-    .g1-segment-activity { background-color: #fbbc04; }
-    .g1-segment-lessons { background-color: #34a853; }
-
-    .g1-legend-dot {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        display: inline-block;
-        margin-right: 8px;
-    }
-
-    .g1-btn-primary {
-        background-color: #1a73e8;
-        color: #fff;
-        border-radius: 24px;
-        padding: 8px 24px;
-        font-weight: 500;
-        border: none;
-        transition: background-color 0.2s, box-shadow 0.2s;
-    }
-    .g1-btn-primary:hover {
-        background-color: #1b66c9;
-        box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
-        color: #fff;
-    }
-
-    .g1-btn-outline {
-        background-color: transparent;
-        color: #1a73e8;
-        border: 1px solid #dadce0;
-        border-radius: 24px;
-        padding: 8px 24px;
-        font-weight: 500;
-        transition: background-color 0.2s;
-    }
-    .g1-btn-outline:hover {
-        background-color: #f8f9fa;
-        color: #1a73e8;
-    }
-    [data-theme="dark"] .g1-btn-outline { color: #8ab4f8; border-color: #5f6368; }
-    [data-theme="dark"] .g1-btn-outline:hover { background-color: rgba(138, 180, 248, 0.04); }
-
-    .g1-icon-container {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-    }
-    .g1-icon-blue { background-color: #e8f0fe; color: #1a73e8; }
-    .g1-icon-red { background-color: #fce8e6; color: #d93025; }
-    .g1-icon-yellow { background-color: #fef7e0; color: #f29900; }
-    .g1-icon-green { background-color: #e6f4ea; color: #188038; }
-
-    [data-theme="dark"] .g1-icon-blue { background-color: rgba(26, 115, 232, 0.2); color: #8ab4f8; }
-    [data-theme="dark"] .g1-icon-red { background-color: rgba(217, 48, 37, 0.2); color: #f28b82; }
-    [data-theme="dark"] .g1-icon-yellow { background-color: rgba(242, 153, 0, 0.2); color: #fdd663; }
-    [data-theme="dark"] .g1-icon-green { background-color: rgba(24, 128, 56, 0.2); color: #81c995; }
-
-    .g1-list-item {
-        display: flex;
-        align-items: center;
-        padding: 1rem 0;
-        border-bottom: 1px solid #f1f3f4;
-    }
-    .g1-list-item:last-child {
-        border-bottom: none;
-    }
-    [data-theme="dark"] .g1-list-item { border-bottom-color: #3c4043; }
-    
-    .g1-switch {
-        width: 36px;
-        height: 14px;
-        position: relative;
-    }
-</style>
-
-<!-- Page Header -->
-<div class="d-flex justify-content-between align-items-center mb-4 mt-2">
-    <div class="d-flex align-items-center gap-3">
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none">
-            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4C9.11 4 6.6 5.64 5.35 8.04C2.34 8.36 0 10.91 0 14C0 17.31 2.69 20 6 20H19C21.76 20 24 17.76 24 15C24 12.36 21.95 10.22 19.35 10.04Z" fill="#4285F4"/>
-            <path d="M10 17L15 12L13.59 10.59L11 13.17V7H9V13.17L6.41 10.59L5 12L10 17Z" fill="#fff"/>
-        </svg>
-        <h2 class="g1-header mb-0 fs-3">LearnLink System Backup</h2>
-    </div>
-</div>
-
-<!-- Success / Error Toasts -->
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-@if (TempData["ErrorMessage"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <i class="bi bi-exclamation-circle me-2"></i>@TempData["ErrorMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
+    double totalCapacityGb = 100.0;
+    double totalUsedGb = Math.Round(metrics.TotalSizeMb / 1024.0, 2);
+    double usagePercent = (totalUsedGb / totalCapacityGb) * 100;
 }
 
-<div class="row g-4">
-    <!-- Left Column: Storage & What's Backed Up -->
-    <div class="col-lg-12">
-        <!-- Storage Card -->
-        <div class="g1-card p-4 mb-4">
-            <div class="d-flex justify-content-between align-items-end mb-3">
-                <div>
-                    <h3 class="g1-header fs-5 mb-1">System Storage</h3>
-                    <div class="text-muted small">@usedStorageGb GB used of @totalStorageGb GB</div>
-                </div>
-                <div class="text-end">
-                    <button class="g1-btn-primary" data-bs-toggle="modal" data-bs-target="#manualBackupModal">
-                        Back up now
-                    </button>
-                </div>
-            </div>
-
-            <div class="g1-storage-track">
-                <div class="g1-segment-resources" style="width: @(resourcesPercent)%"></div>
-                <div class="g1-segment-knowledge" style="width: @(knowledgePercent)%"></div>
-                <div class="g1-segment-activity" style="width: @(activityPercent)%"></div>
-                <div class="g1-segment-lessons" style="width: @(lessonsPercent)%"></div>
-            </div>
-
-            <div class="row g-3 text-muted small">
-                <div class="col-6 col-md-3">
-                    <div class="g1-legend-dot g1-segment-resources"></div>
-                    <div class="fw-medium text-dark mt-1">Resources</div>
-                    <div>@resourcesGb GB</div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="g1-legend-dot g1-segment-knowledge"></div>
-                    <div class="fw-medium text-dark mt-1">Repository</div>
-                    <div>@knowledgeGb GB</div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="g1-legend-dot g1-segment-activity"></div>
-                    <div class="fw-medium text-dark mt-1">User Activity</div>
-                    <div>@activityGb GB</div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="g1-legend-dot g1-segment-lessons"></div>
-                    <div class="fw-medium text-dark mt-1">Lessons</div>
-                    <div>@lessonsGb GB</div>
-                </div>
-            </div>
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+        <div>
+            <h2 class="g1-header mb-0">System Backup & Recovery</h2>
+            <p class="text-muted mb-0">Manage system backups, restore points, and archived resources.</p>
         </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#manualBackupModal">
+            <i class="bi bi-cloud-arrow-up"></i> Create Backup
+        </button>
+    </div>
 
-        <!-- Backup Status Card -->
-        <div class="g1-card p-4 mb-4">
-            <div class="d-flex align-items-center mb-4">
-                <div class="g1-icon-container @(isOverdue ? "g1-icon-red" : "g1-icon-blue") me-3">
-                    <i class="bi @(isOverdue ? "bi-exclamation-triangle" : "bi-cloud-check")"></i>
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Storage Metrics Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="g1-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="g1-header mb-0"><i class="bi bi-hdd-network"></i> Enterprise Storage Allocation</h5>
+                    <span class="badge bg-primary">Total Used: @totalUsedGb GB / @totalCapacityGb GB</span>
                 </div>
-                <div>
-                    <h3 class="g1-header fs-5 mb-1">Backup status</h3>
-                    <div class="text-muted small">
-                        @if (isOverdue)
-                        {
-                            <span class="text-danger fw-medium">Backup is overdue. </span>
-                        }
-                        @if (lastCompleted != null)
-                        {
-                            <span>Last backed up @lastCompleted.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy").</span>
-                        }
-                        else
-                        {
-                            <span>No previous backups found.</span>
-                        }
+                <div class="progress mb-3" style="height: 25px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: @usagePercent%;" aria-valuenow="@usagePercent" aria-valuemin="0" aria-valuemax="100">@Math.Round(usagePercent, 1)% Used</div>
+                </div>
+                
+                <div class="row text-center mt-4">
+                    <div class="col-md-2 col-sm-4 border-end">
+                        <div class="text-muted small">Database Size</div>
+                        <div class="fw-bold text-success fs-5">@Math.Round(metrics.DatabaseSizeMb, 2) MB</div>
+                    </div>
+                    <div class="col-md-2 col-sm-4 border-end">
+                        <div class="text-muted small">User Uploads</div>
+                        <div class="fw-bold text-info fs-5">@Math.Round(metrics.UploadsSizeMb, 2) MB</div>
+                    </div>
+                    <div class="col-md-2 col-sm-4 border-end">
+                        <div class="text-muted small">Math Resources</div>
+                        <div class="fw-bold fs-5">@metrics.RepositoryCounts.GetValueOrDefault("Math Resources", 0)</div>
+                    </div>
+                    <div class="col-md-2 col-sm-4 border-end">
+                        <div class="text-muted small">Science Resources</div>
+                        <div class="fw-bold fs-5">@metrics.RepositoryCounts.GetValueOrDefault("Science Resources", 0)</div>
+                    </div>
+                    <div class="col-md-2 col-sm-4 border-end">
+                        <div class="text-muted small">User Accounts</div>
+                        <div class="fw-bold fs-5">@metrics.RepositoryCounts.GetValueOrDefault("User Accounts", 0)</div>
+                    </div>
+                    <div class="col-md-2 col-sm-4">
+                        <div class="text-muted small">Archived Resources</div>
+                        <div class="fw-bold fs-5">@metrics.RepositoryCounts.GetValueOrDefault("Archived Resources", 0)</div>
                     </div>
                 </div>
             </div>
-
-            <h4 class="g1-header fs-6 mb-3">Included in backup</h4>
-            
-            <div class="g1-list-item">
-                <div class="g1-icon-container g1-icon-blue me-3">
-                    <i class="bi bi-file-earmark-pdf"></i>
-                </div>
-                <div class="flex-grow-1">
-                    <div class="fw-medium">Uploaded Resources</div>
-                    <div class="text-muted small">PDFs, Documents, Videos, and other uploaded files</div>
-                </div>
-                <div class="form-check form-switch ms-3">
-                    <input class="form-check-input fs-5" type="checkbox" checked disabled>
-                </div>
-            </div>
-
-            <div class="g1-list-item">
-                <div class="g1-icon-container g1-icon-red me-3">
-                    <i class="bi bi-folder2-open"></i>
-                </div>
-                <div class="flex-grow-1">
-                    <div class="fw-medium">Knowledge Repository</div>
-                    <div class="text-muted small">All shared repository structures and metadata</div>
-                </div>
-                <div class="form-check form-switch ms-3">
-                    <input class="form-check-input fs-5" type="checkbox" checked disabled>
-                </div>
-            </div>
-
-            <div class="g1-list-item">
-                <div class="g1-icon-container g1-icon-yellow me-3">
-                    <i class="bi bi-activity"></i>
-                </div>
-                <div class="flex-grow-1">
-                    <div class="fw-medium">User Activity & Logs</div>
-                    <div class="text-muted small">Audit logs, login history, and user interactions</div>
-                </div>
-                <div class="form-check form-switch ms-3">
-                    <input class="form-check-input fs-5" type="checkbox" checked disabled>
-                </div>
-            </div>
-
-            <div class="g1-list-item border-bottom-0">
-                <div class="g1-icon-container g1-icon-green me-3">
-                    <i class="bi bi-lightbulb"></i>
-                </div>
-                <div class="flex-grow-1">
-                    <div class="fw-medium">Lessons Learned & Discussions</div>
-                    <div class="text-muted small">All community posts, replies, and lesson submissions</div>
-                </div>
-                <div class="form-check form-switch ms-3">
-                    <input class="form-check-input fs-5" type="checkbox" checked disabled>
-                </div>
-            </div>
         </div>
-        
-        <!-- Backup History -->
-        <div class="g1-card p-4">
-            <h3 class="g1-header fs-5 mb-4">Backup history</h3>
-            
-            @if (records.Any())
-            {
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs g1-tabs mb-4" id="backupTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">Overview</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="archives-tab" data-bs-toggle="tab" data-bs-target="#archives" type="button" role="tab">Archive Management</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">Restore History</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="backupTabsContent">
+        <!-- Overview Tab -->
+        <div class="tab-pane fade show active" id="overview" role="tabpanel">
+            <div class="g1-card p-4">
+                <h5 class="g1-header mb-3"><i class="bi bi-clock-history"></i> Recent Backups</h5>
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="text-muted small">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
                             <tr>
-                                <th class="border-0 pb-3">Date</th>
-                                <th class="border-0 pb-3">Type</th>
-                                <th class="border-0 pb-3">Status</th>
-                                <th class="border-0 pb-3">Notes</th>
-                                <th class="border-0 pb-3 text-end">Actions</th>
+                                <th>Date/Time</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Size</th>
+                                <th>Details</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var rec in records)
+                            @if (!records.Any())
                             {
-                            <tr>
-                                <td class="py-3 border-light">
-                                    <div class="fw-medium text-dark">@rec.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")</div>
-                                    <div class="text-muted small">@rec.CreatedAt.ToLocalTime().ToString("hh:mm tt")</div>
-                                </td>
-                                <td class="py-3 border-light">
-                                    <span class="badge bg-light text-dark border fw-normal">@rec.BackupType</span>
-                                </td>
-                                <td class="py-3 border-light">
-                                    <span class="badge bg-@StatusBadge(rec.Status) bg-opacity-10 text-@StatusBadge(rec.Status) fw-medium px-2 py-1">
-                                        @rec.Status
-                                    </span>
-                                </td>
-                                <td class="py-3 border-light text-muted small" style="max-width: 400px;">
-                                    @(rec.Notes ?? "Automated system backup")
-                                </td>
-                                <td class="py-3 border-light text-end">
-                                    @if (rec.Status == "Completed")
-                                    {
-                                        <form method="post" action="@Url.Action("RestoreBackup", "Home")" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="id" value="@rec.Id" />
-                                            <button type="submit" class="btn btn-sm btn-outline-primary" style="border-radius: 16px; padding: 4px 14px; font-size: 0.75rem; font-weight: 500;" onclick="return confirm('Are you sure you want to restore the system to this backup point?');">
-                                                <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
-                                            </button>
-                                        </form>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted small">-</span>
-                                    }
-                                </td>
-                            </tr>
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">No backups recorded yet.</td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var record in records)
+                                {
+                                    <tr data-backup-id="@record.Id">
+                                        <td>
+                                            <div class="fw-bold">@record.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")</div>
+                                            <div class="small text-muted">@record.CreatedAt.ToLocalTime().ToString("hh:mm tt")</div>
+                                        </td>
+                                        <td><span class="badge bg-secondary">@record.BackupType</span></td>
+                                        <td>
+                                            @if (record.Status == "Completed")
+                                            {
+                                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Completed</span>
+                                            }
+                                            else if (record.Status == "Failed")
+                                            {
+                                                <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Failed</span>
+                                            }
+                                            else if (record.Status == "In Progress")
+                                            {
+                                                <div class="progress" style="height: 20px; width: 100px;">
+                                                  <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary backup-progress" role="progressbar" style="width: @record.ProgressPercent%;" aria-valuenow="@record.ProgressPercent" aria-valuemin="0" aria-valuemax="100">@record.ProgressPercent%</div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning text-dark"><i class="bi bi-hourglass"></i> @record.Status</span>
+                                            }
+                                        </td>
+                                        <td>@(record.SizeDescription ?? "-")</td>
+                                        <td>
+                                            <div class="small text-truncate" style="max-width: 250px;" title="@record.Notes">
+                                                @record.Notes
+                                            </div>
+                                            <div class="small text-muted">By: @(record.TriggeredByUser?.Email ?? "System")</div>
+                                        </td>
+                                        <td>
+                                            @if (record.Status == "Completed")
+                                            {
+                                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#restoreModal_@record.Id">
+                                                    <i class="bi bi-arrow-counterclockwise"></i> Restore
+                                                </button>
+
+                                                <!-- Restore Confirmation Modal -->
+                                                <div class="modal fade" id="restoreModal_@record.Id" tabindex="-1">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle"></i> Confirm System Restore</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                <p>You are about to restore the system to the backup created on <strong>@record.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")</strong>.</p>
+                                                                <p><strong>Warning:</strong> This will overwrite current data. A temporary snapshot will be created before restoration begins.</p>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                                <form asp-action="RestoreBackup" method="post">
+                                                                    <input type="hidden" name="id" value="@record.Id" />
+                                                                    <button type="submit" class="btn btn-danger">Proceed with Restore</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
                             }
                         </tbody>
                     </table>
                 </div>
-            }
-            else
-            {
-                <div class="text-center py-5 text-muted">
-                    <i class="bi bi-cloud-slash display-4 d-block mb-3 opacity-25"></i>
-                    <div>No backup records found</div>
+            </div>
+        </div>
+
+        <!-- Archives Tab -->
+        <div class="tab-pane fade" id="archives" role="tabpanel">
+            <div class="g1-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="g1-header mb-0"><i class="bi bi-archive"></i> Archived Resources</h5>
+                    <p class="text-muted small mb-0">Soft-deleted items that can be restored or permanently removed.</p>
                 </div>
-            }
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Deleted Date</th>
+                                <th>Owner</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!archivedResources.Any())
+                            {
+                                <tr><td colspan="5" class="text-center text-muted py-4">No archived resources found.</td></tr>
+                            }
+                            else
+                            {
+                                foreach (var archive in archivedResources)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="fw-bold">@archive.Title</div>
+                                            <div class="small text-muted">@archive.FileSize</div>
+                                        </td>
+                                        <td><span class="badge bg-secondary">@archive.Category</span></td>
+                                        <td>@archive.DateArchived.ToLocalTime().ToString("MMM dd, yyyy")</td>
+                                        <td>@archive.Owner?.Email</td>
+                                        <td>
+                                            <div class="d-flex gap-2">
+                                                <form asp-action="RestoreArchivedResource" method="post">
+                                                    <input type="hidden" name="id" value="@archive.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-success"><i class="bi bi-bootstrap-reboot"></i> Restore</button>
+                                                </form>
+                                                <form asp-action="PermanentlyDeleteResource" method="post" onsubmit="return confirm('Are you sure you want to permanently delete this resource? This action cannot be undone.');">
+                                                    <input type="hidden" name="id" value="@archive.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Restore History Tab -->
+        <div class="tab-pane fade" id="history" role="tabpanel">
+            <div class="g1-card p-4">
+                <h5 class="g1-header mb-3"><i class="bi bi-clock-history"></i> Restore Operations Timeline</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Restore Type</th>
+                                <th>Status</th>
+                                <th>Restored By</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!restoreHistory.Any())
+                            {
+                                <tr><td colspan="5" class="text-center text-muted py-4">No restore operations have been performed.</td></tr>
+                            }
+                            else
+                            {
+                                foreach (var op in restoreHistory)
+                                {
+                                    <tr>
+                                        <td>@op.RestoreDate.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")</td>
+                                        <td><span class="badge bg-info">@op.RestoreType</span></td>
+                                        <td><span class="badge bg-success">@op.Status</span></td>
+                                        <td>@op.RestoredByUser?.Email</td>
+                                        <td>@op.Details</td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- Manual Backup Modal -->
-<div class="modal fade" id="manualBackupModal" tabindex="-1" aria-labelledby="manualBackupLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 12px; border: none;">
-            <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title g1-header fs-5" id="manualBackupLabel">
-                    Back up system data
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div class="modal fade" id="manualBackupModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-cloud-arrow-up"></i> Create Dynamic Backup</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="post" action="@Url.Action("TriggerManualBackup", "Home")">
-                @Html.AntiForgeryToken()
-                <div class="modal-body pt-3">
-                    <p class="text-muted small mb-3">
-                        A manual backup will capture the current state of all selected system data. This process runs in the background.
-                    </p>
+            <form asp-action="TriggerManualBackup" method="post">
+                <div class="modal-body">
+                    <p class="text-muted">Select the repositories and data components you want to include in this backup snapshot.</p>
                     
-                    <div class="mb-4">
-                        <label class="form-label small fw-medium text-dark d-block">Select components to backup:</label>
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" name="includeFiles" id="incFiles" value="true" checked>
-                            <label class="form-check-label small" for="incFiles">
-                                Uploaded Resources & Files
-                            </label>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6>Knowledge Repositories</h6>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="selectedRepositories" value="Math Resources" id="repoMath" checked>
+                                <label class="form-check-label" for="repoMath">Math Resources (@metrics.RepositoryCounts.GetValueOrDefault("Math Resources", 0) items)</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="selectedRepositories" value="Science Resources" id="repoScience" checked>
+                                <label class="form-check-label" for="repoScience">Science Resources (@metrics.RepositoryCounts.GetValueOrDefault("Science Resources", 0) items)</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="selectedRepositories" value="English Resources" id="repoEnglish" checked>
+                                <label class="form-check-label" for="repoEnglish">English Resources (@metrics.RepositoryCounts.GetValueOrDefault("English Resources", 0) items)</label>
+                            </div>
                         </div>
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" name="includeCredentials" id="incCreds" value="true" checked>
-                            <label class="form-check-label small" for="incCreds">
-                                Database Credentials & Configurations
-                            </label>
-                        </div>
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" name="includeLogs" id="incLogs" value="true" checked>
-                            <label class="form-check-label small" for="incLogs">
-                                User Activity & Audit Logs
-                            </label>
-                        </div>
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" name="includeDiscussions" id="incDisc" value="true" checked>
-                            <label class="form-check-label small" for="incDisc">
-                                Lessons Learned & Discussion Forums
-                            </label>
+                        <div class="col-md-6">
+                            <h6>System Data</h6>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="selectedRepositories" value="User Accounts" id="sysUsers" checked>
+                                <label class="form-check-label" for="sysUsers">User Accounts (@metrics.RepositoryCounts.GetValueOrDefault("User Accounts", 0))</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="selectedRepositories" value="Audit Logs" id="sysLogs">
+                                <label class="form-check-label" for="sysLogs">Audit Logs (@metrics.RepositoryCounts.GetValueOrDefault("Audit Logs", 0))</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="selectedRepositories" value="User Uploads" id="sysUploads" checked>
+                                <label class="form-check-label" for="sysUploads">User Upload Files (~@Math.Round(metrics.UploadsSizeMb, 1) MB)</label>
+                            </div>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small fw-medium text-dark">Backup description (optional)</label>
-                        <textarea name="notes" class="form-control" rows="2"
-                                  placeholder="e.g. Pre-deployment backup, system snapshot..."></textarea>
+                        <label class="form-label fw-bold">Backup Description/Notes (Optional)</label>
+                        <textarea class="form-control" name="notes" rows="2" placeholder="E.g., Pre-deployment backup v2.1"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="g1-btn-outline" data-bs-dismiss="modal" style="border:none;">Cancel</button>
-                    <button type="submit" class="g1-btn-primary">
-                        Confirm backup
-                    </button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-play-fill"></i> Initiate Background Backup</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
+@section Scripts {
+    <script>
+        // Polling for "In Progress" backups
+        function pollBackupStatus() {
+            if ($('.backup-progress').length === 0) return; // No backups in progress
+            
+            $.ajax({
+                url: '@Url.Action("GetBackupStatus", "Home")',
+                type: 'GET',
+                success: function(data) {
+                    let stillRunning = false;
+                    
+                    data.forEach(function(backup) {
+                        let row = $('tr[data-backup-id="' + backup.id + '"]');
+                        if (row.length) {
+                            if (backup.status === "In Progress") {
+                                stillRunning = true;
+                                row.find('.backup-progress').css('width', backup.progress + '%').text(backup.progress + '%');
+                            } else {
+                                // Status changed, reload page to get updated UI
+                                window.location.reload();
+                            }
+                        }
+                    });
+                    
+                    if (stillRunning) {
+                        setTimeout(pollBackupStatus, 3000); // Poll every 3 seconds
+                    }
+                }
+            });
+        }
+        
+        $(document).ready(function() {
+            setTimeout(pollBackupStatus, 3000);
+        });
+    </script>
+}

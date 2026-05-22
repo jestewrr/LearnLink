@@ -793,32 +793,108 @@ namespace LearnLink.Models
         [Key]
         public int Id { get; set; }
 
-        /// <summary>Type of backup: "Full", "Incremental", "Manual"</summary>
         [Required, StringLength(50)]
         public string BackupType { get; set; } = "Full";
 
-        /// <summary>Status: "Completed", "Failed", "In Progress", "Scheduled"</summary>
         [Required, StringLength(50)]
         public string Status { get; set; } = "Scheduled";
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? CompletedAt { get; set; }
 
-        /// <summary>Approximate size description, e.g. "45.2 MB"</summary>
         [StringLength(50)]
         public string? SizeDescription { get; set; }
 
-        /// <summary>Storage location / path description (no real credentials stored here)</summary>
         [StringLength(500)]
         public string? StorageLocation { get; set; }
 
         [StringLength(1000)]
         public string? Notes { get; set; }
 
-        /// <summary>User who triggered a manual backup (null for automated)</summary>
         public string? TriggeredByUserId { get; set; }
         [ForeignKey("TriggeredByUserId")]
         public ApplicationUser? TriggeredByUser { get; set; }
+
+        // Real backup processing fields
+        public double TotalSizeMb { get; set; }
+        [StringLength(500)]
+        public string? ArchiveFilePath { get; set; }
+        public int ProgressPercent { get; set; } = 0;
+
+        public ICollection<BackupItem> Items { get; set; } = new List<BackupItem>();
+    }
+
+    public class BackupItem
+    {
+        [Key]
+        public int Id { get; set; }
+
+        public int BackupRecordId { get; set; }
+        [ForeignKey("BackupRecordId")]
+        public BackupRecord? BackupRecord { get; set; }
+
+        [Required, StringLength(100)]
+        public string RepositoryName { get; set; } = "";
+
+        public int ItemCount { get; set; }
+        public double StorageSizeMb { get; set; }
+    }
+
+    public class RestoreOperation
+    {
+        [Key]
+        public int Id { get; set; }
+
+        public int BackupRecordId { get; set; }
+        [ForeignKey("BackupRecordId")]
+        public BackupRecord? BackupRecord { get; set; }
+
+        [Required, StringLength(50)]
+        public string RestoreType { get; set; } = "Full";
+
+        public DateTime RestoreDate { get; set; } = DateTime.UtcNow;
+
+        [Required, StringLength(50)]
+        public string Status { get; set; } = "Completed";
+
+        public string? RestoredByUserId { get; set; }
+        [ForeignKey("RestoredByUserId")]
+        public ApplicationUser? RestoredByUser { get; set; }
+
+        [StringLength(1000)]
+        public string? Details { get; set; }
+    }
+
+    public class ArchivedResource
+    {
+        [Key]
+        public int Id { get; set; }
+
+        public int OriginalResourceId { get; set; }
+
+        [Required, StringLength(255)]
+        public string Title { get; set; } = "";
+
+        [StringLength(1000)]
+        public string Description { get; set; } = "";
+
+        [Required, StringLength(100)]
+        public string Category { get; set; } = "";
+
+        [StringLength(500)]
+        public string? FilePath { get; set; }
+
+        [StringLength(50)]
+        public string? FileSize { get; set; }
+
+        public string? OwnerId { get; set; }
+        [ForeignKey("OwnerId")]
+        public ApplicationUser? Owner { get; set; }
+
+        public DateTime DateArchived { get; set; } = DateTime.UtcNow;
+
+        [StringLength(50)]
+        public string RecoveryStatus { get; set; } = "Archived";
     }
 
     /// <summary>Stores the site-wide backup policy configuration (single row).</summary>

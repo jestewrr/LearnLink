@@ -5842,25 +5842,31 @@ namespace LearnLink.Controllers
                 var relatedRecommendations = await _context.Recommendations.Where(r => resourceIds.Contains(r.ResourceId)).ToListAsync();
                 _context.Recommendations.RemoveRange(relatedRecommendations);
 
-                // 2. Delete physical files and Resources
+                // 2. Archive instead of Delete physical files and Resources
                 foreach (var resource in resourcesToDelete)
                 {
-                    if (!string.IsNullOrEmpty(resource.FilePath))
+                    resource.Status = "Archive";
+
+                    var archiveEntry = new ArchivedResource
                     {
-                        var filePath = resource.FilePath.Trim();
-                        var fullPath = Path.Combine(_environment.WebRootPath, "uploads", filePath);
-                        if (System.IO.File.Exists(fullPath))
-                        {
-                            System.IO.File.Delete(fullPath);
-                        }
-                    }
-                    _context.Resources.Remove(resource);
+                        OriginalResourceId = resource.ResourceId,
+                        Title = resource.Title,
+                        Description = resource.Description,
+                        Category = resource.Subject,
+                        FilePath = resource.FilePath,
+                        FileSize = resource.FileSize,
+                        OwnerId = resource.UserId,
+                        DateArchived = DateTime.UtcNow,
+                        RecoveryStatus = "Archived"
+                    };
+                    
+                    _context.ArchivedResources.Add(archiveEntry);
                     
                     // Log the deletion activity (without ResourceId to avoid FK ref issues if database is weird)
                     _context.UserActivityLogs.Add(new UserActivityLog
                     {
                         UserId = currentUser.Id,
-                        ActivityType = "Delete",
+                        ActivityType = "Archive",
                         TargetTitle = resource.Title,
                         ActivityDate = DateTime.Now
                     });

@@ -54,6 +54,9 @@ namespace LearnLink.Data
         // ===== Backup & Recovery =====
         public DbSet<BackupRecord> BackupRecords { get; set; }
         public DbSet<BackupPolicy> BackupPolicies { get; set; }
+        public DbSet<BackupItem> BackupItems { get; set; }
+        public DbSet<RestoreOperation> RestoreOperations { get; set; }
+        public DbSet<ArchivedResource> ArchivedResources { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

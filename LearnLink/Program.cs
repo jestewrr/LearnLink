@@ -108,6 +108,9 @@ else
 // KNN Recommendation Engine
 builder.Services.AddScoped<IRecommendationService, KnnRecommendationService>();
 
+// Backup Service
+builder.Services.AddScoped<IBackupService, BackupService>();
+
 builder.Services.AddRazorPages();
 
 // #region agent log
