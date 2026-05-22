@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Text.Json;
 using LearnLink.Data;
 using LearnLink.Models;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace LearnLink.Services
@@ -26,6 +27,9 @@ namespace LearnLink.Services
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<BackupService> _logger;
+
+        private static bool IsMissingTableException(SqlException ex)
+            => ex.Message.Contains("Invalid object name", StringComparison.OrdinalIgnoreCase);
 
         public BackupService(IServiceScopeFactory scopeFactory, IWebHostEnvironment env, ILogger<BackupService> logger)
         {
@@ -104,7 +108,18 @@ namespace LearnLink.Services
                 if (repositories.Contains("Science Resources")) exportData["Science"] = await dbContext.Resources.Where(r => r.Subject == "Science").ToListAsync();
                 if (repositories.Contains("English Resources")) exportData["English"] = await dbContext.Resources.Where(r => r.Subject == "English").ToListAsync();
                 if (repositories.Contains("User Accounts")) exportData["Users"] = await dbContext.Users.ToListAsync();
-                if (repositories.Contains("Audit Logs")) exportData["AuditLogs"] = await dbContext.AuditLogs.ToListAsync();
+                if (repositories.Contains("Audit Logs"))
+                {
+                    try
+                    {
+                        exportData["AuditLogs"] = await dbContext.AuditLogs.ToListAsync();
+                    }
+                    catch (SqlException ex) when (IsMissingTableException(ex))
+                    {
+                        _logger.LogWarning(ex, "Skipping audit logs in backup because AuditLogs table does not exist.");
+                        exportData["AuditLogs"] = new List<AuditLog>();
+                    }
+                }
                 if (repositories.Contains("Archived Resources")) exportData["ArchivedResources"] = await dbContext.ArchivedResources.ToListAsync();
 
                 string jsonString = JsonSerializer.Serialize(exportData);
@@ -167,13 +182,26 @@ namespace LearnLink.Services
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
+            async Task<int> SafeCountAsync(Func<Task<int>> query, string metricName)
+            {
+                try
+                {
+                    return await query();
+                }
+                catch (SqlException ex) when (IsMissingTableException(ex))
+                {
+                    _logger.LogWarning(ex, "Skipping metric '{MetricName}' because backing table does not exist.", metricName);
+                    return 0;
+                }
+            }
+
             // Calculate mock DB size based on row counts (approximate 2KB per row)
-            int mathCount = await dbContext.Resources.CountAsync(r => r.Subject == "Mathematics");
-            int scienceCount = await dbContext.Resources.CountAsync(r => r.Subject == "Science");
-            int englishCount = await dbContext.Resources.CountAsync(r => r.Subject == "English");
-            int userCount = await dbContext.Users.CountAsync();
-            int auditCount = await dbContext.AuditLogs.CountAsync();
-            int archiveCount = await dbContext.ArchivedResources.CountAsync();
+            int mathCount = await SafeCountAsync(() => dbContext.Resources.CountAsync(r => r.Subject == "Mathematics"), "Math Resources");
+            int scienceCount = await SafeCountAsync(() => dbContext.Resources.CountAsync(r => r.Subject == "Science"), "Science Resources");
+            int englishCount = await SafeCountAsync(() => dbContext.Resources.CountAsync(r => r.Subject == "English"), "English Resources");
+            int userCount = await SafeCountAsync(() => dbContext.Users.CountAsync(), "User Accounts");
+            int auditCount = await SafeCountAsync(() => dbContext.AuditLogs.CountAsync(), "Audit Logs");
+            int archiveCount = await SafeCountAsync(() => dbContext.ArchivedResources.CountAsync(), "Archived Resources");
 
             metrics.RepositoryCounts["Math Resources"] = mathCount;
             metrics.RepositoryCounts["Science Resources"] = scienceCount;
