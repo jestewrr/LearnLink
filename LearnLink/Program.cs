@@ -519,6 +519,15 @@ using (var scope = app.Services.CreateScope())
                     CREATE INDEX [IX_AuditLogs_Timestamp] ON [AuditLogs] ([Timestamp]);
                     CREATE INDEX [IX_AuditLogs_UserId] ON [AuditLogs] ([UserId]);
                 END
+                ELSE
+                BEGIN
+                    -- Ensure SchoolId column exists on AuditLogs in case it was created without it
+                    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AuditLogs') AND name = 'SchoolId')
+                    BEGIN
+                        ALTER TABLE [AuditLogs] ADD [SchoolId] int NULL;
+                    END
+                END
+
 
                 -- Ensure BackupRecords table exists
                 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[BackupRecords]') AND type in (N'U'))

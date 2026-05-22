@@ -3,7 +3,8 @@
     ViewData["Title"] = "Audit Logs";
     Layout = "~/Views/Shared/_Layout.cshtml";
     var isAdmin = User.IsInRole("SuperAdmin");
-    var users = ViewBag.Users as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var users = ViewBag.Users as IEnumerable<LearnLink.Models.UserDropdownViewModel> ?? Enumerable.Empty<LearnLink.Models.UserDropdownViewModel>();
+
 }
 
 <style>
@@ -416,10 +417,10 @@
 
     // User data from server (may be empty if view couldn't populate users)
     let allUsers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(users.Select(u => new {
-        name = string.IsNullOrWhiteSpace((string?)u.name) ? (string?)u.email ?? "Unknown" : (string?)u.name,
-        email = (string?)u.email ?? "",
-        initials = (string?)u.initials ?? "?",
-        avatarColor = (string?)u.avatarColor ?? ""
+        name = string.IsNullOrWhiteSpace(u.Name) ? u.Email ?? "Unknown" : u.Name,
+        email = u.Email ?? "",
+        initials = u.Initials ?? "?",
+        avatarColor = u.AvatarColor ?? ""
     })));
     const getActivitiesUrl = '@Url.Action("GetUserActivitiesJson", "Home")';
     const getAllUsersUrl = '@Url.Action("GetAllUsersJson", "Home")';

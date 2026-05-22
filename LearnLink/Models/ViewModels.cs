@@ -270,4 +270,13 @@ namespace LearnLink.Models
         public int Percent => Total > 0 ? (int)Math.Round((double)Completed / Total * 100) : 0;
         public string Color { get; set; } = "#4361ee";
     }
+
+    public class UserDropdownViewModel
+    {
+        public string Name { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Initials { get; set; } = "";
+        public string AvatarColor { get; set; } = "";
+    }
 }
+

@@ -602,6 +602,12 @@ namespace LearnLink.Controllers
             {
                 _context.ChangeTracker.Clear();
                 _logger.LogError(ex, "Failed to log user activity");
+                try
+                {
+                    var logMsg = $"[{DateTime.UtcNow}] LogActivity Error: {ex.Message}\nStack: {ex.StackTrace}\nInner: {ex.InnerException?.Message}\nUserId: {userId}, ActivityType: {activityType}, TargetTitle: {targetTitle}\n\n";
+                    System.IO.File.AppendAllText("db-errors.txt", logMsg);
+                }
+                catch {}
             }
         }
 
@@ -628,6 +634,12 @@ namespace LearnLink.Controllers
             {
                 _context.ChangeTracker.Clear();
                 _logger.LogError(ex, "Failed to write audit log");
+                try
+                {
+                    var logMsg = $"[{DateTime.UtcNow}] LogAuditAsync Error: {ex.Message}\nStack: {ex.StackTrace}\nInner: {ex.InnerException?.Message}\nAction: {action}, Status: {status}, UserId: {userId}, UserEmail: {userEmail}\n\n";
+                    System.IO.File.AppendAllText("db-errors.txt", logMsg);
+                }
+                catch {}
             }
         }
 
@@ -6522,11 +6534,12 @@ namespace LearnLink.Controllers
                 if (schoolId.HasValue)
                 {
                     activityQuery = activityQuery.Where(a => a.User != null && a.User.SchoolId == schoolId.Value);
-                    auditQuery = auditQuery.Where(a => a.SchoolId == schoolId.Value);
+                    auditQuery = auditQuery.Where(a => a.SchoolId == schoolId.Value || (a.User != null && a.User.SchoolId == schoolId.Value));
                 }
 
                 var rawActivities = await activityQuery.ToListAsync();
                 var rawAuditLogs = await auditQuery.ToListAsync();
+
 
                 var combinedEntries = rawActivities.Select(a => new LearnLink.Models.AuditEntryViewModel
                 {
@@ -6605,23 +6618,31 @@ namespace LearnLink.Controllers
                     allUsersForDropdown = allUsersForDropdown.Where(u => u.SchoolId == effectiveSchool.Value).ToList();
                 ViewBag.Users = allUsersForDropdown
                     .OrderBy(u => u.FullName)
-                    .Select(u => new
+                    .Select(u => new LearnLink.Models.UserDropdownViewModel
                     {
-                        name = string.IsNullOrWhiteSpace(u.FullName) ? (u.Email ?? "Unknown") : u.FullName,
-                        email = u.Email ?? "",
-                        initials = u.Initials,
-                        avatarColor = u.AvatarColor
+                        Name = string.IsNullOrWhiteSpace(u.FullName) ? (u.Email ?? "Unknown") : u.FullName,
+                        Email = u.Email ?? "",
+                        Initials = u.Initials,
+                        AvatarColor = u.AvatarColor
                     })
                     .ToList();
 
                 return View(logs);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to load audit logs");
+                try
+                {
+                    var logMsg = $"[{DateTime.UtcNow}] AuditLogs Error: {ex.Message}\nStack: {ex.StackTrace}\nInner: {ex.InnerException?.Message}\n\n";
+                    System.IO.File.AppendAllText("db-errors.txt", logMsg);
+                }
+                catch {}
+
                 // Fallback if the AuditLogs table doesn't exist yet
                 ViewBag.CurrentPage = 1;
                 ViewBag.TotalPages = 0;
-                ViewBag.Users = new List<object>();
+                ViewBag.Users = new List<LearnLink.Models.UserDropdownViewModel>();
                 ViewData["ActivePage"] = "AuditLogs";
                 return View(new List<LearnLink.Models.AuditEntryViewModel>());
             }
