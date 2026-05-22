@@ -28,6 +28,7 @@ namespace LearnLink.Controllers
         private readonly IRecommendationService _recommendationService;
         private readonly IEmailService _emailService;
         private readonly IStorageService _storage;
+        private readonly IBackupService _backupService;
         private readonly bool _googleAuthEnabled;
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
@@ -45,6 +46,7 @@ namespace LearnLink.Controllers
             IRecommendationService recommendationService,
             IEmailService emailService,
             IStorageService storage,
+            IBackupService backupService,
             IMemoryCache cache,
             IConfiguration configuration,
             ILogger<HomeController> logger)
@@ -58,6 +60,7 @@ namespace LearnLink.Controllers
             _recommendationService = recommendationService;
             _emailService = emailService;
             _storage = storage;
+            _backupService = backupService;
             _cache = cache;
             _configuration = configuration;
             _logger = logger;
@@ -6629,6 +6632,9 @@ namespace LearnLink.Controllers
                 records = new List<BackupRecord>();
             }
 
+            // Use the same backing data source for counts shown in backup modal cards.
+            var metrics = await _backupService.CalculateStorageMetricsAsync();
+
             // Calculate actual data sizes or estimates
             var resources = await _context.Resources.Select(r => r.FileSize).ToListAsync();
             double resourcesMb = 0;
@@ -6671,6 +6677,18 @@ namespace LearnLink.Controllers
             ViewBag.ActivitySizeGb = activityGb;
             ViewBag.LessonsSizeGb = lessonsGb;
             ViewBag.TotalUsedGb = totalUsedGb;
+            ViewBag.Metrics = metrics;
+
+            // Populate optional tabs expected by the view.
+            ViewBag.ArchivedResources = await _context.ArchivedResources
+                .Include(a => a.Owner)
+                .OrderByDescending(a => a.DateArchived)
+                .ToListAsync();
+            ViewBag.RestoreHistory = await _context.RestoreOperations
+                .Include(r => r.RestoredByUser)
+                .OrderByDescending(r => r.RestoreDate)
+                .Take(50)
+                .ToListAsync();
 
             // Status summary KPIs
             var lastCompleted = records.FirstOrDefault(r => r.Status == "Completed");
@@ -6694,7 +6712,7 @@ namespace LearnLink.Controllers
         [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> TriggerManualBackup(string notes = "", bool includeFiles = false, bool includeCredentials = false, bool includeLogs = false, bool includeDiscussions = false)
+        public async Task<IActionResult> TriggerManualBackup(List<string>? selectedRepositories, string notes = "")
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return Unauthorized();
@@ -6720,57 +6738,31 @@ namespace LearnLink.Controllers
                     END
                 ");
 
-                // Calculate realistic size and metadata based on selected components
-                var selectedList = new List<string>();
-                double sizeMb = 0.0;
-
-                if (includeFiles)
+                var selectedList = selectedRepositories ?? new List<string>();
+                if (!selectedList.Any())
                 {
-                    selectedList.Add("Files");
-                    sizeMb += 450.0;
-                }
-                if (includeCredentials)
-                {
-                    selectedList.Add("Credentials");
-                    sizeMb += 0.5;
-                }
-                if (includeLogs)
-                {
-                    selectedList.Add("Logs");
-                    sizeMb += 150.0;
-                }
-                if (includeDiscussions)
-                {
-                    selectedList.Add("Discussions");
-                    sizeMb += 50.0;
+                    TempData["ErrorMessage"] = "Please select at least one repository or system data component to back up.";
+                    return RedirectToAction("BackupDashboard");
                 }
 
-                string selectedStr = selectedList.Count > 0 ? string.Join(", ", selectedList) : "None";
-                string sizeDesc = sizeMb >= 1024.0 ? $"{Math.Round(sizeMb / 1024.0, 2)} GB" : $"{Math.Round(sizeMb, 1)} MB";
+                var backupId = await _backupService.InitiateBackupAsync(currentUser.Id, selectedList, "Manual");
+                var selectedStr = string.Join(", ", selectedList);
 
-                string finalNotes = string.IsNullOrWhiteSpace(notes)
-                    ? $"Manual backup. (Components: {selectedStr})"
-                    : $"{notes} (Components: {selectedStr})";
-
-                var record = new BackupRecord
+                // Append optional note to the created record.
+                if (!string.IsNullOrWhiteSpace(notes))
                 {
-                    BackupType   = "Manual",
-                    Status       = "Completed",
-                    CreatedAt    = DateTime.UtcNow,
-                    CompletedAt  = DateTime.UtcNow,
-                    SizeDescription = sizeDesc,
-                    StorageLocation = "Secure off-site cloud storage",
-                    Notes        = finalNotes,
-                    TriggeredByUserId = currentUser.Id
-                };
-
-                _context.BackupRecords.Add(record);
-                await _context.SaveChangesAsync();
+                    var created = await _context.BackupRecords.FindAsync(backupId);
+                    if (created != null)
+                    {
+                        created.Notes = notes.Trim();
+                        await _context.SaveChangesAsync();
+                    }
+                }
 
                 // Log activity
-                await LogActivity(currentUser.Id, "Backup", $"Created manual backup including: {selectedStr}. Description: {notes}");
+                await LogActivity(currentUser.Id, "Backup", $"Initiated manual backup including: {selectedStr}. Description: {notes}");
 
-                TempData["SuccessMessage"] = $"Manual backup ({selectedStr}) has been recorded successfully. Size: {sizeDesc}.";
+                TempData["SuccessMessage"] = $"Manual backup initiated successfully. Components: {selectedStr}.";
             }
             catch (Exception ex)
             {
