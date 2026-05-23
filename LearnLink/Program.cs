@@ -477,6 +477,102 @@ using (var scope = app.Services.CreateScope())
                 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_LessonsLearned_Schools_SchoolId')
                     ALTER TABLE [LessonsLearned] ADD CONSTRAINT [FK_LessonsLearned_Schools_SchoolId] FOREIGN KEY ([SchoolId]) REFERENCES [Schools] ([SchoolId]) ON DELETE SET NULL;
             ");
+
+            // Prevent EnterpriseBackup migration from failing due to already-existing BackupRecords / BackupPolicies tables
+            await context.Database.ExecuteSqlRawAsync(@"
+                IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[BackupRecords]') AND type in (N'U'))
+                   AND NOT EXISTS (SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = '20260522021301_EnterpriseBackup')
+                BEGIN
+                    -- Ensure BackupPolicies table exists
+                    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[BackupPolicies]') AND type in (N'U'))
+                    BEGIN
+                        CREATE TABLE [BackupPolicies] (
+                            [Id] int NOT NULL IDENTITY(1, 1),
+                            [FrequencyDays] int NOT NULL,
+                            [RetentionCount] int NOT NULL,
+                            [StorageDescription] nvarchar(200) NULL,
+                            [NotifyOnBackup] bit NOT NULL,
+                            [LastUpdated] datetime2 NOT NULL,
+                            [LastUpdatedByUserId] nvarchar(450) NULL,
+                            CONSTRAINT [PK_BackupPolicies] PRIMARY KEY ([Id])
+                        );
+                    END
+
+                    -- Ensure columns exist in BackupRecords
+                    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BackupRecords') AND name = 'TotalSizeMb')
+                        ALTER TABLE [BackupRecords] ADD [TotalSizeMb] float NOT NULL DEFAULT 0;
+                    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BackupRecords') AND name = 'ArchiveFilePath')
+                        ALTER TABLE [BackupRecords] ADD [ArchiveFilePath] nvarchar(500) NULL;
+                    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BackupRecords') AND name = 'ProgressPercent')
+                        ALTER TABLE [BackupRecords] ADD [ProgressPercent] int NOT NULL DEFAULT 0;
+
+                    -- Ensure ArchivedResources exists
+                    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[ArchivedResources]') AND type in (N'U'))
+                    BEGIN
+                        CREATE TABLE [ArchivedResources] (
+                            [Id] int NOT NULL IDENTITY(1, 1),
+                            [OriginalResourceId] int NOT NULL,
+                            [Title] nvarchar(255) NOT NULL,
+                            [Description] nvarchar(1000) NOT NULL,
+                            [Category] nvarchar(100) NOT NULL,
+                            [FilePath] nvarchar(500) NULL,
+                            [FileSize] nvarchar(50) NULL,
+                            [OwnerId] nvarchar(450) NULL,
+                            [DateArchived] datetime2 NOT NULL,
+                            [RecoveryStatus] nvarchar(50) NOT NULL,
+                            CONSTRAINT [PK_ArchivedResources] PRIMARY KEY ([Id])
+                        );
+                        CREATE INDEX [IX_ArchivedResources_OwnerId] ON [ArchivedResources] ([OwnerId]);
+                    END
+
+                    -- Ensure BackupItems exists
+                    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[BackupItems]') AND type in (N'U'))
+                    BEGIN
+                        CREATE TABLE [BackupItems] (
+                            [Id] int NOT NULL IDENTITY(1, 1),
+                            [BackupRecordId] int NOT NULL,
+                            [RepositoryName] nvarchar(100) NOT NULL,
+                            [ItemCount] int NOT NULL,
+                            [StorageSizeMb] float NOT NULL,
+                            CONSTRAINT [PK_BackupItems] PRIMARY KEY ([Id]),
+                            CONSTRAINT [FK_BackupItems_BackupRecords_BackupRecordId] FOREIGN KEY ([BackupRecordId]) REFERENCES [BackupRecords] ([Id]) ON DELETE CASCADE
+                        );
+                        CREATE INDEX [IX_BackupItems_BackupRecordId] ON [BackupItems] ([BackupRecordId]);
+                    END
+
+                    -- Ensure RestoreOperations exists
+                    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[RestoreOperations]') AND type in (N'U'))
+                    BEGIN
+                        CREATE TABLE [RestoreOperations] (
+                            [Id] int NOT NULL IDENTITY(1, 1),
+                            [BackupRecordId] int NOT NULL,
+                            [RestoreType] nvarchar(50) NOT NULL,
+                            [RestoreDate] datetime2 NOT NULL,
+                            [Status] nvarchar(50) NOT NULL,
+                            [RestoredByUserId] nvarchar(450) NULL,
+                            [Details] nvarchar(1000) NULL,
+                            CONSTRAINT [PK_RestoreOperations] PRIMARY KEY ([Id]),
+                            CONSTRAINT [FK_RestoreOperations_BackupRecords_BackupRecordId] FOREIGN KEY ([BackupRecordId]) REFERENCES [BackupRecords] ([Id]) ON DELETE CASCADE
+                        );
+                        CREATE INDEX [IX_RestoreOperations_BackupRecordId] ON [RestoreOperations] ([BackupRecordId]);
+                        CREATE INDEX [IX_RestoreOperations_RestoredByUserId] ON [RestoreOperations] ([RestoredByUserId]);
+                    END
+
+                    -- Add foreign keys if missing (safe checks)
+                    IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_ArchivedResources_AspNetUsers_OwnerId')
+                        ALTER TABLE [ArchivedResources] ADD CONSTRAINT [FK_ArchivedResources_AspNetUsers_OwnerId] FOREIGN KEY ([OwnerId]) REFERENCES [AspNetUsers] ([Id]);
+                    IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_BackupPolicies_AspNetUsers_LastUpdatedByUserId')
+                        ALTER TABLE [BackupPolicies] ADD CONSTRAINT [FK_BackupPolicies_AspNetUsers_LastUpdatedByUserId] FOREIGN KEY ([LastUpdatedByUserId]) REFERENCES [AspNetUsers] ([Id]);
+                    IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_BackupRecords_AspNetUsers_TriggeredByUserId')
+                        ALTER TABLE [BackupRecords] ADD CONSTRAINT [FK_BackupRecords_AspNetUsers_TriggeredByUserId] FOREIGN KEY ([TriggeredByUserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE SET NULL;
+                    IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_RestoreOperations_AspNetUsers_RestoredByUserId')
+                        ALTER TABLE [RestoreOperations] ADD CONSTRAINT [FK_RestoreOperations_AspNetUsers_RestoredByUserId] FOREIGN KEY ([RestoredByUserId]) REFERENCES [AspNetUsers] ([Id]);
+
+                    -- Mark migration as applied so EF Core doesn't try to run it
+                    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+                    VALUES ('20260522021301_EnterpriseBackup', '8.0.0');
+                END
+            ");
         }
         catch (Exception ex)
         {
