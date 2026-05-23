@@ -6680,15 +6680,90 @@ namespace LearnLink.Controllers
             ViewBag.Metrics = metrics;
 
             // Populate optional tabs expected by the view.
-            ViewBag.ArchivedResources = await _context.ArchivedResources
-                .Include(a => a.Owner)
-                .OrderByDescending(a => a.DateArchived)
-                .ToListAsync();
-            ViewBag.RestoreHistory = await _context.RestoreOperations
-                .Include(r => r.RestoredByUser)
-                .OrderByDescending(r => r.RestoreDate)
-                .Take(50)
-                .ToListAsync();
+            try
+            {
+                ViewBag.ArchivedResources = await _context.ArchivedResources
+                    .Include(a => a.Owner)
+                    .OrderByDescending(a => a.DateArchived)
+                    .ToListAsync();
+            }
+            catch (Exception)
+            {
+                try
+                {
+                    await _context.Database.ExecuteSqlRawAsync(@"
+                        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[ArchivedResources]') AND type in (N'U'))
+                        BEGIN
+                            CREATE TABLE [ArchivedResources] (
+                                [Id] int NOT NULL IDENTITY(1, 1),
+                                [OriginalResourceId] int NOT NULL,
+                                [Title] nvarchar(255) NOT NULL,
+                                [Description] nvarchar(1000) NOT NULL,
+                                [Category] nvarchar(100) NOT NULL,
+                                [FilePath] nvarchar(500) NULL,
+                                [FileSize] nvarchar(50) NULL,
+                                [OwnerId] nvarchar(450) NULL,
+                                [DateArchived] datetime2 NOT NULL,
+                                [RecoveryStatus] nvarchar(50) NOT NULL,
+                                CONSTRAINT [PK_ArchivedResources] PRIMARY KEY ([Id]),
+                                CONSTRAINT [FK_ArchivedResources_AspNetUsers_OwnerId] FOREIGN KEY ([OwnerId]) REFERENCES [AspNetUsers] ([Id])
+                            );
+                            CREATE INDEX [IX_ArchivedResources_OwnerId] ON [ArchivedResources] ([OwnerId]);
+                        END
+                    ");
+                    ViewBag.ArchivedResources = await _context.ArchivedResources
+                        .Include(a => a.Owner)
+                        .OrderByDescending(a => a.DateArchived)
+                        .ToListAsync();
+                }
+                catch
+                {
+                    ViewBag.ArchivedResources = new List<ArchivedResource>();
+                }
+            }
+
+            try
+            {
+                ViewBag.RestoreHistory = await _context.RestoreOperations
+                    .Include(r => r.RestoredByUser)
+                    .OrderByDescending(r => r.RestoreDate)
+                    .Take(50)
+                    .ToListAsync();
+            }
+            catch (Exception)
+            {
+                try
+                {
+                    await _context.Database.ExecuteSqlRawAsync(@"
+                        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[RestoreOperations]') AND type in (N'U'))
+                        BEGIN
+                            CREATE TABLE [RestoreOperations] (
+                                [Id] int NOT NULL IDENTITY(1, 1),
+                                [BackupRecordId] int NOT NULL,
+                                [RestoreType] nvarchar(50) NOT NULL,
+                                [RestoreDate] datetime2 NOT NULL,
+                                [Status] nvarchar(50) NOT NULL,
+                                [RestoredByUserId] nvarchar(450) NULL,
+                                [Details] nvarchar(1000) NULL,
+                                CONSTRAINT [PK_RestoreOperations] PRIMARY KEY ([Id]),
+                                CONSTRAINT [FK_RestoreOperations_AspNetUsers_RestoredByUserId] FOREIGN KEY ([RestoredByUserId]) REFERENCES [AspNetUsers] ([Id]),
+                                CONSTRAINT [FK_RestoreOperations_BackupRecords_BackupRecordId] FOREIGN KEY ([BackupRecordId]) REFERENCES [BackupRecords] ([Id]) ON DELETE CASCADE
+                            );
+                            CREATE INDEX [IX_RestoreOperations_BackupRecordId] ON [RestoreOperations] ([BackupRecordId]);
+                            CREATE INDEX [IX_RestoreOperations_RestoredByUserId] ON [RestoreOperations] ([RestoredByUserId]);
+                        END
+                    ");
+                    ViewBag.RestoreHistory = await _context.RestoreOperations
+                        .Include(r => r.RestoredByUser)
+                        .OrderByDescending(r => r.RestoreDate)
+                        .Take(50)
+                        .ToListAsync();
+                }
+                catch
+                {
+                    ViewBag.RestoreHistory = new List<RestoreOperation>();
+                }
+            }
 
             // Status summary KPIs
             var lastCompleted = records.FirstOrDefault(r => r.Status == "Completed");
