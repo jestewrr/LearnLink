@@ -6781,13 +6781,20 @@ namespace LearnLink.Controllers
             ViewBag.SuccessCount = records.Count(r => r.Status == "Completed");
             ViewBag.FailedCount = records.Count(r => r.Status == "Failed");
 
+            // Pass all active resources to the view for specific resource selection in backup
+            ViewBag.AvailableResources = await _context.Resources
+                .Include(r => r.User)
+                .Where(r => r.Status == "Active")
+                .OrderByDescending(r => r.DateUploaded)
+                .ToListAsync();
+
             return View();
         }
 
         [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> TriggerManualBackup(List<string>? selectedRepositories, string notes = "")
+        public async Task<IActionResult> TriggerManualBackup(List<string>? selectedRepositories, List<int>? selectedResourceIds, string notes = "")
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return Unauthorized();
@@ -6814,14 +6821,20 @@ namespace LearnLink.Controllers
                 ");
 
                 var selectedList = selectedRepositories ?? new List<string>();
-                if (!selectedList.Any())
+                var resourceList = selectedResourceIds ?? new List<int>();
+
+                if (!selectedList.Any() && !resourceList.Any())
                 {
-                    TempData["ErrorMessage"] = "Please select at least one repository or system data component to back up.";
+                    TempData["ErrorMessage"] = "Please select at least one repository, system data component, or specific resource to back up.";
                     return RedirectToAction("BackupDashboard");
                 }
 
-                var backupId = await _backupService.InitiateBackupAsync(currentUser.Id, selectedList, "Manual");
+                var backupId = await _backupService.InitiateBackupAsync(currentUser.Id, selectedList, resourceList, "Manual");
                 var selectedStr = string.Join(", ", selectedList);
+                if (resourceList.Any())
+                {
+                    selectedStr += (selectedStr.Length > 0 ? ", " : "") + $"{resourceList.Count} Specific Resources";
+                }
 
                 // Append optional note to the created record.
                 if (!string.IsNullOrWhiteSpace(notes))
@@ -6866,26 +6879,29 @@ namespace LearnLink.Controllers
                     return RedirectToAction("BackupDashboard");
                 }
 
+                // Initiate restore process
+                var restoreOpId = await _backupService.InitiateRestoreAsync(id, currentUser.Id);
+
                 // Log the restore activity
-                await LogActivity(currentUser.Id, "Restore", $"Restored backup (ID: {id}, Description: {record.Notes})");
+                await LogActivity(currentUser.Id, "Restore", $"Initiated restore of backup (ID: {id}, Description: {record.Notes})");
 
                 // Log audit log
                 try
                 {
-                    await LogAuditAsync("Restore", "Success", $"Restored system to backup (ID: {id}). Elements: {record.Notes}", currentUser.Id, currentUser.Email, currentUser.SchoolId);
+                    await LogAuditAsync("Restore", "Success", $"Initiated restore of system backup (ID: {id}). Elements: {record.Notes}", currentUser.Id, currentUser.Email, currentUser.SchoolId);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to log restore audit entry");
                 }
 
-                TempData["SuccessMessage"] = $"System backup from {record.CreatedAt.ToLocalTime():MMM dd, yyyy hh:mm tt} has been restored successfully! System components have been recovered.";
+                TempData["SuccessMessage"] = $"System restore from {record.CreatedAt.ToLocalTime():MMM dd, yyyy hh:mm tt} has been initiated successfully! Please wait while data is recovered.";
             }
             catch (Exception ex)
             {
                 var logger = HttpContext.RequestServices.GetRequiredService<ILogger<HomeController>>();
-                logger.LogError(ex, "Failed to restore backup");
-                TempData["ErrorMessage"] = "Failed to restore backup. Please check logs and try again.";
+                logger.LogError(ex, "Failed to initiate restore");
+                TempData["ErrorMessage"] = "Failed to initiate restore. Please check logs and try again.";
             }
 
             return RedirectToAction("BackupDashboard");

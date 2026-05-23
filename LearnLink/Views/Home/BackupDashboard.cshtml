@@ -294,7 +294,7 @@
 
 <!-- Manual Backup Modal -->
 <div class="modal fade" id="manualBackupModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="bi bi-cloud-arrow-up"></i> Create Dynamic Backup</h5>
@@ -302,47 +302,78 @@
             </div>
             <form asp-action="TriggerManualBackup" method="post">
                 <div class="modal-body">
-                    <p class="text-muted">Select the repositories and data components you want to include in this backup snapshot.</p>
+                    <p class="text-muted">Select the specific resources and system data components you want to include in this backup snapshot.</p>
                     
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <h6>Knowledge Repositories</h6>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" name="selectedRepositories" value="Math Resources" id="repoMath" checked>
-                                <label class="form-check-label" for="repoMath">Math Resources (@metrics.RepositoryCounts.GetValueOrDefault("Math Resources", 0) items)</label>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" name="selectedRepositories" value="Science Resources" id="repoScience" checked>
-                                <label class="form-check-label" for="repoScience">Science Resources (@metrics.RepositoryCounts.GetValueOrDefault("Science Resources", 0) items)</label>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" name="selectedRepositories" value="English Resources" id="repoEnglish" checked>
-                                <label class="form-check-label" for="repoEnglish">English Resources (@metrics.RepositoryCounts.GetValueOrDefault("English Resources", 0) items)</label>
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6>System Data Components</h6>
+                            <div class="d-flex flex-wrap gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="selectedRepositories" value="User Accounts" id="sysUsers" checked>
+                                    <label class="form-check-label" for="sysUsers">User Accounts (@metrics.RepositoryCounts.GetValueOrDefault("User Accounts", 0))</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="selectedRepositories" value="Audit Logs" id="sysLogs">
+                                    <label class="form-check-label" for="sysLogs">Audit Logs (@metrics.RepositoryCounts.GetValueOrDefault("Audit Logs", 0))</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="selectedRepositories" value="User Uploads" id="sysUploads" checked>
+                                    <label class="form-check-label" for="sysUploads">User Upload Files (~@Math.Round(metrics.UploadsSizeMb, 1) MB)</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="selectedRepositories" value="Archived Resources" id="sysArchive">
+                                    <label class="form-check-label" for="sysArchive">Archived Resources (@metrics.RepositoryCounts.GetValueOrDefault("Archived Resources", 0))</label>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <h6>System Data</h6>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" name="selectedRepositories" value="User Accounts" id="sysUsers" checked>
-                                <label class="form-check-label" for="sysUsers">User Accounts (@metrics.RepositoryCounts.GetValueOrDefault("User Accounts", 0))</label>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" name="selectedRepositories" value="Audit Logs" id="sysLogs">
-                                <label class="form-check-label" for="sysLogs">Audit Logs (@metrics.RepositoryCounts.GetValueOrDefault("Audit Logs", 0))</label>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" name="selectedRepositories" value="User Uploads" id="sysUploads" checked>
-                                <label class="form-check-label" for="sysUploads">User Upload Files (~@Math.Round(metrics.UploadsSizeMb, 1) MB)</label>
-                            </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6>Specific Knowledge Resources</h6>
+                        <p class="small text-muted mb-2">Select the individual resources you want to backup. If none are selected, resources will not be included.</p>
+                        
+                        <div class="table-responsive" style="max-height: 350px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: .25rem;">
+                            <table class="table table-hover table-sm mb-0 align-middle">
+                                <thead class="table-light position-sticky top-0" style="z-index: 1;">
+                                    <tr>
+                                        <th style="width: 40px; padding-left: 12px;">
+                                            <input class="form-check-input" type="checkbox" id="selectAllResources">
+                                        </th>
+                                        <th>Title</th>
+                                        <th>Subject</th>
+                                        <th>Format</th>
+                                        <th>Uploader</th>
+                                        <th>Date & Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (ViewBag.AvailableResources != null)
+                                    {
+                                        foreach (var res in (IEnumerable<Resource>)ViewBag.AvailableResources)
+                                        {
+                                            <tr>
+                                                <td style="padding-left: 12px;">
+                                                    <input class="form-check-input resource-checkbox" type="checkbox" name="selectedResourceIds" value="@res.ResourceId">
+                                                </td>
+                                                <td class="fw-medium">@res.Title</td>
+                                                <td><span class="badge bg-primary text-white">@res.Subject</span></td>
+                                                <td><span class="badge bg-secondary">@(string.IsNullOrEmpty(res.ResourceType) ? res.FileFormat : res.ResourceType)</span></td>
+                                                <td><small>@(res.User?.Email ?? "System")</small></td>
+                                                <td><small>@res.DateUploaded.ToLocalTime().ToString("MMM dd, yyyy HH:mm")</small></td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">Backup Description/Notes (Optional)</label>
-                        <textarea class="form-control" name="notes" rows="2" placeholder="E.g., Pre-deployment backup v2.1"></textarea>
+                        <textarea class="form-control" name="notes" rows="2" placeholder="E.g., Snapshot of Quarter 1 specific modules"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer border-top-0 pt-0">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary"><i class="bi bi-play-fill"></i> Initiate Background Backup</button>
                 </div>
@@ -385,6 +416,26 @@
         
         $(document).ready(function() {
             setTimeout(pollBackupStatus, 3000);
+            
+            // Select All specific resources logic
+            $('#selectAllResources').change(function() {
+                var isChecked = $(this).is(':checked');
+                $('.resource-checkbox').prop('checked', isChecked);
+            });
+            
+            // Update Select All checkbox state when individual checkboxes change
+            $('.resource-checkbox').change(function() {
+                if ($('.resource-checkbox:checked').length === $('.resource-checkbox').length) {
+                    $('#selectAllResources').prop('checked', true);
+                    $('#selectAllResources').prop('indeterminate', false);
+                } else if ($('.resource-checkbox:checked').length === 0) {
+                    $('#selectAllResources').prop('checked', false);
+                    $('#selectAllResources').prop('indeterminate', false);
+                } else {
+                    $('#selectAllResources').prop('checked', false);
+                    $('#selectAllResources').prop('indeterminate', true);
+                }
+            });
         });
     </script>
 }

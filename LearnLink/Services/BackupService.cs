@@ -9,7 +9,8 @@ namespace LearnLink.Services
 {
     public interface IBackupService
     {
-        Task<int> InitiateBackupAsync(string triggerUserId, List<string> selectedRepositories, string backupType = "Manual");
+        Task<int> InitiateBackupAsync(string triggerUserId, List<string> selectedRepositories, List<int>? selectedResourceIds = null, string backupType = "Manual");
+        Task<int> InitiateRestoreAsync(int backupRecordId, string triggerUserId);
         Task<BackupMetricsDto> CalculateStorageMetricsAsync();
     }
 
@@ -38,7 +39,7 @@ namespace LearnLink.Services
             _logger = logger;
         }
 
-        public async Task<int> InitiateBackupAsync(string triggerUserId, List<string> selectedRepositories, string backupType = "Manual")
+        public async Task<int> InitiateBackupAsync(string triggerUserId, List<string> selectedRepositories, List<int>? selectedResourceIds = null, string backupType = "Manual")
         {
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -71,12 +72,13 @@ namespace LearnLink.Services
             await dbContext.SaveChangesAsync();
 
             // Start background process
-            _ = Task.Run(() => ExecuteBackupProcessAsync(backupRecord.Id, selectedRepositories));
+            var resourceList = selectedResourceIds ?? new List<int>();
+            _ = Task.Run(() => ExecuteBackupProcessAsync(backupRecord.Id, selectedRepositories, resourceList));
 
             return backupRecord.Id;
         }
 
-        private async Task ExecuteBackupProcessAsync(int backupRecordId, List<string> repositories)
+        private async Task ExecuteBackupProcessAsync(int backupRecordId, List<string> repositories, List<int> resourceIds)
         {
             try
             {
@@ -104,9 +106,17 @@ namespace LearnLink.Services
 
                 var exportData = new Dictionary<string, object>();
 
-                if (repositories.Contains("Math Resources")) exportData["Math"] = await dbContext.Resources.Where(r => r.Subject == "Mathematics").ToListAsync();
-                if (repositories.Contains("Science Resources")) exportData["Science"] = await dbContext.Resources.Where(r => r.Subject == "Science").ToListAsync();
-                if (repositories.Contains("English Resources")) exportData["English"] = await dbContext.Resources.Where(r => r.Subject == "English").ToListAsync();
+                if (resourceIds != null && resourceIds.Any())
+                {
+                    exportData["SpecificResources"] = await dbContext.Resources.Where(r => resourceIds.Contains(r.ResourceId)).ToListAsync();
+                }
+                else
+                {
+                    if (repositories.Contains("Math Resources")) exportData["Math"] = await dbContext.Resources.Where(r => r.Subject == "Mathematics").ToListAsync();
+                    if (repositories.Contains("Science Resources")) exportData["Science"] = await dbContext.Resources.Where(r => r.Subject == "Science").ToListAsync();
+                    if (repositories.Contains("English Resources")) exportData["English"] = await dbContext.Resources.Where(r => r.Subject == "English").ToListAsync();
+                }
+
                 if (repositories.Contains("User Accounts")) exportData["Users"] = await dbContext.Users.ToListAsync();
                 if (repositories.Contains("Audit Logs"))
                 {
@@ -255,6 +265,159 @@ namespace LearnLink.Services
             {
                 string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
                 CopyDirectory(subDir.FullName, newDestinationDir);
+            }
+        }
+
+        public async Task<int> InitiateRestoreAsync(int backupRecordId, string triggerUserId)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            var restoreOp = new RestoreOperation
+            {
+                BackupRecordId = backupRecordId,
+                RestoreType = "Manual",
+                Status = "In Progress",
+                RestoreDate = DateTime.UtcNow,
+                RestoredByUserId = triggerUserId,
+                Details = "Restore initiated"
+            };
+
+            dbContext.RestoreOperations.Add(restoreOp);
+            await dbContext.SaveChangesAsync();
+
+            // Start background process
+            _ = Task.Run(() => ExecuteRestoreProcessAsync(restoreOp.Id, backupRecordId));
+
+            return restoreOp.Id;
+        }
+
+        private async Task ExecuteRestoreProcessAsync(int restoreOpId, int backupRecordId)
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var restoreOp = await dbContext.RestoreOperations.FindAsync(restoreOpId);
+                var backupRecord = await dbContext.BackupRecords.FindAsync(backupRecordId);
+                
+                if (restoreOp == null || backupRecord == null || string.IsNullOrEmpty(backupRecord.ArchiveFilePath))
+                    return;
+
+                if (!File.Exists(backupRecord.ArchiveFilePath))
+                {
+                    restoreOp.Status = "Failed";
+                    restoreOp.Details = "Backup archive file not found.";
+                    await dbContext.SaveChangesAsync();
+                    return;
+                }
+
+                // Create a temporary extraction directory
+                string tempDir = Path.Combine(_env.ContentRootPath, "Backups", $"TempExtract_{Guid.NewGuid()}");
+                if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+                Directory.CreateDirectory(tempDir);
+
+                // Extract Zip
+                ZipFile.ExtractToDirectory(backupRecord.ArchiveFilePath, tempDir);
+
+                // Step 1: Restore Database Dump
+                string dumpPath = Path.Combine(tempDir, "database_dump.json");
+                if (File.Exists(dumpPath))
+                {
+                    string jsonString = await File.ReadAllTextAsync(dumpPath);
+                    var dumpData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonString);
+
+                    if (dumpData != null)
+                    {
+                        // Restore Math Resources
+                        if (dumpData.ContainsKey("Math"))
+                            await RestoreResources(dbContext, dumpData["Math"]);
+                        
+                        // Restore Science Resources
+                        if (dumpData.ContainsKey("Science"))
+                            await RestoreResources(dbContext, dumpData["Science"]);
+                        
+                        // Restore English Resources
+                        if (dumpData.ContainsKey("English"))
+                            await RestoreResources(dbContext, dumpData["English"]);
+                        
+                        // Restore Specific Resources
+                        if (dumpData.ContainsKey("SpecificResources"))
+                            await RestoreResources(dbContext, dumpData["SpecificResources"]);
+
+                        // Note: User accounts and Audit Logs are skipped for soft restore 
+                        // as they might break relations or overwrite current login state.
+                        // For a real full restore, they should be carefully merged.
+                        
+                        // Restore Archived Resources
+                        if (dumpData.ContainsKey("ArchivedResources"))
+                        {
+                            var archivedItems = JsonSerializer.Deserialize<List<ArchivedResource>>(dumpData["ArchivedResources"].GetRawText());
+                            if (archivedItems != null)
+                            {
+                                foreach (var item in archivedItems)
+                                {
+                                    if (!await dbContext.ArchivedResources.AnyAsync(a => a.Id == item.Id))
+                                    {
+                                        item.Id = 0; // Let DB generate new ID or set IDENTITY_INSERT
+                                        dbContext.ArchivedResources.Add(item);
+                                    }
+                                }
+                                await dbContext.SaveChangesAsync();
+                            }
+                        }
+                    }
+                }
+
+                // Step 2: Restore Uploads
+                string extractedUploadsDir = Path.Combine(tempDir, "uploads");
+                if (Directory.Exists(extractedUploadsDir))
+                {
+                    string targetUploadsDir = Path.Combine(_env.WebRootPath, "uploads");
+                    CopyDirectory(extractedUploadsDir, targetUploadsDir);
+                }
+
+                // Cleanup
+                Directory.Delete(tempDir, true);
+
+                restoreOp.Status = "Completed";
+                restoreOp.Details = "Data restored successfully from backup.";
+                await dbContext.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Restore failed");
+                using var scope = _scopeFactory.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var restoreOp = await dbContext.RestoreOperations.FindAsync(restoreOpId);
+                if (restoreOp != null)
+                {
+                    restoreOp.Status = "Failed";
+                    restoreOp.Details = $"Restore failed: {ex.Message}";
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+        }
+
+        private async Task RestoreResources(ApplicationDbContext dbContext, JsonElement element)
+        {
+            var resources = JsonSerializer.Deserialize<List<Resource>>(element.GetRawText());
+            if (resources != null)
+            {
+                foreach (var res in resources)
+                {
+                    // Check if resource already exists
+                    var existing = await dbContext.Resources.FindAsync(res.ResourceId);
+                    if (existing == null)
+                    {
+                        // Add missing resource
+                        // Keep ID 0 so identity handles it, or configure SET IDENTITY_INSERT
+                        res.ResourceId = 0; 
+                        dbContext.Resources.Add(res);
+                    }
+                }
+                await dbContext.SaveChangesAsync();
             }
         }
     }
