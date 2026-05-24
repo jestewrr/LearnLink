@@ -698,6 +698,45 @@ using (var scope = app.Services.CreateScope())
                     VALUES (1, 7, 4, N'Secure off-site cloud storage', 1, GETUTCDATE());
                 END
             ");
+
+            // Fix FK constraints from NO ACTION to SET NULL (critical for account deletion)
+            await context.Database.ExecuteSqlRawAsync(@"
+                -- Fix BackupRecords FK to SET NULL
+                IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_BackupRecords_AspNetUsers_TriggeredByUserId'
+                    AND delete_referential_action_desc = 'NO_ACTION')
+                BEGIN
+                    ALTER TABLE [BackupRecords] DROP CONSTRAINT [FK_BackupRecords_AspNetUsers_TriggeredByUserId];
+                    ALTER TABLE [BackupRecords] ADD CONSTRAINT [FK_BackupRecords_AspNetUsers_TriggeredByUserId]
+                        FOREIGN KEY ([TriggeredByUserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE SET NULL;
+                END
+
+                -- Fix ArchivedResources FK to SET NULL
+                IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_ArchivedResources_AspNetUsers_OwnerId'
+                    AND delete_referential_action_desc = 'NO_ACTION')
+                BEGIN
+                    ALTER TABLE [ArchivedResources] DROP CONSTRAINT [FK_ArchivedResources_AspNetUsers_OwnerId];
+                    ALTER TABLE [ArchivedResources] ADD CONSTRAINT [FK_ArchivedResources_AspNetUsers_OwnerId]
+                        FOREIGN KEY ([OwnerId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE SET NULL;
+                END
+
+                -- Fix RestoreOperations FK to SET NULL
+                IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_RestoreOperations_AspNetUsers_RestoredByUserId'
+                    AND delete_referential_action_desc = 'NO_ACTION')
+                BEGIN
+                    ALTER TABLE [RestoreOperations] DROP CONSTRAINT [FK_RestoreOperations_AspNetUsers_RestoredByUserId];
+                    ALTER TABLE [RestoreOperations] ADD CONSTRAINT [FK_RestoreOperations_AspNetUsers_RestoredByUserId]
+                        FOREIGN KEY ([RestoredByUserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE SET NULL;
+                END
+
+                -- Fix BackupPolicies FK to SET NULL
+                IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_BackupPolicies_AspNetUsers_LastUpdatedByUserId'
+                    AND delete_referential_action_desc = 'NO_ACTION')
+                BEGIN
+                    ALTER TABLE [BackupPolicies] DROP CONSTRAINT [FK_BackupPolicies_AspNetUsers_LastUpdatedByUserId];
+                    ALTER TABLE [BackupPolicies] ADD CONSTRAINT [FK_BackupPolicies_AspNetUsers_LastUpdatedByUserId]
+                        FOREIGN KEY ([LastUpdatedByUserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE SET NULL;
+                END
+            ");
         }
         catch (Exception ex)
         {

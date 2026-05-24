@@ -6702,36 +6702,113 @@ namespace LearnLink.Controllers
 
         private async Task CleanUpUserDependenciesAsync(ApplicationUser user)
         {
-            var lessonComments = await _context.LessonComments.Where(c => c.UserId == user.Id).ToListAsync();
-            _context.LessonComments.RemoveRange(lessonComments);
+            // Each block is wrapped in try-catch so that a single missing table
+            // or transient error does not prevent the remaining clean-ups from running.
 
-            var lessonsLearned = await _context.LessonsLearned.Where(l => l.UserId == user.Id).ToListAsync();
-            _context.LessonsLearned.RemoveRange(lessonsLearned);
+            try
+            {
+                var lessonComments = await _context.LessonComments.Where(c => c.UserId == user.Id).ToListAsync();
+                _context.LessonComments.RemoveRange(lessonComments);
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: LessonComments failed for {UserId}", user.Id); }
 
-            var bestPractices = await _context.BestPractices.Where(b => b.UserId == user.Id).ToListAsync();
-            _context.BestPractices.RemoveRange(bestPractices);
+            try
+            {
+                var lessonsLearned = await _context.LessonsLearned.IgnoreQueryFilters().Where(l => l.UserId == user.Id).ToListAsync();
+                _context.LessonsLearned.RemoveRange(lessonsLearned);
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: LessonsLearned failed for {UserId}", user.Id); }
 
-            var resourceComments = await _context.ResourceComments.Where(c => c.UserId == user.Id).ToListAsync();
-            _context.ResourceComments.RemoveRange(resourceComments);
+            try
+            {
+                var bestPractices = await _context.BestPractices.Where(b => b.UserId == user.Id).ToListAsync();
+                _context.BestPractices.RemoveRange(bestPractices);
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: BestPractices failed for {UserId}", user.Id); }
 
-            var discussionPosts = await _context.DiscussionPosts.Where(p => p.UserId == user.Id).ToListAsync();
-            _context.DiscussionPosts.RemoveRange(discussionPosts);
+            try
+            {
+                var resourceComments = await _context.ResourceComments.Where(c => c.UserId == user.Id).ToListAsync();
+                _context.ResourceComments.RemoveRange(resourceComments);
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: ResourceComments failed for {UserId}", user.Id); }
 
-            var accessGrants = await _context.ResourceAccessGrants.Where(g => g.UserId == user.Id).ToListAsync();
-            _context.ResourceAccessGrants.RemoveRange(accessGrants);
+            try
+            {
+                var discussionPosts = await _context.DiscussionPosts.Where(p => p.UserId == user.Id).ToListAsync();
+                _context.DiscussionPosts.RemoveRange(discussionPosts);
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: DiscussionPosts failed for {UserId}", user.Id); }
 
-            var likes = await _context.Likes.Where(l => l.UserId == user.Id).ToListAsync();
-            _context.Likes.RemoveRange(likes);
+            try
+            {
+                var accessGrants = await _context.ResourceAccessGrants.Where(g => g.UserId == user.Id).ToListAsync();
+                _context.ResourceAccessGrants.RemoveRange(accessGrants);
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: ResourceAccessGrants failed for {UserId}", user.Id); }
 
-            var archivedResources = await _context.ArchivedResources.Where(a => a.OwnerId == user.Id).ToListAsync();
-            _context.ArchivedResources.RemoveRange(archivedResources);
+            try
+            {
+                var likes = await _context.Likes.Where(l => l.UserId == user.Id).ToListAsync();
+                _context.Likes.RemoveRange(likes);
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: Likes failed for {UserId}", user.Id); }
 
-            var restoreOps = await _context.RestoreOperations.Where(r => r.RestoredByUserId == user.Id).ToListAsync();
-            foreach (var op in restoreOps) op.RestoredByUserId = null;
+            try
+            {
+                var archivedResources = await _context.ArchivedResources.Where(a => a.OwnerId == user.Id).ToListAsync();
+                _context.ArchivedResources.RemoveRange(archivedResources);
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: ArchivedResources failed for {UserId}", user.Id); }
 
-            var backupPolicies = await _context.BackupPolicies.Where(p => p.LastUpdatedByUserId == user.Id).ToListAsync();
-            foreach (var p in backupPolicies) p.LastUpdatedByUserId = null;
+            // Nullify FK references so the user row can be deleted (NO ACTION FKs)
+            try
+            {
+                var restoreOps = await _context.RestoreOperations.Where(r => r.RestoredByUserId == user.Id).ToListAsync();
+                foreach (var op in restoreOps) op.RestoredByUserId = null;
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: RestoreOperations failed for {UserId}", user.Id); }
 
+            try
+            {
+                var backupPolicies = await _context.BackupPolicies.Where(p => p.LastUpdatedByUserId == user.Id).ToListAsync();
+                foreach (var p in backupPolicies) p.LastUpdatedByUserId = null;
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: BackupPolicies failed for {UserId}", user.Id); }
+
+            // *** THIS WAS MISSING — BackupRecords.TriggeredByUserId FK is NO ACTION ***
+            try
+            {
+                var backupRecords = await _context.BackupRecords.Where(b => b.TriggeredByUserId == user.Id).ToListAsync();
+                foreach (var b in backupRecords) b.TriggeredByUserId = null;
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: BackupRecords failed for {UserId}", user.Id); }
+
+            // Nullify AuditLogs.UserId (FK is SET NULL but we do it explicitly for safety)
+            try
+            {
+                var auditLogs = await _context.AuditLogs.Where(a => a.UserId == user.Id).ToListAsync();
+                foreach (var a in auditLogs) a.UserId = null;
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: AuditLogs failed for {UserId}", user.Id); }
+
+            // Nullify ReadingHistory resource references (these cascade on user, but let's be safe)
+            try
+            {
+                var readingHistories = await _context.ReadingHistories.Where(r => r.UserId == user.Id).ToListAsync();
+                _context.ReadingHistories.RemoveRange(readingHistories);
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: ReadingHistories failed for {UserId}", user.Id); }
+
+            // Also clean up Recommendations that have NoAction on ResourceId
+            try
+            {
+                var recommendations = await _context.Recommendations.Where(r => r.UserId == user.Id).ToListAsync();
+                _context.Recommendations.RemoveRange(recommendations);
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: Recommendations failed for {UserId}", user.Id); }
+
+            // Save all changes in one batch
             await _context.SaveChangesAsync();
         }
 

@@ -342,6 +342,43 @@ namespace LearnLink.Data
             builder.Entity<ResourceAccessGrant>()
                 .HasIndex(g => new { g.ResourceId, g.UserId })
                 .IsUnique();
+
+            // ===== Backup & Recovery =====
+            builder.Entity<BackupRecord>()
+                .HasOne(b => b.TriggeredByUser)
+                .WithMany()
+                .HasForeignKey(b => b.TriggeredByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<BackupPolicy>()
+                .HasOne(p => p.LastUpdatedByUser)
+                .WithMany()
+                .HasForeignKey(p => p.LastUpdatedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<ArchivedResource>()
+                .HasOne(a => a.Owner)
+                .WithMany()
+                .HasForeignKey(a => a.OwnerId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<RestoreOperation>()
+                .HasOne(r => r.RestoredByUser)
+                .WithMany()
+                .HasForeignKey(r => r.RestoredByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<RestoreOperation>()
+                .HasOne(r => r.BackupRecord)
+                .WithMany()
+                .HasForeignKey(r => r.BackupRecordId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<BackupItem>()
+                .HasOne(bi => bi.BackupRecord)
+                .WithMany(br => br.Items)
+                .HasForeignKey(bi => bi.BackupRecordId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

@@ -39,13 +39,18 @@ namespace LearnLink.Services
             _logger = logger;
         }
 
+        /// <summary>
+        /// Creates a new BackupRecord, saves it to the DB, and spawns a background
+        /// task that will actually collect the data and create the archive.
+        /// </summary>
         public async Task<int> InitiateBackupAsync(string triggerUserId, List<string> selectedRepositories, List<int>? selectedResourceIds = null, List<string>? selectedUserIds = null, string backupType = "Manual")
         {
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            var metrics = await CalculateStorageMetricsAsync();
-            
+            // Calculate metrics with the SAME dbContext (avoids nested scope issues)
+            var metrics = await CalculateStorageMetricsInternalAsync(dbContext);
+
             var backupRecord = new BackupRecord
             {
                 BackupType = backupType,
@@ -59,14 +64,16 @@ namespace LearnLink.Services
             dbContext.BackupRecords.Add(backupRecord);
             await dbContext.SaveChangesAsync();
 
+            _logger.LogInformation("BackupRecord Id={BackupId} created successfully for user {UserId}", backupRecord.Id, triggerUserId);
+
             foreach (var repo in selectedRepositories)
             {
                 dbContext.BackupItems.Add(new BackupItem
                 {
                     BackupRecordId = backupRecord.Id,
                     RepositoryName = repo,
-                    ItemCount = metrics.RepositoryCounts.ContainsKey(repo) ? metrics.RepositoryCounts[repo] : 0,
-                    StorageSizeMb = metrics.RepositorySizes.ContainsKey(repo) ? metrics.RepositorySizes[repo] : 0
+                    ItemCount = metrics.RepositoryCounts.GetValueOrDefault(repo, 0),
+                    StorageSizeMb = metrics.RepositorySizes.GetValueOrDefault(repo, 0)
                 });
             }
             await dbContext.SaveChangesAsync();
@@ -85,7 +92,7 @@ namespace LearnLink.Services
             {
                 using var scope = _scopeFactory.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                
+
                 var backupRecord = await dbContext.BackupRecords.FindAsync(backupRecordId);
                 if (backupRecord == null) return;
 
@@ -109,25 +116,39 @@ namespace LearnLink.Services
 
                 if (resourceIds != null && resourceIds.Any())
                 {
-                    exportData["SpecificResources"] = await dbContext.Resources.Where(r => resourceIds.Contains(r.ResourceId)).ToListAsync();
+                    exportData["SpecificResources"] = await dbContext.Resources
+                        .IgnoreQueryFilters()
+                        .Where(r => resourceIds.Contains(r.ResourceId))
+                        .Select(r => new { r.ResourceId, r.Title, r.Description, r.Subject, r.GradeLevel, r.ResourceType, r.Quarter, r.FileFormat, r.FilePath, r.FileSize, r.Status, r.DateUploaded })
+                        .ToListAsync();
                 }
                 else
                 {
                     if (repositories.Contains("Published Resources"))
                     {
-                        exportData["PublishedResources"] = await dbContext.Resources.Where(r => r.Status == "Published").ToListAsync();
+                        exportData["PublishedResources"] = await dbContext.Resources
+                            .IgnoreQueryFilters()
+                            .Where(r => r.Status == "Published")
+                            .Select(r => new { r.ResourceId, r.Title, r.Description, r.Subject, r.GradeLevel, r.ResourceType, r.Quarter, r.FileFormat, r.FilePath, r.FileSize, r.Status, r.DateUploaded })
+                            .ToListAsync();
                     }
                 }
 
                 if (repositories.Contains("User Accounts"))
                 {
                     if (userIds != null && userIds.Any())
-                        exportData["Users"] = await dbContext.Users.Where(u => userIds.Contains(u.Id)).ToListAsync();
+                        exportData["Users"] = await dbContext.Users
+                            .Where(u => userIds.Contains(u.Id))
+                            .Select(u => new { u.Id, u.Email, u.FirstName, u.LastName, u.DateCreated, u.Status })
+                            .ToListAsync();
                     else
-                        exportData["Users"] = await dbContext.Users.ToListAsync();
+                        exportData["Users"] = await dbContext.Users
+                            .Select(u => new { u.Id, u.Email, u.FirstName, u.LastName, u.DateCreated, u.Status })
+                            .ToListAsync();
                 }
 
-                string jsonString = JsonSerializer.Serialize(exportData);
+                var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+                string jsonString = JsonSerializer.Serialize(exportData, jsonOptions);
                 await File.WriteAllTextAsync(Path.Combine(backupFolderPath, "database_dump.json"), jsonString);
 
                 backupRecord.ProgressPercent = 60;
@@ -149,6 +170,7 @@ namespace LearnLink.Services
 
                 // Step 3: Zip everything
                 string zipPath = Path.Combine(backupDir, $"{backupFolderName}.zip");
+                if (File.Exists(zipPath)) File.Delete(zipPath); // Avoid conflicts
                 ZipFile.CreateFromDirectory(backupFolderPath, zipPath);
 
                 // Cleanup unzipped folder
@@ -164,28 +186,43 @@ namespace LearnLink.Services
                 backupRecord.ProgressPercent = 100;
 
                 await dbContext.SaveChangesAsync();
+                _logger.LogInformation("Backup Id={BackupId} completed successfully. Size: {Size}", backupRecordId, backupRecord.SizeDescription);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Backup failed");
-                using var scope = _scopeFactory.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var backupRecord = await dbContext.BackupRecords.FindAsync(backupRecordId);
-                if (backupRecord != null)
+                _logger.LogError(ex, "Backup Id={BackupId} failed", backupRecordId);
+                try
                 {
-                    backupRecord.Status = "Failed";
-                    backupRecord.Notes = ex.Message;
-                    await dbContext.SaveChangesAsync();
+                    using var scope = _scopeFactory.CreateScope();
+                    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    var backupRecord = await dbContext.BackupRecords.FindAsync(backupRecordId);
+                    if (backupRecord != null)
+                    {
+                        backupRecord.Status = "Failed";
+                        backupRecord.Notes = ex.Message.Length > 1000 ? ex.Message[..1000] : ex.Message;
+                        await dbContext.SaveChangesAsync();
+                    }
+                }
+                catch (Exception innerEx)
+                {
+                    _logger.LogError(innerEx, "Failed to update backup record status for Id={BackupId}", backupRecordId);
                 }
             }
         }
 
         public async Task<BackupMetricsDto> CalculateStorageMetricsAsync()
         {
-            var metrics = new BackupMetricsDto();
-            
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            return await CalculateStorageMetricsInternalAsync(dbContext);
+        }
+
+        /// <summary>
+        /// Internal implementation that accepts an existing DbContext to avoid creating nested scopes.
+        /// </summary>
+        private async Task<BackupMetricsDto> CalculateStorageMetricsInternalAsync(ApplicationDbContext dbContext)
+        {
+            var metrics = new BackupMetricsDto();
 
             async Task<int> SafeCountAsync(Func<Task<int>> query, string metricName)
             {
@@ -198,10 +235,15 @@ namespace LearnLink.Services
                     _logger.LogWarning(ex, "Skipping metric '{MetricName}' because backing table does not exist.", metricName);
                     return 0;
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Skipping metric '{MetricName}' due to error.", metricName);
+                    return 0;
+                }
             }
 
             // Calculate mock DB size based on row counts (approximate 2KB per row)
-            int publishedCount = await SafeCountAsync(() => dbContext.Resources.CountAsync(r => r.Status == "Published"), "Published Resources");
+            int publishedCount = await SafeCountAsync(() => dbContext.Resources.IgnoreQueryFilters().CountAsync(r => r.Status == "Published"), "Published Resources");
             int userCount = await SafeCountAsync(() => dbContext.Users.CountAsync(), "User Accounts");
 
             metrics.RepositoryCounts["Published Resources"] = publishedCount;
@@ -219,9 +261,16 @@ namespace LearnLink.Services
 
             if (Directory.Exists(uploadsDir))
             {
-                var files = Directory.GetFiles(uploadsDir, "*.*", SearchOption.AllDirectories);
-                uploadsCount = files.Length;
-                uploadsSizeMb = files.Sum(f => new FileInfo(f).Length) / 1024.0 / 1024.0;
+                try
+                {
+                    var files = Directory.GetFiles(uploadsDir, "*.*", SearchOption.AllDirectories);
+                    uploadsCount = files.Length;
+                    uploadsSizeMb = files.Sum(f => new FileInfo(f).Length) / 1024.0 / 1024.0;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to calculate uploads size");
+                }
             }
 
             metrics.RepositoryCounts["User Uploads"] = uploadsCount;
@@ -284,7 +333,7 @@ namespace LearnLink.Services
 
                 var restoreOp = await dbContext.RestoreOperations.FindAsync(restoreOpId);
                 var backupRecord = await dbContext.BackupRecords.FindAsync(backupRecordId);
-                
+
                 if (restoreOp == null || backupRecord == null || string.IsNullOrEmpty(backupRecord.ArchiveFilePath))
                     return;
 
@@ -313,43 +362,11 @@ namespace LearnLink.Services
 
                     if (dumpData != null)
                     {
-                        // Restore Math Resources
-                        if (dumpData.ContainsKey("Math"))
-                            await RestoreResources(dbContext, dumpData["Math"]);
-                        
-                        // Restore Science Resources
-                        if (dumpData.ContainsKey("Science"))
-                            await RestoreResources(dbContext, dumpData["Science"]);
-                        
-                        // Restore English Resources
-                        if (dumpData.ContainsKey("English"))
-                            await RestoreResources(dbContext, dumpData["English"]);
-                        
-                        // Restore Specific Resources
+                        if (dumpData.ContainsKey("PublishedResources"))
+                            await RestoreResources(dbContext, dumpData["PublishedResources"]);
+
                         if (dumpData.ContainsKey("SpecificResources"))
                             await RestoreResources(dbContext, dumpData["SpecificResources"]);
-
-                        // Note: User accounts and Audit Logs are skipped for soft restore 
-                        // as they might break relations or overwrite current login state.
-                        // For a real full restore, they should be carefully merged.
-                        
-                        // Restore Archived Resources
-                        if (dumpData.ContainsKey("ArchivedResources"))
-                        {
-                            var archivedItems = JsonSerializer.Deserialize<List<ArchivedResource>>(dumpData["ArchivedResources"].GetRawText());
-                            if (archivedItems != null)
-                            {
-                                foreach (var item in archivedItems)
-                                {
-                                    if (!await dbContext.ArchivedResources.AnyAsync(a => a.Id == item.Id))
-                                    {
-                                        item.Id = 0; // Let DB generate new ID or set IDENTITY_INSERT
-                                        dbContext.ArchivedResources.Add(item);
-                                    }
-                                }
-                                await dbContext.SaveChangesAsync();
-                            }
-                        }
                     }
                 }
 
@@ -370,37 +387,48 @@ namespace LearnLink.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Restore failed");
-                using var scope = _scopeFactory.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var restoreOp = await dbContext.RestoreOperations.FindAsync(restoreOpId);
-                if (restoreOp != null)
+                _logger.LogError(ex, "Restore failed for restoreOp={RestoreOpId}", restoreOpId);
+                try
                 {
-                    restoreOp.Status = "Failed";
-                    restoreOp.Details = $"Restore failed: {ex.Message}";
-                    await dbContext.SaveChangesAsync();
+                    using var scope = _scopeFactory.CreateScope();
+                    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    var restoreOp = await dbContext.RestoreOperations.FindAsync(restoreOpId);
+                    if (restoreOp != null)
+                    {
+                        restoreOp.Status = "Failed";
+                        restoreOp.Details = $"Restore failed: {ex.Message}";
+                        await dbContext.SaveChangesAsync();
+                    }
+                }
+                catch (Exception innerEx)
+                {
+                    _logger.LogError(innerEx, "Failed to update restore operation status for Id={RestoreOpId}", restoreOpId);
                 }
             }
         }
 
         private async Task RestoreResources(ApplicationDbContext dbContext, JsonElement element)
         {
-            var resources = JsonSerializer.Deserialize<List<Resource>>(element.GetRawText());
-            if (resources != null)
+            try
             {
-                foreach (var res in resources)
+                var resources = JsonSerializer.Deserialize<List<Resource>>(element.GetRawText());
+                if (resources != null)
                 {
-                    // Check if resource already exists
-                    var existing = await dbContext.Resources.FindAsync(res.ResourceId);
-                    if (existing == null)
+                    foreach (var res in resources)
                     {
-                        // Add missing resource
-                        // Keep ID 0 so identity handles it, or configure SET IDENTITY_INSERT
-                        res.ResourceId = 0; 
-                        dbContext.Resources.Add(res);
+                        var existing = await dbContext.Resources.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.ResourceId == res.ResourceId);
+                        if (existing == null)
+                        {
+                            res.ResourceId = 0;
+                            dbContext.Resources.Add(res);
+                        }
                     }
+                    await dbContext.SaveChangesAsync();
                 }
-                await dbContext.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to restore resources from backup element");
             }
         }
     }
