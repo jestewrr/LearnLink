@@ -779,5 +779,3 @@ app.MapRazorPages();
 
 
 app.Run();
-
-public class GoogleAuthFlag { public bool IsEnabled { get; set; } }
