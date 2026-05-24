@@ -66,17 +66,25 @@ namespace LearnLink.Services
 
             _logger.LogInformation("BackupRecord Id={BackupId} created successfully for user {UserId}", backupRecord.Id, triggerUserId);
 
-            foreach (var repo in selectedRepositories)
+            try
             {
-                dbContext.BackupItems.Add(new BackupItem
+                foreach (var repo in selectedRepositories)
                 {
-                    BackupRecordId = backupRecord.Id,
-                    RepositoryName = repo,
-                    ItemCount = metrics.RepositoryCounts.GetValueOrDefault(repo, 0),
-                    StorageSizeMb = metrics.RepositorySizes.GetValueOrDefault(repo, 0)
-                });
+                    dbContext.BackupItems.Add(new BackupItem
+                    {
+                        BackupRecordId = backupRecord.Id,
+                        RepositoryName = repo,
+                        ItemCount = metrics.RepositoryCounts.GetValueOrDefault(repo, 0),
+                        StorageSizeMb = metrics.RepositorySizes.GetValueOrDefault(repo, 0)
+                    });
+                }
+                await dbContext.SaveChangesAsync();
             }
-            await dbContext.SaveChangesAsync();
+            catch (Exception ex)
+            {
+                // BackupItems metadata is optional for initiating backup; continue with archive process.
+                _logger.LogWarning(ex, "Backup Id={BackupId}: failed to persist BackupItems metadata.", backupRecord.Id);
+            }
 
             // Start background process
             var resourceList = selectedResourceIds ?? new List<int>();

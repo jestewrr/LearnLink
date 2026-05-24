@@ -4683,11 +4683,15 @@ namespace LearnLink.Controllers
                     _logger?.LogError(ex, "Failed to retrieve activity logs for archival for user {UserId}", currentUser.Id);
                 }
 
-                // Sign out before deleting
-                await _signInManager.SignOutAsync();
+                // Delete first, then sign out.
+                var deleteResult = await _userManager.DeleteAsync(currentUser);
+                if (!deleteResult.Succeeded)
+                {
+                    var reasons = string.Join("; ", deleteResult.Errors.Select(e => $"{e.Code}: {e.Description}"));
+                    throw new InvalidOperationException($"Identity delete failed: {reasons}");
+                }
 
-                // Delete the user (cascades to Resources, Discussions, ReadingHistory, ActivityLogs, Notifications, Recommendations)
-                await _userManager.DeleteAsync(currentUser);
+                await _signInManager.SignOutAsync();
 
                 TempData["SuccessMessage"] = "Your account has been permanently deleted. We're sorry to see you go.";
                 return RedirectToAction("Landing");
@@ -6794,7 +6798,7 @@ namespace LearnLink.Controllers
 
             try
             {
-                var userResources = await _context.Resources.Where(r => r.UserId == user.Id).ToListAsync();
+                var userResources = await _context.Resources.IgnoreQueryFilters().Where(r => r.UserId == user.Id).ToListAsync();
                 _context.Resources.RemoveRange(userResources);
             }
             catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: Resources failed for {UserId}", user.Id); }
@@ -7115,8 +7119,12 @@ namespace LearnLink.Controllers
 
             try
             {
-
-                var selectedList = selectedRepositories ?? new List<string>();
+                var selectedList = (selectedRepositories ?? new List<string>())
+                    .Select(s => string.Equals(s, "User Uploads", StringComparison.OrdinalIgnoreCase)
+                        ? "Published Resources"
+                        : s)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
                 var resourceList = selectedResourceIds ?? new List<int>();
 
                 var userList = selectedUserIds ?? new List<string>();
