@@ -6707,6 +6707,20 @@ namespace LearnLink.Controllers
 
             try
             {
+                var userResources = await _context.Resources.Where(r => r.UserId == user.Id).ToListAsync();
+                _context.Resources.RemoveRange(userResources);
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: Resources failed for {UserId}", user.Id); }
+
+            try
+            {
+                var discussions = await _context.Discussions.Where(d => d.UserId == user.Id).ToListAsync();
+                _context.Discussions.RemoveRange(discussions);
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: Discussions failed for {UserId}", user.Id); }
+
+            try
+            {
                 var lessonComments = await _context.LessonComments.Where(c => c.UserId == user.Id).ToListAsync();
                 _context.LessonComments.RemoveRange(lessonComments);
             }

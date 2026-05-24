@@ -113,6 +113,7 @@ namespace LearnLink.Services
                 await dbContext.SaveChangesAsync();
 
                 var exportData = new Dictionary<string, object>();
+                var includePublishedResources = repositories.Contains("Published Resources") || repositories.Contains("User Uploads");
 
                 if (resourceIds != null && resourceIds.Any())
                 {
@@ -124,7 +125,7 @@ namespace LearnLink.Services
                 }
                 else
                 {
-                    if (repositories.Contains("Published Resources"))
+                    if (includePublishedResources)
                     {
                         exportData["PublishedResources"] = await dbContext.Resources
                             .IgnoreQueryFilters()
@@ -155,7 +156,7 @@ namespace LearnLink.Services
                 await dbContext.SaveChangesAsync();
 
                 // Step 2: Copy User Uploads if Published Resources is selected
-                if (repositories.Contains("Published Resources"))
+                if (includePublishedResources)
                 {
                     string uploadsDir = Path.Combine(_env.WebRootPath, "uploads");
                     if (Directory.Exists(uploadsDir))
