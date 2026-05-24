@@ -1436,6 +1436,70 @@ namespace LearnLink.Controllers
         }
 
         [HttpPost]
+        public async Task<IActionResult> SendRegistrationOtp(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return Json(new { success = false, message = "Email is required." });
+
+            var emailRegex = new System.Text.RegularExpressions.Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+            if (!emailRegex.IsMatch(email))
+                return Json(new { success = false, message = "Invalid email format." });
+
+            var existingUser = await _userManager.FindByEmailAsync(email.Trim());
+            if (existingUser != null)
+                return Json(new { success = false, message = "Email is already registered." });
+
+            if (!_emailService.IsConfigured)
+                return Json(new { success = false, message = "Email service is not configured on the server." });
+
+            var otp = System.Security.Cryptography.RandomNumberGenerator.GetInt32(100000, 999999).ToString();
+            
+            _cache.Set($"RegistrationOtp_{email.Trim().ToLower()}", otp, TimeSpan.FromMinutes(10));
+
+            try
+            {
+                var body = $@"
+                    <div style=""font-family:Segoe UI,Arial,sans-serif;color:#1e293b;line-height:1.6"">
+                        <h2 style=""margin-bottom:12px;"">Verify your email address</h2>
+                        <p>Thank you for starting the registration process on LearnLink. Please use the following 6-digit verification code to confirm your email address:</p>
+                        <h3 style=""color:#3B7DD8;font-size:24px;letter-spacing:4px;"">{otp}</h3>
+                        <p>This code will expire in 10 minutes.</p>
+                        <p>If you did not request this code, you can safely ignore this email.</p>
+                        <hr style=""border:none;border-top:1px solid #e2e8f0;margin:24px 0;"">
+                        <p style=""font-size:12px;color:#64748b;"">&copy; {DateTime.Now.Year} LearnLink. All rights reserved.</p>
+                    </div>";
+
+                await _emailService.SendAsync(email, "LearnLink Email Verification", body);
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending registration OTP");
+                return Json(new { success = false, message = "Failed to send OTP email. Please try again." });
+            }
+        }
+
+        [HttpPost]
+        public IActionResult VerifyRegistrationOtp(string email, string otp)
+        {
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(otp))
+                return Json(new { success = false, message = "Email and OTP are required." });
+
+            var cacheKey = $"RegistrationOtp_{email.Trim().ToLower()}";
+            if (_cache.TryGetValue(cacheKey, out string? cachedOtp))
+            {
+                if (cachedOtp == otp.Trim())
+                {
+                    _cache.Remove(cacheKey);
+                    _cache.Set($"RegistrationVerified_{email.Trim().ToLower()}", true, TimeSpan.FromMinutes(30));
+                    return Json(new { success = true });
+                }
+            }
+
+            return Json(new { success = false, message = "Invalid or expired verification code." });
+        }
+
+        [HttpPost]
         public async Task<IActionResult> Register(string firstName, string middleName, string lastName, string email, string password, string confirmPassword, int schoolId, string gradeOrPosition)
         {
             if (!ModelState.IsValid)
@@ -1472,6 +1536,14 @@ namespace LearnLink.Controllers
             if (school == null)
             {
                 ViewBag.Error = "Invalid school selected. Please try again.";
+                ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
+                return View();
+            }
+
+            var verifiedKey = $"RegistrationVerified_{email.Trim().ToLower()}";
+            if (!_cache.TryGetValue(verifiedKey, out bool isVerified) || !isVerified)
+            {
+                ViewBag.Error = "Please verify your email address before registering.";
                 ViewBag.Schools = await _context.Schools.Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
                 return View();
             }
@@ -6904,6 +6976,74 @@ namespace LearnLink.Controllers
                 TempData["ErrorMessage"] = "Failed to initiate restore. Please check logs and try again.";
             }
 
+            return RedirectToAction("BackupDashboard");
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [HttpPost]
+        public async Task<IActionResult> RestoreArchivedResource(int id)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Unauthorized();
+
+            var archive = await _context.ArchivedResources.FindAsync(id);
+            if (archive == null)
+            {
+                TempData["ErrorMessage"] = "Archived resource not found.";
+                return RedirectToAction("BackupDashboard");
+            }
+
+            var resource = await _context.Resources.FindAsync(archive.OriginalResourceId);
+            if (resource != null)
+            {
+                resource.Status = "Active";
+            }
+
+            _context.ArchivedResources.Remove(archive);
+
+            await LogActivity(currentUser.Id, "Restore", $"Restored archived resource: {archive.Title}");
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Archived resource restored successfully.";
+            return RedirectToAction("BackupDashboard");
+        }
+
+        [Authorize(Roles = "SuperAdmin,Manager")]
+        [HttpPost]
+        public async Task<IActionResult> PermanentlyDeleteResource(int id)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Unauthorized();
+
+            var archive = await _context.ArchivedResources.FindAsync(id);
+            if (archive == null)
+            {
+                TempData["ErrorMessage"] = "Archived resource not found.";
+                return RedirectToAction("BackupDashboard");
+            }
+
+            var resource = await _context.Resources.FindAsync(archive.OriginalResourceId);
+            if (resource != null)
+            {
+                // Delete physical file if it exists
+                if (!string.IsNullOrEmpty(resource.FilePath))
+                {
+                    var filePath = Path.Combine(_environment.WebRootPath, resource.FilePath.TrimStart('/'));
+                    if (System.IO.File.Exists(filePath))
+                    {
+                        System.IO.File.Delete(filePath);
+                    }
+                }
+                
+                _context.Resources.Remove(resource);
+            }
+
+            _context.ArchivedResources.Remove(archive);
+
+            await LogActivity(currentUser.Id, "Delete", $"Permanently deleted resource: {archive.Title}");
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Resource permanently deleted.";
             return RedirectToAction("BackupDashboard");
         }
 
