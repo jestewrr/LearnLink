@@ -448,8 +448,8 @@ using (var scope = app.Services.CreateScope())
                     );
                     CREATE INDEX [IX_ResourceCategoryMaps_ResourceId] ON [ResourceCategoryMaps] ([ResourceId]);
                 END
-
             ");
+
 
             // Add indexes and foreign keys for SchoolId columns (safe: checks for existence)
             await context.Database.ExecuteSqlRawAsync(@"
@@ -481,7 +481,10 @@ using (var scope = app.Services.CreateScope())
             // Prevent EnterpriseBackup migration from failing due to already-existing tables,
             // or if the migration was skipped/failed in production. We unconditionally ensure
             // these tables exist to prevent missing table exceptions.
-            await context.Database.ExecuteSqlRawAsync(@"
+            
+            var backupTablesSql = new[]
+            {
+                @"
                 -- Ensure BackupPolicies table exists
                 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[BackupPolicies]') AND type in (N'U'))
                 BEGIN
@@ -495,8 +498,9 @@ using (var scope = app.Services.CreateScope())
                         [LastUpdatedByUserId] nvarchar(450) NULL,
                         CONSTRAINT [PK_BackupPolicies] PRIMARY KEY ([Id])
                     );
-                END
-
+                END",
+                
+                @"
                 -- Ensure BackupRecords table exists
                 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[BackupRecords]') AND type in (N'U'))
                 BEGIN
@@ -515,16 +519,18 @@ using (var scope = app.Services.CreateScope())
                         [ProgressPercent] int NOT NULL DEFAULT 0,
                         CONSTRAINT [PK_BackupRecords] PRIMARY KEY ([Id])
                     );
-                END
-
+                END",
+                
+                @"
                 -- Ensure columns exist in BackupRecords
                 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BackupRecords') AND name = 'TotalSizeMb')
                     ALTER TABLE [BackupRecords] ADD [TotalSizeMb] float NOT NULL DEFAULT 0;
                 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BackupRecords') AND name = 'ArchiveFilePath')
                     ALTER TABLE [BackupRecords] ADD [ArchiveFilePath] nvarchar(500) NULL;
                 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BackupRecords') AND name = 'ProgressPercent')
-                    ALTER TABLE [BackupRecords] ADD [ProgressPercent] int NOT NULL DEFAULT 0;
-
+                    ALTER TABLE [BackupRecords] ADD [ProgressPercent] int NOT NULL DEFAULT 0;",
+                
+                @"
                 -- Ensure ArchivedResources exists
                 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[ArchivedResources]') AND type in (N'U'))
                 BEGIN
@@ -541,9 +547,11 @@ using (var scope = app.Services.CreateScope())
                         [RecoveryStatus] nvarchar(50) NOT NULL,
                         CONSTRAINT [PK_ArchivedResources] PRIMARY KEY ([Id])
                     );
-                    CREATE INDEX [IX_ArchivedResources_OwnerId] ON [ArchivedResources] ([OwnerId]);
-                END
+                    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ArchivedResources_OwnerId')
+                        CREATE INDEX [IX_ArchivedResources_OwnerId] ON [ArchivedResources] ([OwnerId]);
+                END",
 
+                @"
                 -- Ensure BackupItems exists
                 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[BackupItems]') AND type in (N'U'))
                 BEGIN
@@ -556,9 +564,11 @@ using (var scope = app.Services.CreateScope())
                         CONSTRAINT [PK_BackupItems] PRIMARY KEY ([Id]),
                         CONSTRAINT [FK_BackupItems_BackupRecords_BackupRecordId] FOREIGN KEY ([BackupRecordId]) REFERENCES [BackupRecords] ([Id]) ON DELETE CASCADE
                     );
-                    CREATE INDEX [IX_BackupItems_BackupRecordId] ON [BackupItems] ([BackupRecordId]);
-                END
-
+                    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_BackupItems_BackupRecordId')
+                        CREATE INDEX [IX_BackupItems_BackupRecordId] ON [BackupItems] ([BackupRecordId]);
+                END",
+                
+                @"
                 -- Ensure RestoreOperations exists
                 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[RestoreOperations]') AND type in (N'U'))
                 BEGIN
@@ -573,10 +583,13 @@ using (var scope = app.Services.CreateScope())
                         CONSTRAINT [PK_RestoreOperations] PRIMARY KEY ([Id]),
                         CONSTRAINT [FK_RestoreOperations_BackupRecords_BackupRecordId] FOREIGN KEY ([BackupRecordId]) REFERENCES [BackupRecords] ([Id]) ON DELETE CASCADE
                     );
-                    CREATE INDEX [IX_RestoreOperations_BackupRecordId] ON [RestoreOperations] ([BackupRecordId]);
-                    CREATE INDEX [IX_RestoreOperations_RestoredByUserId] ON [RestoreOperations] ([RestoredByUserId]);
-                END
-
+                    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_RestoreOperations_BackupRecordId')
+                        CREATE INDEX [IX_RestoreOperations_BackupRecordId] ON [RestoreOperations] ([BackupRecordId]);
+                    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_RestoreOperations_RestoredByUserId')
+                        CREATE INDEX [IX_RestoreOperations_RestoredByUserId] ON [RestoreOperations] ([RestoredByUserId]);
+                END",
+                
+                @"
                 -- Add foreign keys if missing (safe checks)
                 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_ArchivedResources_AspNetUsers_OwnerId')
                     ALTER TABLE [ArchivedResources] ADD CONSTRAINT [FK_ArchivedResources_AspNetUsers_OwnerId] FOREIGN KEY ([OwnerId]) REFERENCES [AspNetUsers] ([Id]);
@@ -586,7 +599,9 @@ using (var scope = app.Services.CreateScope())
                     ALTER TABLE [BackupRecords] ADD CONSTRAINT [FK_BackupRecords_AspNetUsers_TriggeredByUserId] FOREIGN KEY ([TriggeredByUserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE SET NULL;
                 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_RestoreOperations_AspNetUsers_RestoredByUserId')
                     ALTER TABLE [RestoreOperations] ADD CONSTRAINT [FK_RestoreOperations_AspNetUsers_RestoredByUserId] FOREIGN KEY ([RestoredByUserId]) REFERENCES [AspNetUsers] ([Id]);
-
+                ",
+                
+                @"
                 -- Mark migration as applied so EF Core doesn't try to run it
                 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[__EFMigrationsHistory]') AND type in (N'U'))
                 BEGIN
@@ -595,8 +610,20 @@ using (var scope = app.Services.CreateScope())
                         INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
                         VALUES ('20260522021301_EnterpriseBackup', '8.0.0');
                     END
-                END
-            ");
+                END"
+            };
+
+            foreach (var sql in backupTablesSql)
+            {
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync(sql);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error executing SQL for Backup/Restore tables: {ex.Message}");
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -625,20 +652,18 @@ using (var scope = app.Services.CreateScope())
                 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[AuditLogs]') AND type in (N'U'))
                 BEGIN
                     CREATE TABLE [AuditLogs] (
-                        [Id] int NOT NULL IDENTITY,
+                        [Id] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
+                        [Timestamp] datetime2 NOT NULL DEFAULT GETDATE(),
                         [UserId] nvarchar(450) NULL,
                         [UserEmail] nvarchar(max) NULL,
-                        [Action] nvarchar(max) NOT NULL,
+                        [Action] nvarchar(100) NOT NULL,
                         [Status] nvarchar(max) NOT NULL,
-                        [Details] nvarchar(max) NULL,
-                        [IPAddress] nvarchar(max) NULL,
+                        [Details] nvarchar(2000) NULL,
+                        [IpAddress] nvarchar(50) NULL,
                         [UserAgent] nvarchar(max) NULL,
-                        [Timestamp] datetime2 NOT NULL,
                         [SchoolId] int NULL,
-                        CONSTRAINT [PK_AuditLogs] PRIMARY KEY ([Id]),
                         CONSTRAINT [FK_AuditLogs_AspNetUsers_UserId] FOREIGN KEY ([UserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE SET NULL
                     );
-
                     CREATE INDEX [IX_AuditLogs_Timestamp] ON [AuditLogs] ([Timestamp]);
                     CREATE INDEX [IX_AuditLogs_UserId] ON [AuditLogs] ([UserId]);
                 END
@@ -656,7 +681,7 @@ using (var scope = app.Services.CreateScope())
                 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[BackupRecords]') AND type in (N'U'))
                 BEGIN
                     CREATE TABLE [BackupRecords] (
-                        [Id] int NOT NULL IDENTITY,
+                        [Id] int NOT NULL IDENTITY(1,1) PRIMARY KEY,
                         [BackupType] nvarchar(50) NOT NULL,
                         [Status] nvarchar(50) NOT NULL,
                         [CreatedAt] datetime2 NOT NULL,
@@ -665,10 +690,21 @@ using (var scope = app.Services.CreateScope())
                         [StorageLocation] nvarchar(500) NULL,
                         [Notes] nvarchar(1000) NULL,
                         [TriggeredByUserId] nvarchar(450) NULL,
-                        CONSTRAINT [PK_BackupRecords] PRIMARY KEY ([Id]),
+                        [TotalSizeMb] float NOT NULL DEFAULT 0,
+                        [ArchiveFilePath] nvarchar(500) NULL,
+                        [ProgressPercent] int NOT NULL DEFAULT 0,
                         CONSTRAINT [FK_BackupRecords_AspNetUsers_TriggeredByUserId] FOREIGN KEY ([TriggeredByUserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE SET NULL
                     );
                     CREATE INDEX [IX_BackupRecords_CreatedAt] ON [BackupRecords] ([CreatedAt]);
+                END
+                ELSE
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BackupRecords') AND name = 'TotalSizeMb')
+                        ALTER TABLE [BackupRecords] ADD [TotalSizeMb] float NOT NULL DEFAULT 0;
+                    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BackupRecords') AND name = 'ArchiveFilePath')
+                        ALTER TABLE [BackupRecords] ADD [ArchiveFilePath] nvarchar(500) NULL;
+                    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BackupRecords') AND name = 'ProgressPercent')
+                        ALTER TABLE [BackupRecords] ADD [ProgressPercent] int NOT NULL DEFAULT 0;
                 END
 
                 -- Ensure BackupPolicies table exists

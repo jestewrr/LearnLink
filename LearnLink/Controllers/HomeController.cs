@@ -4652,28 +4652,7 @@ namespace LearnLink.Controllers
                 await _context.SaveChangesAsync();
 
                 // Clean up entities with NoAction delete behavior
-                var lessonComments = await _context.LessonComments.Where(c => c.UserId == currentUser.Id).ToListAsync();
-                _context.LessonComments.RemoveRange(lessonComments);
-
-                var lessonsLearned = await _context.LessonsLearned.Where(l => l.UserId == currentUser.Id).ToListAsync();
-                _context.LessonsLearned.RemoveRange(lessonsLearned);
-
-                var bestPractices = await _context.BestPractices.Where(b => b.UserId == currentUser.Id).ToListAsync();
-                _context.BestPractices.RemoveRange(bestPractices);
-
-                var resourceComments = await _context.ResourceComments.Where(c => c.UserId == currentUser.Id).ToListAsync();
-                _context.ResourceComments.RemoveRange(resourceComments);
-
-                var discussionPosts = await _context.DiscussionPosts.Where(p => p.UserId == currentUser.Id).ToListAsync();
-                _context.DiscussionPosts.RemoveRange(discussionPosts);
-
-                var accessGrants = await _context.ResourceAccessGrants.Where(g => g.UserId == currentUser.Id).ToListAsync();
-                _context.ResourceAccessGrants.RemoveRange(accessGrants);
-
-                var likes = await _context.Likes.Where(l => l.UserId == currentUser.Id).ToListAsync();
-                _context.Likes.RemoveRange(likes);
-
-                await _context.SaveChangesAsync();
+                await CleanUpUserDependenciesAsync(currentUser);
 
                 var archivedActivities = await _context.UserActivityLogs
                     .Where(a => a.UserId == currentUser.Id)
@@ -6638,6 +6617,7 @@ namespace LearnLink.Controllers
 
             try
             {
+                await CleanUpUserDependenciesAsync(user);
                 var result = await _userManager.DeleteAsync(user);
                 if (result.Succeeded)
                 {
@@ -6684,6 +6664,7 @@ namespace LearnLink.Controllers
 
                     try
                     {
+                        await CleanUpUserDependenciesAsync(user);
                         var result = await _userManager.DeleteAsync(user);
                         if (result.Succeeded)
                         {
@@ -6718,6 +6699,41 @@ namespace LearnLink.Controllers
         }
 
 
+
+        private async Task CleanUpUserDependenciesAsync(ApplicationUser user)
+        {
+            var lessonComments = await _context.LessonComments.Where(c => c.UserId == user.Id).ToListAsync();
+            _context.LessonComments.RemoveRange(lessonComments);
+
+            var lessonsLearned = await _context.LessonsLearned.Where(l => l.UserId == user.Id).ToListAsync();
+            _context.LessonsLearned.RemoveRange(lessonsLearned);
+
+            var bestPractices = await _context.BestPractices.Where(b => b.UserId == user.Id).ToListAsync();
+            _context.BestPractices.RemoveRange(bestPractices);
+
+            var resourceComments = await _context.ResourceComments.Where(c => c.UserId == user.Id).ToListAsync();
+            _context.ResourceComments.RemoveRange(resourceComments);
+
+            var discussionPosts = await _context.DiscussionPosts.Where(p => p.UserId == user.Id).ToListAsync();
+            _context.DiscussionPosts.RemoveRange(discussionPosts);
+
+            var accessGrants = await _context.ResourceAccessGrants.Where(g => g.UserId == user.Id).ToListAsync();
+            _context.ResourceAccessGrants.RemoveRange(accessGrants);
+
+            var likes = await _context.Likes.Where(l => l.UserId == user.Id).ToListAsync();
+            _context.Likes.RemoveRange(likes);
+
+            var archivedResources = await _context.ArchivedResources.Where(a => a.OwnerId == user.Id).ToListAsync();
+            _context.ArchivedResources.RemoveRange(archivedResources);
+
+            var restoreOps = await _context.RestoreOperations.Where(r => r.RestoredByUserId == user.Id).ToListAsync();
+            foreach (var op in restoreOps) op.RestoredByUserId = null;
+
+            var backupPolicies = await _context.BackupPolicies.Where(p => p.LastUpdatedByUserId == user.Id).ToListAsync();
+            foreach (var p in backupPolicies) p.LastUpdatedByUserId = null;
+
+            await _context.SaveChangesAsync();
+        }
 
         // ─────────────────────────────────────────────────────────
         // BACKUP & RECOVERY
