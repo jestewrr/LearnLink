@@ -4640,16 +4640,24 @@ namespace LearnLink.Controllers
             try
             {
                 // Save farewell feedback before deleting
-                _context.AccountDeletionFeedbacks.Add(new AccountDeletionFeedback
+                try
                 {
-                    Reason = reason.Trim(),
-                    Feedback = string.IsNullOrWhiteSpace(feedback) ? null : feedback.Trim(),
-                    UserEmail = currentUser.Email,
-                    UserName = currentUser.FullName,
-                    UserRole = (await _userManager.GetRolesAsync(currentUser)).FirstOrDefault() ?? "",
-                    DeletedAt = DateTime.Now
-                });
-                await _context.SaveChangesAsync();
+                    _context.AccountDeletionFeedbacks.Add(new AccountDeletionFeedback
+                    {
+                        Reason = reason.Trim(),
+                        Feedback = string.IsNullOrWhiteSpace(feedback) ? null : feedback.Trim(),
+                        UserEmail = currentUser.Email,
+                        UserName = currentUser.FullName,
+                        UserRole = (await _userManager.GetRolesAsync(currentUser)).FirstOrDefault() ?? "",
+                        DeletedAt = DateTime.Now
+                    });
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Account deletion feedback save failed for {Email}", currentUser.Email);
+                    _context.ChangeTracker.Clear();
+                }
 
                 // Clean up entities with NoAction delete behavior
                 await CleanUpUserDependenciesAsync(currentUser);
@@ -4687,8 +4695,17 @@ namespace LearnLink.Controllers
                 var deleteResult = await _userManager.DeleteAsync(currentUser);
                 if (!deleteResult.Succeeded)
                 {
+                    await TryLegacyUserCleanupSqlAsync(currentUser.Id);
+                    _context.ChangeTracker.Clear();
+                    deleteResult = await _userManager.DeleteAsync(currentUser);
+                }
+
+                if (!deleteResult.Succeeded)
+                {
                     var reasons = string.Join("; ", deleteResult.Errors.Select(e => $"{e.Code}: {e.Description}"));
-                    throw new InvalidOperationException($"Identity delete failed: {reasons}");
+                    _logger?.LogError("DeleteAccount failed for {Email}: {Reasons}", currentUser.Email, reasons);
+                    TempData["ErrorMessage"] = $"Unable to delete account right now. {reasons}";
+                    return RedirectToAction("Profile");
                 }
 
                 await _signInManager.SignOutAsync();
@@ -4702,6 +4719,93 @@ namespace LearnLink.Controllers
                 logger?.LogError(ex, "Failed to delete account for user {Email}", currentUser.Email);
                 TempData["ErrorMessage"] = "An error occurred while deleting your account. Please try again or contact support.";
                 return RedirectToAction("Profile");
+            }
+        }
+
+        private async Task TryLegacyUserCleanupSqlAsync(string userId)
+        {
+            try
+            {
+                await _context.Database.ExecuteSqlInterpolatedAsync($@"
+                    IF OBJECT_ID(N'[DiscussionPosts]', N'U') IS NOT NULL
+                        DELETE dp FROM [DiscussionPosts] dp INNER JOIN [Discussions] d ON d.[DiscussionId] = dp.[DiscussionId] WHERE d.[UserId] = {userId};
+
+                    IF OBJECT_ID(N'[Discussions]', N'U') IS NOT NULL
+                        DELETE FROM [Discussions] WHERE [UserId] = {userId};
+
+                    IF OBJECT_ID(N'[Resources]', N'U') IS NOT NULL
+                    BEGIN
+                        IF OBJECT_ID(N'[UserActivityLogs]', N'U') IS NOT NULL
+                            UPDATE [UserActivityLogs] SET [ResourceId] = NULL WHERE [ResourceId] IN (SELECT [ResourceId] FROM [Resources] WHERE [UserId] = {userId});
+
+                        IF OBJECT_ID(N'[Notifications]', N'U') IS NOT NULL
+                            DELETE FROM [Notifications] WHERE [ResourceId] IN (SELECT [ResourceId] FROM [Resources] WHERE [UserId] = {userId});
+
+                        IF OBJECT_ID(N'[ReadingHistories]', N'U') IS NOT NULL
+                            DELETE FROM [ReadingHistories] WHERE [ResourceId] IN (SELECT [ResourceId] FROM [Resources] WHERE [UserId] = {userId});
+
+                        IF OBJECT_ID(N'[Recommendations]', N'U') IS NOT NULL
+                            DELETE FROM [Recommendations] WHERE [ResourceId] IN (SELECT [ResourceId] FROM [Resources] WHERE [UserId] = {userId});
+
+                        IF OBJECT_ID(N'[ResourceComments]', N'U') IS NOT NULL
+                        BEGIN
+                            UPDATE [ResourceComments]
+                            SET [ParentCommentId] = NULL
+                            WHERE [ParentCommentId] IN (SELECT [CommentId] FROM [ResourceComments] WHERE [ResourceId] IN (SELECT [ResourceId] FROM [Resources] WHERE [UserId] = {userId}));
+
+                            DELETE FROM [ResourceComments] WHERE [ResourceId] IN (SELECT [ResourceId] FROM [Resources] WHERE [UserId] = {userId});
+                        END
+
+                        IF OBJECT_ID(N'[ResourceAccessGrants]', N'U') IS NOT NULL
+                            DELETE FROM [ResourceAccessGrants] WHERE [ResourceId] IN (SELECT [ResourceId] FROM [Resources] WHERE [UserId] = {userId});
+
+                        IF OBJECT_ID(N'[LessonsLearned]', N'U') IS NOT NULL
+                            DELETE FROM [LessonsLearned] WHERE [ResourceId] IN (SELECT [ResourceId] FROM [Resources] WHERE [UserId] = {userId});
+
+                        IF OBJECT_ID(N'[BestPractices]', N'U') IS NOT NULL
+                            DELETE FROM [BestPractices] WHERE [ResourceId] IN (SELECT [ResourceId] FROM [Resources] WHERE [UserId] = {userId});
+
+                        DELETE FROM [Resources] WHERE [UserId] = {userId};
+                    END
+
+                    IF OBJECT_ID(N'[DiscussionPosts]', N'U') IS NOT NULL
+                        DELETE FROM [DiscussionPosts] WHERE [UserId] = {userId};
+                    IF OBJECT_ID(N'[LessonComments]', N'U') IS NOT NULL
+                        DELETE FROM [LessonComments] WHERE [UserId] = {userId};
+                    IF OBJECT_ID(N'[ResourceComments]', N'U') IS NOT NULL
+                        DELETE FROM [ResourceComments] WHERE [UserId] = {userId};
+                    IF OBJECT_ID(N'[Likes]', N'U') IS NOT NULL
+                        DELETE FROM [Likes] WHERE [UserId] = {userId};
+                    IF OBJECT_ID(N'[ResourceAccessGrants]', N'U') IS NOT NULL
+                        DELETE FROM [ResourceAccessGrants] WHERE [UserId] = {userId};
+                    IF OBJECT_ID(N'[BestPractices]', N'U') IS NOT NULL
+                        DELETE FROM [BestPractices] WHERE [UserId] = {userId};
+                    IF OBJECT_ID(N'[LessonsLearned]', N'U') IS NOT NULL
+                        DELETE FROM [LessonsLearned] WHERE [UserId] = {userId};
+                    IF OBJECT_ID(N'[Recommendations]', N'U') IS NOT NULL
+                        DELETE FROM [Recommendations] WHERE [UserId] = {userId};
+                    IF OBJECT_ID(N'[ReadingHistories]', N'U') IS NOT NULL
+                        DELETE FROM [ReadingHistories] WHERE [UserId] = {userId};
+                    IF OBJECT_ID(N'[Notifications]', N'U') IS NOT NULL
+                        DELETE FROM [Notifications] WHERE [UserId] = {userId};
+                    IF OBJECT_ID(N'[UserActivityLogs]', N'U') IS NOT NULL
+                        DELETE FROM [UserActivityLogs] WHERE [UserId] = {userId};
+                    IF OBJECT_ID(N'[ArchivedResources]', N'U') IS NOT NULL
+                        DELETE FROM [ArchivedResources] WHERE [OwnerId] = {userId};
+
+                    IF OBJECT_ID(N'[BackupRecords]', N'U') IS NOT NULL
+                        UPDATE [BackupRecords] SET [TriggeredByUserId] = NULL WHERE [TriggeredByUserId] = {userId};
+                    IF OBJECT_ID(N'[BackupPolicies]', N'U') IS NOT NULL
+                        UPDATE [BackupPolicies] SET [LastUpdatedByUserId] = NULL WHERE [LastUpdatedByUserId] = {userId};
+                    IF OBJECT_ID(N'[RestoreOperations]', N'U') IS NOT NULL
+                        UPDATE [RestoreOperations] SET [RestoredByUserId] = NULL WHERE [RestoredByUserId] = {userId};
+                    IF OBJECT_ID(N'[AuditLogs]', N'U') IS NOT NULL
+                        UPDATE [AuditLogs] SET [UserId] = NULL WHERE [UserId] = {userId};
+                ");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Legacy SQL cleanup failed for user {UserId}", userId);
             }
         }
 
@@ -7117,36 +7221,46 @@ namespace LearnLink.Controllers
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return Unauthorized();
 
+            var selectedList = (selectedRepositories ?? new List<string>())
+                .Select(s => string.Equals(s, "User Uploads", StringComparison.OrdinalIgnoreCase)
+                    ? "Published Resources"
+                    : s)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var resourceList = selectedResourceIds ?? new List<int>();
+            var userList = selectedUserIds ?? new List<string>();
+
+            if (!selectedList.Any() && !resourceList.Any() && !userList.Any())
+            {
+                TempData["ErrorMessage"] = "Please select at least one repository, system data component, specific resource, or specific user to back up.";
+                return RedirectToAction("BackupDashboard");
+            }
+
+            int backupId;
             try
             {
-                var selectedList = (selectedRepositories ?? new List<string>())
-                    .Select(s => string.Equals(s, "User Uploads", StringComparison.OrdinalIgnoreCase)
-                        ? "Published Resources"
-                        : s)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-                var resourceList = selectedResourceIds ?? new List<int>();
+                backupId = await _backupService.InitiateBackupAsync(currentUser.Id, selectedList, resourceList, userList, "Manual");
+            }
+            catch (Exception ex)
+            {
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<HomeController>>();
+                logger.LogError(ex, "Failed to record manual backup");
+                TempData["ErrorMessage"] = "Failed to record the backup request. Please try again.";
+                return RedirectToAction("BackupDashboard");
+            }
 
-                var userList = selectedUserIds ?? new List<string>();
+            var selectedStr = string.Join(", ", selectedList);
+            if (resourceList.Any())
+            {
+                selectedStr += (selectedStr.Length > 0 ? ", " : "") + $"{resourceList.Count} Specific Resources";
+            }
+            if (userList.Any())
+            {
+                selectedStr += (selectedStr.Length > 0 ? ", " : "") + $"{userList.Count} Specific Users";
+            }
 
-                if (!selectedList.Any() && !resourceList.Any() && !userList.Any())
-                {
-                    TempData["ErrorMessage"] = "Please select at least one repository, system data component, specific resource, or specific user to back up.";
-                    return RedirectToAction("BackupDashboard");
-                }
-
-                var backupId = await _backupService.InitiateBackupAsync(currentUser.Id, selectedList, resourceList, userList, "Manual");
-                var selectedStr = string.Join(", ", selectedList);
-                if (resourceList.Any())
-                {
-                    selectedStr += (selectedStr.Length > 0 ? ", " : "") + $"{resourceList.Count} Specific Resources";
-                }
-                if (userList.Any())
-                {
-                    selectedStr += (selectedStr.Length > 0 ? ", " : "") + $"{userList.Count} Specific Users";
-                }
-
-                // Append optional note to the created record.
+            try
+            {
                 if (!string.IsNullOrWhiteSpace(notes))
                 {
                     var created = await _context.BackupRecords.FindAsync(backupId);
@@ -7156,19 +7270,14 @@ namespace LearnLink.Controllers
                         await _context.SaveChangesAsync();
                     }
                 }
-
-                // Log activity
-                await LogActivity(currentUser.Id, "Backup", $"Initiated manual backup including: {selectedStr}. Description: {notes}");
-
-                TempData["SuccessMessage"] = $"Manual backup initiated successfully. Components: {selectedStr}.";
             }
             catch (Exception ex)
             {
-                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<HomeController>>();
-                logger.LogError(ex, "Failed to record manual backup");
-                TempData["ErrorMessage"] = "Failed to record the backup. Please try again.";
+                _logger?.LogWarning(ex, "Backup {BackupId}: failed to persist notes", backupId);
             }
 
+            await LogActivity(currentUser.Id, "Backup", $"Initiated manual backup including: {selectedStr}. Description: {notes}");
+            TempData["SuccessMessage"] = $"Manual backup initiated successfully. Components: {selectedStr}.";
             return RedirectToAction("BackupDashboard");
         }
 
