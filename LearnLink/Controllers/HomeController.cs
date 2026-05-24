@@ -6702,6 +6702,93 @@ namespace LearnLink.Controllers
 
         private async Task CleanUpUserDependenciesAsync(ApplicationUser user)
         {
+            // 1. Get all resource IDs owned by the user
+            List<int> userResourceIds = new List<int>();
+            try
+            {
+                userResourceIds = await _context.Resources
+                    .IgnoreQueryFilters()
+                    .Where(r => r.UserId == user.Id)
+                    .Select(r => r.ResourceId)
+                    .ToListAsync();
+            }
+            catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: Failed to fetch user resource IDs for {UserId}", user.Id); }
+
+            if (userResourceIds.Any())
+            {
+                // 2. Clean up dependencies on the user's resources to prevent NO ACTION FK blocks
+                try
+                {
+                    var resourceLikes = await _context.Likes
+                        .Where(l => l.TargetType == "Resource" && userResourceIds.Contains(l.TargetId))
+                        .ToListAsync();
+                    _context.Likes.RemoveRange(resourceLikes);
+                }
+                catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: Resource Likes failed for user resource IDs"); }
+
+                try
+                {
+                    var readingHistories = await _context.ReadingHistories
+                        .Where(r => userResourceIds.Contains(r.ResourceId))
+                        .ToListAsync();
+                    _context.ReadingHistories.RemoveRange(readingHistories);
+                }
+                catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: Resource ReadingHistories failed"); }
+
+                try
+                {
+                    var recommendations = await _context.Recommendations
+                        .Where(r => userResourceIds.Contains(r.ResourceId))
+                        .ToListAsync();
+                    _context.Recommendations.RemoveRange(recommendations);
+                }
+                catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: Resource Recommendations failed"); }
+
+                try
+                {
+                    var activityLogs = await _context.UserActivityLogs
+                        .Where(a => a.ResourceId != null && userResourceIds.Contains(a.ResourceId.Value))
+                        .ToListAsync();
+                    foreach (var log in activityLogs) log.ResourceId = null;
+                }
+                catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: Resource ActivityLogs nullification failed"); }
+
+                try
+                {
+                    var notifications = await _context.Notifications
+                        .Where(n => n.ResourceId != null && userResourceIds.Contains(n.ResourceId.Value))
+                        .ToListAsync();
+                    _context.Notifications.RemoveRange(notifications);
+                }
+                catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: Resource Notifications failed"); }
+
+                try
+                {
+                    var resourceComments = await _context.ResourceComments
+                        .Where(c => userResourceIds.Contains(c.ResourceId))
+                        .ToListAsync();
+                    
+                    // To handle self-referencing ParentCommentId NO ACTION, we null out ParentCommentId first
+                    foreach (var comment in resourceComments)
+                    {
+                        comment.ParentCommentId = null;
+                    }
+                    await _context.SaveChangesAsync(); // save nullified parents first
+                    
+                    _context.ResourceComments.RemoveRange(resourceComments);
+                }
+                catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: Resource ResourceComments failed"); }
+
+                try
+                {
+                    var accessGrants = await _context.ResourceAccessGrants
+                        .Where(g => userResourceIds.Contains(g.ResourceId))
+                        .ToListAsync();
+                    _context.ResourceAccessGrants.RemoveRange(accessGrants);
+                }
+                catch (Exception ex) { _logger?.LogWarning(ex, "CleanUp: Resource AccessGrants failed"); }
+            }
+
             // Each block is wrapped in try-catch so that a single missing table
             // or transient error does not prevent the remaining clean-ups from running.
 

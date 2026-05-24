@@ -88,7 +88,18 @@ class Program
                     var newId = cmd.ExecuteScalar();
                     Console.WriteLine($"  SUCCESS - Inserted BackupRecord Id={newId}");
 
-                    // Clean up test record
+                    // 3b) Try inserting a test backup item
+                    Console.WriteLine("\n=== Test INSERT into BackupItems ===");
+                    cmd.CommandText = @"
+                        INSERT INTO BackupItems (BackupRecordId, RepositoryName, ItemCount, StorageSizeMb)
+                        VALUES (@recId, 'TestRepo', 0, 0.0);";
+                    cmd.Parameters.Clear();
+                    cmd.Parameters.AddWithValue("@recId", newId);
+                    cmd.ExecuteNonQuery();
+                    Console.WriteLine("  SUCCESS - Inserted BackupItem");
+                    cmd.Parameters.Clear();
+
+                    // Clean up test record (cascades to BackupItems)
                     cmd.CommandText = "DELETE FROM BackupRecords WHERE Id=@delId";
                     cmd.Parameters.Clear();
                     cmd.Parameters.AddWithValue("@delId", newId);

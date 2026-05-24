@@ -158,7 +158,7 @@ namespace LearnLink.Services
                 // Step 2: Copy User Uploads if Published Resources is selected
                 if (includePublishedResources)
                 {
-                    string uploadsDir = Path.Combine(_env.WebRootPath, "uploads");
+                    string uploadsDir = Path.Combine(_env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot"), "uploads");
                     if (Directory.Exists(uploadsDir))
                     {
                         string backupUploadsDir = Path.Combine(backupFolderPath, "uploads");
@@ -256,7 +256,7 @@ namespace LearnLink.Services
             metrics.DatabaseSizeMb = metrics.RepositorySizes.Values.Sum();
 
             // Calculate actual uploads size
-            string uploadsDir = Path.Combine(_env.WebRootPath, "uploads");
+            string uploadsDir = Path.Combine(_env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot"), "uploads");
             double uploadsSizeMb = 0;
             int uploadsCount = 0;
 
