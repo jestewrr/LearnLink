@@ -310,27 +310,59 @@
                             <div class="d-flex flex-wrap gap-3">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" name="selectedRepositories" value="User Accounts" id="sysUsers" checked>
-                                    <label class="form-check-label" for="sysUsers">User Accounts (@metrics.RepositoryCounts.GetValueOrDefault("User Accounts", 0))</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="selectedRepositories" value="Audit Logs" id="sysLogs">
-                                    <label class="form-check-label" for="sysLogs">Audit Logs (@metrics.RepositoryCounts.GetValueOrDefault("Audit Logs", 0))</label>
+                                    <label class="form-check-label" for="sysUsers">User Accounts</label>
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" name="selectedRepositories" value="User Uploads" id="sysUploads" checked>
-                                    <label class="form-check-label" for="sysUploads">User Upload Files (~@Math.Round(metrics.UploadsSizeMb, 1) MB)</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="selectedRepositories" value="Archived Resources" id="sysArchive">
-                                    <label class="form-check-label" for="sysArchive">Archived Resources (@metrics.RepositoryCounts.GetValueOrDefault("Archived Resources", 0))</label>
+                                    <label class="form-check-label" for="sysUploads">Published Resources</label>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="mb-4">
-                        <h6>Specific Knowledge Resources</h6>
-                        <p class="small text-muted mb-2">Select the individual resources you want to backup. If none are selected, resources will not be included.</p>
+                    <div class="mb-4" id="specificUsersSection">
+                        <h6>Select User Accounts To Backup</h6>
+                        <p class="small text-muted mb-2">Select the individual user accounts you want to backup. If none are selected, all users will be included.</p>
+                        
+                        <div class="table-responsive" style="max-height: 350px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: .25rem;">
+                            <table class="table table-hover table-sm mb-0 align-middle">
+                                <thead class="table-light position-sticky top-0" style="z-index: 1;">
+                                    <tr>
+                                        <th style="width: 40px; padding-left: 12px;">
+                                            <input class="form-check-input" type="checkbox" id="selectAllUsers">
+                                        </th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Name</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (ViewBag.AvailableUsers != null)
+                                    {
+                                        foreach (var usr in (IEnumerable<LearnLink.Models.ApplicationUser>)ViewBag.AvailableUsers)
+                                        {
+                                            <tr>
+                                                <td style="padding-left: 12px;">
+                                                    <input class="form-check-input user-checkbox" type="checkbox" name="selectedUserIds" value="@usr.Id">
+                                                </td>
+                                                <td class="fw-medium">@usr.Email</td>
+                                                <td><span class="badge bg-secondary">User</span></td>
+                                                <td><small>@usr.FullName</small></td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                            @if (ViewBag.AvailableUsers == null || !((IEnumerable<LearnLink.Models.ApplicationUser>)ViewBag.AvailableUsers).Any())
+                            {
+                                <div class="text-center p-3 text-muted small">No user accounts available.</div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mb-4" id="specificResourcesSection">
+                        <h6>Select Resources To Backup</h6>
+                        <p class="small text-muted mb-2">Select the individual resources you want to backup. If none are selected, all published resources will be included.</p>
                         
                         <div class="table-responsive" style="max-height: 350px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: .25rem;">
                             <table class="table table-hover table-sm mb-0 align-middle">
@@ -347,7 +379,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @if (ViewBag.AvailableResources != null)
+                                    @if (ViewBag.AvailableResources != null && ((IEnumerable<Resource>)ViewBag.AvailableResources).Any())
                                     {
                                         foreach (var res in (IEnumerable<Resource>)ViewBag.AvailableResources)
                                         {
@@ -365,6 +397,10 @@
                                     }
                                 </tbody>
                             </table>
+                            @if (ViewBag.AvailableResources == null || !((IEnumerable<Resource>)ViewBag.AvailableResources).Any())
+                            {
+                                <div class="text-center p-3 text-muted small">No published resources available.</div>
+                            }
                         </div>
                     </div>
 
@@ -423,7 +459,6 @@
                 $('.resource-checkbox').prop('checked', isChecked);
             });
             
-            // Update Select All checkbox state when individual checkboxes change
             $('.resource-checkbox').change(function() {
                 if ($('.resource-checkbox:checked').length === $('.resource-checkbox').length) {
                     $('#selectAllResources').prop('checked', true);
@@ -436,6 +471,47 @@
                     $('#selectAllResources').prop('indeterminate', true);
                 }
             });
+
+            // Select All specific users logic
+            $('#selectAllUsers').change(function() {
+                var isChecked = $(this).is(':checked');
+                $('.user-checkbox').prop('checked', isChecked);
+            });
+            
+            $('.user-checkbox').change(function() {
+                if ($('.user-checkbox:checked').length === $('.user-checkbox').length) {
+                    $('#selectAllUsers').prop('checked', true);
+                    $('#selectAllUsers').prop('indeterminate', false);
+                } else if ($('.user-checkbox:checked').length === 0) {
+                    $('#selectAllUsers').prop('checked', false);
+                    $('#selectAllUsers').prop('indeterminate', false);
+                } else {
+                    $('#selectAllUsers').prop('checked', false);
+                    $('#selectAllUsers').prop('indeterminate', true);
+                }
+            });
+
+            // Toggle sections based on checkboxes
+            function toggleSections() {
+                if ($('#sysUsers').is(':checked')) {
+                    $('#specificUsersSection').show();
+                } else {
+                    $('#specificUsersSection').hide();
+                    $('.user-checkbox').prop('checked', false);
+                    $('#selectAllUsers').prop('checked', false).prop('indeterminate', false);
+                }
+                
+                if ($('#sysUploads').is(':checked')) {
+                    $('#specificResourcesSection').show();
+                } else {
+                    $('#specificResourcesSection').hide();
+                    $('.resource-checkbox').prop('checked', false);
+                    $('#selectAllResources').prop('checked', false).prop('indeterminate', false);
+                }
+            }
+
+            $('#sysUsers, #sysUploads').change(toggleSections);
+            toggleSections();
         });
     </script>
 }

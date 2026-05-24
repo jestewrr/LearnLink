@@ -9,7 +9,7 @@ namespace LearnLink.Services
 {
     public interface IBackupService
     {
-        Task<int> InitiateBackupAsync(string triggerUserId, List<string> selectedRepositories, List<int>? selectedResourceIds = null, string backupType = "Manual");
+        Task<int> InitiateBackupAsync(string triggerUserId, List<string> selectedRepositories, List<int>? selectedResourceIds = null, List<string>? selectedUserIds = null, string backupType = "Manual");
         Task<int> InitiateRestoreAsync(int backupRecordId, string triggerUserId);
         Task<BackupMetricsDto> CalculateStorageMetricsAsync();
     }
@@ -39,7 +39,7 @@ namespace LearnLink.Services
             _logger = logger;
         }
 
-        public async Task<int> InitiateBackupAsync(string triggerUserId, List<string> selectedRepositories, List<int>? selectedResourceIds = null, string backupType = "Manual")
+        public async Task<int> InitiateBackupAsync(string triggerUserId, List<string> selectedRepositories, List<int>? selectedResourceIds = null, List<string>? selectedUserIds = null, string backupType = "Manual")
         {
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -73,12 +73,13 @@ namespace LearnLink.Services
 
             // Start background process
             var resourceList = selectedResourceIds ?? new List<int>();
-            _ = Task.Run(() => ExecuteBackupProcessAsync(backupRecord.Id, selectedRepositories, resourceList));
+            var userList = selectedUserIds ?? new List<string>();
+            _ = Task.Run(() => ExecuteBackupProcessAsync(backupRecord.Id, selectedRepositories, resourceList, userList));
 
             return backupRecord.Id;
         }
 
-        private async Task ExecuteBackupProcessAsync(int backupRecordId, List<string> repositories, List<int> resourceIds)
+        private async Task ExecuteBackupProcessAsync(int backupRecordId, List<string> repositories, List<int> resourceIds, List<string> userIds)
         {
             try
             {
@@ -117,7 +118,13 @@ namespace LearnLink.Services
                     if (repositories.Contains("English Resources")) exportData["English"] = await dbContext.Resources.Where(r => r.Subject == "English").ToListAsync();
                 }
 
-                if (repositories.Contains("User Accounts")) exportData["Users"] = await dbContext.Users.ToListAsync();
+                if (repositories.Contains("User Accounts"))
+                {
+                    if (userIds != null && userIds.Any())
+                        exportData["Users"] = await dbContext.Users.Where(u => userIds.Contains(u.Id)).ToListAsync();
+                    else
+                        exportData["Users"] = await dbContext.Users.ToListAsync();
+                }
                 if (repositories.Contains("Audit Logs"))
                 {
                     try

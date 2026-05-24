@@ -6856,8 +6856,13 @@ namespace LearnLink.Controllers
             // Pass all active resources to the view for specific resource selection in backup
             ViewBag.AvailableResources = await _context.Resources
                 .Include(r => r.User)
-                .Where(r => r.Status == "Active")
+                .Where(r => r.Status == "Published")
                 .OrderByDescending(r => r.DateUploaded)
+                .ToListAsync();
+
+            // Pass all users to the view for specific user selection in backup
+            ViewBag.AvailableUsers = await _userManager.Users
+                .OrderBy(u => u.Email)
                 .ToListAsync();
 
             return View();
@@ -6866,7 +6871,7 @@ namespace LearnLink.Controllers
         [Authorize(Roles = "SuperAdmin,Manager")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> TriggerManualBackup(List<string>? selectedRepositories, List<int>? selectedResourceIds, string notes = "")
+        public async Task<IActionResult> TriggerManualBackup(List<string>? selectedRepositories, List<int>? selectedResourceIds, List<string>? selectedUserIds, string notes = "")
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return Unauthorized();
@@ -6895,17 +6900,23 @@ namespace LearnLink.Controllers
                 var selectedList = selectedRepositories ?? new List<string>();
                 var resourceList = selectedResourceIds ?? new List<int>();
 
-                if (!selectedList.Any() && !resourceList.Any())
+                var userList = selectedUserIds ?? new List<string>();
+
+                if (!selectedList.Any() && !resourceList.Any() && !userList.Any())
                 {
-                    TempData["ErrorMessage"] = "Please select at least one repository, system data component, or specific resource to back up.";
+                    TempData["ErrorMessage"] = "Please select at least one repository, system data component, specific resource, or specific user to back up.";
                     return RedirectToAction("BackupDashboard");
                 }
 
-                var backupId = await _backupService.InitiateBackupAsync(currentUser.Id, selectedList, resourceList, "Manual");
+                var backupId = await _backupService.InitiateBackupAsync(currentUser.Id, selectedList, resourceList, userList, "Manual");
                 var selectedStr = string.Join(", ", selectedList);
                 if (resourceList.Any())
                 {
                     selectedStr += (selectedStr.Length > 0 ? ", " : "") + $"{resourceList.Count} Specific Resources";
+                }
+                if (userList.Any())
+                {
+                    selectedStr += (selectedStr.Length > 0 ? ", " : "") + $"{userList.Count} Specific Users";
                 }
 
                 // Append optional note to the created record.
@@ -6996,7 +7007,7 @@ namespace LearnLink.Controllers
             var resource = await _context.Resources.FindAsync(archive.OriginalResourceId);
             if (resource != null)
             {
-                resource.Status = "Active";
+                resource.Status = "Published";
             }
 
             _context.ArchivedResources.Remove(archive);
