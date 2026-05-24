@@ -756,21 +756,8 @@ function escHtml(s) {
 
     if (!searchInput || !form) return;
 
-    // Debounced search submission
-    function triggerAutoSearch() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(function() {
-            form.submit();
-        }, 400); // Wait 400ms after user stops typing
-    }
-
-    // Listen to search input
-    searchInput.addEventListener('input', function() {
-        // Only auto-search if there's actual text (at least 1 char) or if field is empty
-        triggerAutoSearch();
-    });
-
-    // Listen to filter select changes
+    // Remove auto-submit on text input to prevent unnecessary reloads
+    // Listen to filter select changes only
     if (filterSelects && filterSelects.length > 0) {
         filterSelects.forEach(function(select) {
             select.addEventListener('change', function() {
@@ -779,10 +766,8 @@ function escHtml(s) {
         });
     }
 
-    // Visual feedback: show form is in "auto-search" mode
     if (searchSubmitBtn) {
-        searchSubmitBtn.title = 'Auto-search enabled: results update as you type';
-        searchSubmitBtn.style.opacity = '0.7';
+        searchSubmitBtn.style.opacity = '1';
     }
 })();
 </script>

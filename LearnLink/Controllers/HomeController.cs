@@ -5780,13 +5780,13 @@ namespace LearnLink.Controllers
             IQueryable<Resource> query;
             if (User.IsInRole("SuperAdmin"))
             {
-                query = _context.Resources.Include(r => r.User);
+                query = _context.Resources.Include(r => r.User).Where(r => r.Status != "Archive");
             }
             else
             {
                 query = _context.Resources
                     .Include(r => r.User)
-                    .Where(r => r.UserId == currentUser.Id);
+                    .Where(r => r.UserId == currentUser.Id && r.Status != "Archive");
             }
 
             // Filter
@@ -5797,8 +5797,8 @@ namespace LearnLink.Controllers
 
             // Stats (before pagination)
             var allResources = User.IsInRole("SuperAdmin")
-                ? await _context.Resources.ToListAsync()
-                : await _context.Resources.Where(r => r.UserId == currentUser.Id).ToListAsync();
+                ? await _context.Resources.Where(r => r.Status != "Archive").ToListAsync()
+                : await _context.Resources.Where(r => r.UserId == currentUser.Id && r.Status != "Archive").ToListAsync();
 
             ViewBag.TotalUploads = allResources.Count;
             ViewBag.PublishedCount = allResources.Count(r => r.Status == "Published");

@@ -296,10 +296,10 @@
                     <i class="bi bi-trash"></i>
                 </div>
                 <h5 class="fw-bold mb-2">Are you sure?</h5>
-                <p class="text-muted mb-0" id="deleteModalMessage">This action cannot be undone. This will permanently delete the selected resource(s).</p>
+                <p class="text-muted mb-0" id="deleteModalMessage">This action cannot be undone. This will delete the selected resource(s).</p>
             </div>
             <div class="modal-footer border-0 pt-0 flex-column gap-2">
-                <button type="button" class="ll-btn ll-btn-danger w-100" id="confirmDeleteBtn">Delete Permanently</button>
+                <button type="button" class="ll-btn ll-btn-danger w-100" id="confirmDeleteBtn">Delete</button>
                 <button type="button" class="ll-btn ll-btn-outline w-100" data-bs-dismiss="modal">Cancel</button>
             </div>
         </div>
@@ -341,7 +341,7 @@
             selectedIds = ids;
             document.getElementById('deleteModalMessage').textContent = ids.length > 1 
                 ? `Are you sure you want to delete ${ids.length} selected resources?`
-                : "This action cannot be undone. This will permanently delete the selected resource.";
+                : "This action cannot be undone. This will delete the selected resource.";
             deleteModal.show();
         }
 
@@ -359,7 +359,15 @@
                     body: params
                 });
                 const result = await response.json();
-                if (result.success) { location.reload(); }
+                if (result.success) { 
+                    selectedIds.forEach(id => {
+                        const row = document.querySelector(`.upload-row[data-id='${id}']`);
+                        if (row) row.remove();
+                        const mobileRow = document.querySelector(`.upload-row-mobile[data-id='${id}']`);
+                        if (mobileRow) mobileRow.remove();
+                    });
+                    deleteModal.hide(); 
+                }
                 else { alert(result.message); deleteModal.hide(); }
             } catch (error) { alert('An error occurred during deletion.'); deleteModal.hide(); }
             finally { confirmDeleteBtn.disabled = false; confirmDeleteBtn.innerHTML = originalText; }

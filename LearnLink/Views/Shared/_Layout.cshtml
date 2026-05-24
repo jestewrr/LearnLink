@@ -407,8 +407,23 @@
                     }
                 } else {
                     // Desktop: toggle collapsed
-                    sidebar.classList.toggle('collapsed');
+                    var isCollapsed = sidebar.classList.toggle('collapsed');
+                    if (isCollapsed) {
+                        document.querySelectorAll('.ll-sidebar-nav .collapse.show').forEach(function(el) {
+                            var bsCollapse = bootstrap.Collapse.getInstance(el) || new bootstrap.Collapse(el, {toggle: false});
+                            bsCollapse.hide();
+                        });
+                    }
                 }
+            });
+            
+            // Prevent dropdowns from opening when sidebar is collapsed
+            document.querySelectorAll('.ll-sidebar-nav .collapse').forEach(function(el) {
+                el.addEventListener('show.bs.collapse', function(e) {
+                    if (sidebar.classList.contains('collapsed')) {
+                        e.preventDefault();
+                    }
+                });
             });
             
             // Click overlay to close
