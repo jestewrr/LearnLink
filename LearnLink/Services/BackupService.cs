@@ -113,9 +113,10 @@ namespace LearnLink.Services
                 }
                 else
                 {
-                    if (repositories.Contains("Math Resources")) exportData["Math"] = await dbContext.Resources.Where(r => r.Subject == "Mathematics").ToListAsync();
-                    if (repositories.Contains("Science Resources")) exportData["Science"] = await dbContext.Resources.Where(r => r.Subject == "Science").ToListAsync();
-                    if (repositories.Contains("English Resources")) exportData["English"] = await dbContext.Resources.Where(r => r.Subject == "English").ToListAsync();
+                    if (repositories.Contains("Published Resources"))
+                    {
+                        exportData["PublishedResources"] = await dbContext.Resources.Where(r => r.Status == "Published").ToListAsync();
+                    }
                 }
 
                 if (repositories.Contains("User Accounts"))
@@ -125,19 +126,6 @@ namespace LearnLink.Services
                     else
                         exportData["Users"] = await dbContext.Users.ToListAsync();
                 }
-                if (repositories.Contains("Audit Logs"))
-                {
-                    try
-                    {
-                        exportData["AuditLogs"] = await dbContext.AuditLogs.ToListAsync();
-                    }
-                    catch (SqlException ex) when (IsMissingTableException(ex))
-                    {
-                        _logger.LogWarning(ex, "Skipping audit logs in backup because AuditLogs table does not exist.");
-                        exportData["AuditLogs"] = new List<AuditLog>();
-                    }
-                }
-                if (repositories.Contains("Archived Resources")) exportData["ArchivedResources"] = await dbContext.ArchivedResources.ToListAsync();
 
                 string jsonString = JsonSerializer.Serialize(exportData);
                 await File.WriteAllTextAsync(Path.Combine(backupFolderPath, "database_dump.json"), jsonString);
@@ -145,8 +133,8 @@ namespace LearnLink.Services
                 backupRecord.ProgressPercent = 60;
                 await dbContext.SaveChangesAsync();
 
-                // Step 2: Copy User Uploads if selected
-                if (repositories.Contains("User Uploads"))
+                // Step 2: Copy User Uploads if Published Resources is selected
+                if (repositories.Contains("Published Resources"))
                 {
                     string uploadsDir = Path.Combine(_env.WebRootPath, "uploads");
                     if (Directory.Exists(uploadsDir))
@@ -213,26 +201,14 @@ namespace LearnLink.Services
             }
 
             // Calculate mock DB size based on row counts (approximate 2KB per row)
-            int mathCount = await SafeCountAsync(() => dbContext.Resources.CountAsync(r => r.Subject == "Mathematics"), "Math Resources");
-            int scienceCount = await SafeCountAsync(() => dbContext.Resources.CountAsync(r => r.Subject == "Science"), "Science Resources");
-            int englishCount = await SafeCountAsync(() => dbContext.Resources.CountAsync(r => r.Subject == "English"), "English Resources");
+            int publishedCount = await SafeCountAsync(() => dbContext.Resources.CountAsync(r => r.Status == "Published"), "Published Resources");
             int userCount = await SafeCountAsync(() => dbContext.Users.CountAsync(), "User Accounts");
-            int auditCount = await SafeCountAsync(() => dbContext.AuditLogs.CountAsync(), "Audit Logs");
-            int archiveCount = await SafeCountAsync(() => dbContext.ArchivedResources.CountAsync(), "Archived Resources");
 
-            metrics.RepositoryCounts["Math Resources"] = mathCount;
-            metrics.RepositoryCounts["Science Resources"] = scienceCount;
-            metrics.RepositoryCounts["English Resources"] = englishCount;
+            metrics.RepositoryCounts["Published Resources"] = publishedCount;
             metrics.RepositoryCounts["User Accounts"] = userCount;
-            metrics.RepositoryCounts["Audit Logs"] = auditCount;
-            metrics.RepositoryCounts["Archived Resources"] = archiveCount;
 
-            metrics.RepositorySizes["Math Resources"] = mathCount * 0.002;
-            metrics.RepositorySizes["Science Resources"] = scienceCount * 0.002;
-            metrics.RepositorySizes["English Resources"] = englishCount * 0.002;
+            metrics.RepositorySizes["Published Resources"] = publishedCount * 0.002;
             metrics.RepositorySizes["User Accounts"] = userCount * 0.005;
-            metrics.RepositorySizes["Audit Logs"] = auditCount * 0.001;
-            metrics.RepositorySizes["Archived Resources"] = archiveCount * 0.003;
 
             metrics.DatabaseSizeMb = metrics.RepositorySizes.Values.Sum();
 

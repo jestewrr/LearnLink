@@ -44,7 +44,7 @@
         <div class="col-12">
             <div class="g1-card p-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="g1-header mb-0"><i class="bi bi-hdd-network"></i> Enterprise Storage Allocation</h5>
+                    <h5 class="g1-header mb-0"><i class="bi bi-hdd-network"></i> Storage Allocation</h5>
                     <span class="badge bg-primary">Total Used: @totalUsedGb GB / @totalCapacityGb GB</span>
                 </div>
                 <div class="progress mb-3" style="height: 25px;">
@@ -52,29 +52,21 @@
                 </div>
                 
                 <div class="row text-center mt-4">
-                    <div class="col-md-2 col-sm-4 border-end">
+                    <div class="col-md-3 col-sm-6 border-end">
                         <div class="text-muted small">Database Size</div>
                         <div class="fw-bold text-success fs-5">@Math.Round(metrics.DatabaseSizeMb, 2) MB</div>
                     </div>
-                    <div class="col-md-2 col-sm-4 border-end">
-                        <div class="text-muted small">User Uploads</div>
+                    <div class="col-md-3 col-sm-6 border-end">
+                        <div class="text-muted small">User Uploads Size</div>
                         <div class="fw-bold text-info fs-5">@Math.Round(metrics.UploadsSizeMb, 2) MB</div>
                     </div>
-                    <div class="col-md-2 col-sm-4 border-end">
-                        <div class="text-muted small">Math Resources</div>
-                        <div class="fw-bold fs-5">@metrics.RepositoryCounts.GetValueOrDefault("Math Resources", 0)</div>
+                    <div class="col-md-3 col-sm-6 border-end">
+                        <div class="text-muted small">Published Resources</div>
+                        <div class="fw-bold fs-5">@metrics.RepositoryCounts.GetValueOrDefault("Published Resources", 0)</div>
                     </div>
-                    <div class="col-md-2 col-sm-4 border-end">
-                        <div class="text-muted small">Science Resources</div>
-                        <div class="fw-bold fs-5">@metrics.RepositoryCounts.GetValueOrDefault("Science Resources", 0)</div>
-                    </div>
-                    <div class="col-md-2 col-sm-4 border-end">
+                    <div class="col-md-3 col-sm-6">
                         <div class="text-muted small">User Accounts</div>
                         <div class="fw-bold fs-5">@metrics.RepositoryCounts.GetValueOrDefault("User Accounts", 0)</div>
-                    </div>
-                    <div class="col-md-2 col-sm-4">
-                        <div class="text-muted small">Archived Resources</div>
-                        <div class="fw-bold fs-5">@metrics.RepositoryCounts.GetValueOrDefault("Archived Resources", 0)</div>
                     </div>
                 </div>
             </div>
@@ -411,7 +403,11 @@
                 </div>
                 <div class="modal-footer border-top-0 pt-0">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-play-fill"></i> Initiate Background Backup</button>
+                    <button type="submit" class="btn btn-primary" id="confirmBackupBtn">
+                        <span class="btn-text"><i class="bi bi-play-fill"></i> Confirm Backup</span>
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        <span class="btn-loading-text d-none">Processing...</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -512,6 +508,14 @@
 
             $('#sysUsers, #sysUploads').change(toggleSections);
             toggleSections();
+
+            // Prevent double submission and show loading
+            $('form[action$="/TriggerManualBackup"]').submit(function() {
+                var btn = $('#confirmBackupBtn');
+                btn.prop('disabled', true);
+                btn.find('.btn-text').addClass('d-none');
+                btn.find('.spinner-border, .btn-loading-text').removeClass('d-none');
+            });
         });
     </script>
 }

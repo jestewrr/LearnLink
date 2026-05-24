@@ -4637,79 +4637,89 @@ namespace LearnLink.Controllers
                 return RedirectToAction("Profile");
             }
 
-            // Save farewell feedback before deleting
-            _context.AccountDeletionFeedbacks.Add(new AccountDeletionFeedback
-            {
-                Reason = reason.Trim(),
-                Feedback = string.IsNullOrWhiteSpace(feedback) ? null : feedback.Trim(),
-                UserEmail = currentUser.Email,
-                UserName = currentUser.FullName,
-                UserRole = (await _userManager.GetRolesAsync(currentUser)).FirstOrDefault() ?? "",
-                DeletedAt = DateTime.Now
-            });
-            await _context.SaveChangesAsync();
-
-            // Clean up entities with NoAction delete behavior
-            var lessonComments = await _context.LessonComments.Where(c => c.UserId == currentUser.Id).ToListAsync();
-            _context.LessonComments.RemoveRange(lessonComments);
-
-            var lessonsLearned = await _context.LessonsLearned.Where(l => l.UserId == currentUser.Id).ToListAsync();
-            _context.LessonsLearned.RemoveRange(lessonsLearned);
-
-            var bestPractices = await _context.BestPractices.Where(b => b.UserId == currentUser.Id).ToListAsync();
-            _context.BestPractices.RemoveRange(bestPractices);
-
-            var resourceComments = await _context.ResourceComments.Where(c => c.UserId == currentUser.Id).ToListAsync();
-            _context.ResourceComments.RemoveRange(resourceComments);
-
-            var discussionPosts = await _context.DiscussionPosts.Where(p => p.UserId == currentUser.Id).ToListAsync();
-            _context.DiscussionPosts.RemoveRange(discussionPosts);
-
-            var accessGrants = await _context.ResourceAccessGrants.Where(g => g.UserId == currentUser.Id).ToListAsync();
-            _context.ResourceAccessGrants.RemoveRange(accessGrants);
-
-            var likes = await _context.Likes.Where(l => l.UserId == currentUser.Id).ToListAsync();
-            _context.Likes.RemoveRange(likes);
-
-            await _context.SaveChangesAsync();
-
-            var archivedActivities = await _context.UserActivityLogs
-                .Where(a => a.UserId == currentUser.Id)
-                .OrderByDescending(a => a.ActivityDate)
-                .ToListAsync();
-
             try
             {
-                foreach (var activity in archivedActivities)
+                // Save farewell feedback before deleting
+                _context.AccountDeletionFeedbacks.Add(new AccountDeletionFeedback
                 {
-                    try
+                    Reason = reason.Trim(),
+                    Feedback = string.IsNullOrWhiteSpace(feedback) ? null : feedback.Trim(),
+                    UserEmail = currentUser.Email,
+                    UserName = currentUser.FullName,
+                    UserRole = (await _userManager.GetRolesAsync(currentUser)).FirstOrDefault() ?? "",
+                    DeletedAt = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+
+                // Clean up entities with NoAction delete behavior
+                var lessonComments = await _context.LessonComments.Where(c => c.UserId == currentUser.Id).ToListAsync();
+                _context.LessonComments.RemoveRange(lessonComments);
+
+                var lessonsLearned = await _context.LessonsLearned.Where(l => l.UserId == currentUser.Id).ToListAsync();
+                _context.LessonsLearned.RemoveRange(lessonsLearned);
+
+                var bestPractices = await _context.BestPractices.Where(b => b.UserId == currentUser.Id).ToListAsync();
+                _context.BestPractices.RemoveRange(bestPractices);
+
+                var resourceComments = await _context.ResourceComments.Where(c => c.UserId == currentUser.Id).ToListAsync();
+                _context.ResourceComments.RemoveRange(resourceComments);
+
+                var discussionPosts = await _context.DiscussionPosts.Where(p => p.UserId == currentUser.Id).ToListAsync();
+                _context.DiscussionPosts.RemoveRange(discussionPosts);
+
+                var accessGrants = await _context.ResourceAccessGrants.Where(g => g.UserId == currentUser.Id).ToListAsync();
+                _context.ResourceAccessGrants.RemoveRange(accessGrants);
+
+                var likes = await _context.Likes.Where(l => l.UserId == currentUser.Id).ToListAsync();
+                _context.Likes.RemoveRange(likes);
+
+                await _context.SaveChangesAsync();
+
+                var archivedActivities = await _context.UserActivityLogs
+                    .Where(a => a.UserId == currentUser.Id)
+                    .OrderByDescending(a => a.ActivityDate)
+                    .ToListAsync();
+
+                try
+                {
+                    foreach (var activity in archivedActivities)
                     {
-                        await LogAuditAsync(
-                            "ArchiveActivity",
-                            "Success",
-                            $"Archived profile activity '{activity.ActivityType}' for '{activity.TargetTitle}' before account deletion.",
-                            null,
-                            currentUser.Email);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogError(ex, "Failed to archive activity record for user {UserId}", currentUser.Id);
+                        try
+                        {
+                            await LogAuditAsync(
+                                "ArchiveActivity",
+                                "Success",
+                                $"Archived profile activity '{activity.ActivityType}' for '{activity.TargetTitle}' before account deletion.",
+                                null,
+                                currentUser.Email);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogError(ex, "Failed to archive activity record for user {UserId}", currentUser.Id);
+                        }
                     }
                 }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to retrieve activity logs for archival for user {UserId}", currentUser.Id);
+                }
+
+                // Sign out before deleting
+                await _signInManager.SignOutAsync();
+
+                // Delete the user (cascades to Resources, Discussions, ReadingHistory, ActivityLogs, Notifications, Recommendations)
+                await _userManager.DeleteAsync(currentUser);
+
+                TempData["SuccessMessage"] = "Your account has been permanently deleted. We're sorry to see you go.";
+                return RedirectToAction("Landing");
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Failed to retrieve activity logs for archival for user {UserId}", currentUser.Id);
+                var logger = HttpContext.RequestServices.GetService<ILogger<HomeController>>();
+                logger?.LogError(ex, "Failed to delete account for user {Email}", currentUser.Email);
+                TempData["ErrorMessage"] = "An error occurred while deleting your account. Please try again or contact support.";
+                return RedirectToAction("Profile");
             }
-
-            // Sign out before deleting
-            await _signInManager.SignOutAsync();
-
-            // Delete the user (cascades to Resources, Discussions, ReadingHistory, ActivityLogs, Notifications, Recommendations)
-            await _userManager.DeleteAsync(currentUser);
-
-            TempData["SuccessMessage"] = "Your account has been permanently deleted. We're sorry to see you go.";
-            return RedirectToAction("Landing");
         }
 
         // ==================== Reading History & Best Practices ====================
@@ -6626,18 +6636,28 @@ namespace LearnLink.Controllers
             if (await _userManager.IsInRoleAsync(user, "SuperAdmin") && !User.IsInRole("SuperAdmin"))
                 return Forbid();
 
-            var result = await _userManager.DeleteAsync(user);
-            if (result.Succeeded)
+            try
             {
-                var currentUser = await GetCurrentUserAsync();
-                if (currentUser != null)
-                    await LogActivity(currentUser.Id, "Delete User", user.Email ?? "Unknown User", 0);
+                var result = await _userManager.DeleteAsync(user);
+                if (result.Succeeded)
+                {
+                    var currentUser = await GetCurrentUserAsync();
+                    if (currentUser != null)
+                        await LogActivity(currentUser.Id, "Delete User", user.Email ?? "Unknown User", 0);
 
-                TempData["SuccessMessage"] = $"User {user.Email} has been deleted.";
+                    TempData["SuccessMessage"] = $"User {user.Email} has been deleted.";
+                    return RedirectToAction("Users");
+                }
+
+                return BadRequest("Failed to delete user.");
+            }
+            catch (Exception ex)
+            {
+                var logger = HttpContext.RequestServices.GetService<ILogger<HomeController>>();
+                logger?.LogError(ex, "Failed to delete user {Email}", user.Email);
+                TempData["ErrorMessage"] = $"An error occurred while deleting user {user.Email}.";
                 return RedirectToAction("Users");
             }
-
-            return BadRequest("Failed to delete user.");
         }
 
         [Authorize(Roles = "SuperAdmin,Manager")]
@@ -6648,6 +6668,8 @@ namespace LearnLink.Controllers
                 return Json(new { success = false, message = "No users selected." });
 
             int deletedCount = 0;
+            int failedCount = 0;
+            
             foreach (var email in emails)
             {
                 var user = await _userManager.FindByEmailAsync(email);
@@ -6660,18 +6682,39 @@ namespace LearnLink.Controllers
                     if (await _userManager.IsInRoleAsync(user, "SuperAdmin") && !User.IsInRole("SuperAdmin"))
                         continue;
 
-                    var result = await _userManager.DeleteAsync(user);
-                    if (result.Succeeded)
+                    try
                     {
-                        var currentUser = await GetCurrentUserAsync();
-                        if (currentUser != null)
-                            await LogActivity(currentUser.Id, "Delete User", user.Email ?? "Unknown User", 0);
-                        deletedCount++;
+                        var result = await _userManager.DeleteAsync(user);
+                        if (result.Succeeded)
+                        {
+                            var currentUser = await GetCurrentUserAsync();
+                            if (currentUser != null)
+                                await LogActivity(currentUser.Id, "Delete User", user.Email ?? "Unknown User", 0);
+
+                            deletedCount++;
+                        }
+                        else
+                        {
+                            failedCount++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failedCount++;
+                        var logger = HttpContext.RequestServices.GetService<ILogger<HomeController>>();
+                        logger?.LogError(ex, "Failed to delete user {Email} in batch", user.Email);
                     }
                 }
             }
 
-            return Json(new { success = true, message = $"{deletedCount} user(s) deleted successfully." });
+            if (deletedCount > 0)
+            {
+                var message = $"{deletedCount} user(s) deleted successfully.";
+                if (failedCount > 0) message += $" {failedCount} failed.";
+                return Json(new { success = true, message });
+            }
+
+            return Json(new { success = false, message = "Failed to delete users or users skipped." });
         }
 
 
@@ -6878,24 +6921,6 @@ namespace LearnLink.Controllers
 
             try
             {
-                // Ensure table exists safely to prevent errors
-                await _context.Database.ExecuteSqlRawAsync(@"
-                    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[BackupRecords]') AND type in (N'U'))
-                    BEGIN
-                        CREATE TABLE [BackupRecords] (
-                            [Id] int NOT NULL IDENTITY,
-                            [BackupType] nvarchar(50) NOT NULL,
-                            [Status] nvarchar(50) NOT NULL,
-                            [CreatedAt] datetime2 NOT NULL,
-                            [CompletedAt] datetime2 NULL,
-                            [SizeDescription] nvarchar(50) NULL,
-                            [StorageLocation] nvarchar(500) NULL,
-                            [Notes] nvarchar(1000) NULL,
-                            [TriggeredByUserId] nvarchar(450) NULL,
-                            CONSTRAINT [PK_BackupRecords] PRIMARY KEY ([Id])
-                        );
-                    END
-                ");
 
                 var selectedList = selectedRepositories ?? new List<string>();
                 var resourceList = selectedResourceIds ?? new List<int>();
