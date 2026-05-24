@@ -4711,7 +4711,7 @@ namespace LearnLink.Controllers
                 await _signInManager.SignOutAsync();
 
                 TempData["SuccessMessage"] = "Your account has been permanently deleted. We're sorry to see you go.";
-                return RedirectToAction("Landing");
+                return RedirectToAction("Index");
             }
             catch (Exception ex)
             {
@@ -6727,6 +6727,13 @@ namespace LearnLink.Controllers
             {
                 await CleanUpUserDependenciesAsync(user);
                 var result = await _userManager.DeleteAsync(user);
+                if (!result.Succeeded)
+                {
+                    await TryLegacyUserCleanupSqlAsync(user.Id);
+                    _context.ChangeTracker.Clear();
+                    result = await _userManager.DeleteAsync(user);
+                }
+
                 if (result.Succeeded)
                 {
                     var currentUser = await GetCurrentUserAsync();
@@ -6737,7 +6744,9 @@ namespace LearnLink.Controllers
                     return RedirectToAction("Users");
                 }
 
-                return BadRequest("Failed to delete user.");
+                var reasons = string.Join("; ", result.Errors.Select(e => $"{e.Code}: {e.Description}"));
+                TempData["ErrorMessage"] = $"Failed to delete user {user.Email}. {reasons}";
+                return RedirectToAction("Users");
             }
             catch (Exception ex)
             {
@@ -6774,6 +6783,13 @@ namespace LearnLink.Controllers
                     {
                         await CleanUpUserDependenciesAsync(user);
                         var result = await _userManager.DeleteAsync(user);
+                        if (!result.Succeeded)
+                        {
+                            await TryLegacyUserCleanupSqlAsync(user.Id);
+                            _context.ChangeTracker.Clear();
+                            result = await _userManager.DeleteAsync(user);
+                        }
+
                         if (result.Succeeded)
                         {
                             var currentUser = await GetCurrentUserAsync();

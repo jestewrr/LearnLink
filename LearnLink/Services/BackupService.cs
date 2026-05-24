@@ -107,9 +107,8 @@ namespace LearnLink.Services
                 backupRecord.ProgressPercent = 10;
                 await dbContext.SaveChangesAsync();
 
-                // Create a backup directory
-                string backupDir = Path.Combine(_env.ContentRootPath, "Backups");
-                if (!Directory.Exists(backupDir)) Directory.CreateDirectory(backupDir);
+                // Create a backup directory. Some hosts make ContentRoot read-only, so fallback to temp.
+                string backupDir = GetWritableBackupRoot();
 
                 string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                 string backupFolderName = $"Backup_{timestamp}";
@@ -166,7 +165,8 @@ namespace LearnLink.Services
                 // Step 2: Copy User Uploads if Published Resources is selected
                 if (includePublishedResources)
                 {
-                    string uploadsDir = Path.Combine(_env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot"), "uploads");
+                    string webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+                    string uploadsDir = Path.Combine(webRoot, "uploads");
                     if (Directory.Exists(uploadsDir))
                     {
                         string backupUploadsDir = Path.Combine(backupFolderPath, "uploads");
@@ -309,6 +309,24 @@ namespace LearnLink.Services
             }
         }
 
+        private string GetWritableBackupRoot()
+        {
+            var preferred = Path.Combine(_env.ContentRootPath, "Backups");
+            try
+            {
+                Directory.CreateDirectory(preferred);
+                return preferred;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Primary backup directory unavailable: {Dir}. Falling back to temp.", preferred);
+            }
+
+            var fallback = Path.Combine(Path.GetTempPath(), "LearnLinkBackups");
+            Directory.CreateDirectory(fallback);
+            return fallback;
+        }
+
         public async Task<int> InitiateRestoreAsync(int backupRecordId, string triggerUserId)
         {
             using var scope = _scopeFactory.CreateScope();
@@ -355,7 +373,7 @@ namespace LearnLink.Services
                 }
 
                 // Create a temporary extraction directory
-                string tempDir = Path.Combine(_env.ContentRootPath, "Backups", $"TempExtract_{Guid.NewGuid()}");
+                string tempDir = Path.Combine(GetWritableBackupRoot(), $"TempExtract_{Guid.NewGuid()}");
                 if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
                 Directory.CreateDirectory(tempDir);
 
@@ -383,7 +401,8 @@ namespace LearnLink.Services
                 string extractedUploadsDir = Path.Combine(tempDir, "uploads");
                 if (Directory.Exists(extractedUploadsDir))
                 {
-                    string targetUploadsDir = Path.Combine(_env.WebRootPath, "uploads");
+                    string webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+                    string targetUploadsDir = Path.Combine(webRoot, "uploads");
                     CopyDirectory(extractedUploadsDir, targetUploadsDir);
                 }
 
